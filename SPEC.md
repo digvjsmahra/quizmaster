@@ -146,10 +146,11 @@ Awarded applies to any closed question with entries, including negative-only (e.
 5. As players buzz, the live ordered queue appears. Call on the first.
 6. Click any board cell to open the **scoring panel** (inline, below the board):
    - Header: `Category · Value` + `default +Value` reminder.
-   - Per-roster-player row: value input field + `[+value]` `[-value]` quick-fill buttons.
+   - **One row per current roster member**, always. The panel reflects the roster at the moment of opening — players added via "Add player" after Start appear in every scoring panel from that point on, including when the host re-opens a previously closed cell.
+   - Each row: value input field + `[+value]` `[-value]` quick-fill buttons. Rows with no existing score show `—`.
    - Click **"Close question"** → all entered values saved atomically, question marked Awarded or Passed, panel closes. Nothing saves before this click.
    - Dismiss without clicking = changes discarded, question state unchanged.
-7. Re-click any closed cell to reopen the scoring panel with existing values. "Close question" again overwrites.
+7. Re-click any closed cell to reopen the scoring panel with existing values. Roster members added since the question was last closed appear with `—` (no score yet). "Close question" again overwrites.
 8. Navigate boards with **`[← Prev]` `[Next →]`** above the board. Always starts on board 1.
 9. **Totals panel** (right side, always visible): two columns — **Board** and **Total** — sorted by board score descending. Board total covers only the current board; Total is cumulative across all boards.
 10. Use **"Add player"** to add a late joiner or reconnected player to the roster.
@@ -192,6 +193,8 @@ No reconnection logic. A dropped player reopens the link, enters any name, and i
 - **Board navigation: `[← Prev]` `[Next →]` above the board.** Always available; starts on board 1.
 - **Lobby → live gate.** Roster snapshotted at Start; host can add players afterward.
 - **No reconnection matching.** Buzz identities disposable; roster entries durable; host bridges.
+- **Scoring panel always reflects the live roster.** Players added post-Start via "Add player" appear in every scoring panel opened after that point, including re-opened closed cells. Late-added players show `—` on questions closed before they were added; the host can re-open and score those cells retroactively.
+- **`host:roster_add { name }` creates a standalone roster entry.** The server assigns a new player_id; no link to any buzz identity. Host bridges the mapping mentally.
 - **CSV: `board, category, value` only.** Produced offline. App never sees question text or answers.
 
 ## 11. Acceptance criteria (V1 "done")

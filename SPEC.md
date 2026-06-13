@@ -153,7 +153,7 @@ Awarded applies to any closed question with entries, including negative-only (e.
 7. Re-click any closed cell to reopen the scoring panel with existing values. Roster members added since the question was last closed appear with `—` (no score yet). "Close question" again overwrites.
 8. Navigate boards with **`[← Prev]` `[Next →]`** above the board. Always starts on board 1.
 9. **Totals panel** (right side, always visible): two columns — **Board** and **Total** — sorted by board score descending. Board total covers only the current board; Total is cumulative across all boards.
-10. Use **"Add player"** to add a late joiner or reconnected player to the roster.
+10. **Adding a late joiner:** below the Totals panel sits a text input and an **"Add"** button. The host types the player's name and clicks Add → `host:roster_add` fires → the player appears immediately as a new row in the Totals panel (Board 0, Total 0) and in every scoring panel opened from that point on. The host can then re-open any closed cell to score that player retroactively. This control is only active during the live phase.
 
 ### Player flow
 

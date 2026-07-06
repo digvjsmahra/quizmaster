@@ -88,13 +88,25 @@ body {
 .buzz-btn:active:not(:disabled) { background: #4338ca; }
 .buzz-btn:disabled { background: #a5a6f6; cursor: not-allowed; }
 
-.position-text {
-  font-size: 22px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 8px;
-}
 .position-sub { color: #6b7280; font-size: 14px; }
+
+.buzz-queue-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  width: 100%;
+  text-align: left;
+}
+.buzz-queue-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 18px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+}
+.buzz-queue-list li.buzz-me { font-weight: 700; font-size: 20px; color: #1a1a1a; }
 
 /* ------------------------------------------------------------------ */
 /* Host page — shared                                                   */
@@ -385,10 +397,14 @@ body {
   margin-bottom: 10px;
 }
 .queue-title { font-weight: 700; font-size: 14px; }
-.queue-advisory { font-size: 11px; color: #9ca3af; }
+.queue-gap-label { font-size: 11px; color: #9ca3af; }
 
 .queue-list { list-style: none; margin: 0 0 12px; padding: 0; min-height: 24px; }
-.queue-list li { font-size: 13px; padding: 4px 0; color: #374151; }
+.queue-list li { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; padding: 4px 0; color: #374151; }
+.queue-name { color: #374151; }
+
+.buzz-delta { font-size: 12px; font-weight: 600; color: #6b7280; }
+.buzz-delta.first { color: #059669; }
 .queue-empty { color: #9ca3af; font-size: 13px; font-style: italic; margin-bottom: 12px; }
 
 .queue-locked-badge {

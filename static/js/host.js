@@ -26,6 +26,11 @@
 
   function el(id) { return document.getElementById(id); }
 
+  function fmtDelta(ms) {
+    if (ms < 1000) return `+${ms} ms`;
+    return `+${(ms / 1000).toFixed(1)} s`;
+  }
+
   // ----------------------------------------------------------------
   // Phase / view switching
   // ----------------------------------------------------------------
@@ -161,7 +166,12 @@
     } else {
       empty.classList.add('hidden');
       list.innerHTML = data.queue
-        .map((e, i) => `<li>${i + 1}. ${esc(e.name)}</li>`)
+        .map((e, i) => {
+          const badge = i === 0
+            ? `<span class="buzz-delta first">⚡ first</span>`
+            : `<span class="buzz-delta">${fmtDelta(e.delta_ms)}</span>`;
+          return `<li><span class="queue-name">${i + 1}. ${esc(e.name)}</span>${badge}</li>`;
+        })
         .join('');
     }
   }

@@ -97,6 +97,8 @@ def test_buzz_fifo_ordering():
     queue = g.get_queue_payload()["queue"]
     assert queue[0]["player_id"] == pid1
     assert queue[1]["player_id"] == pid2
+    assert queue[0]["delta_ms"] == 0
+    assert queue[1]["delta_ms"] >= 0
 
 
 def test_buzz_rejected_in_lobby():

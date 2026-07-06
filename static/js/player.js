@@ -18,6 +18,17 @@
     views[name].classList.remove('hidden');
   }
 
+  function fmtDelta(ms) {
+    if (ms < 1000) return `+${ms} ms`;
+    return `+${(ms / 1000).toFixed(1)} s`;
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   // ---- Socket events ----
 
   socket.on('player:accepted', ({ player_id, phase }) => {
@@ -49,9 +60,17 @@
     if (!playerId) return;
     const pos = queue.findIndex(e => e.player_id === playerId);
     if (pos >= 0) {
-      document.getElementById('position-text').textContent = `You are #${pos + 1} in line`;
+      const listEl = document.getElementById('player-queue-list');
+      listEl.innerHTML = queue.map((e, i) => {
+        const badge = i === 0
+          ? `<span class="buzz-delta first">⚡ first</span>`
+          : `<span class="buzz-delta">${fmtDelta(e.delta_ms)}</span>`;
+        const cls = e.player_id === playerId ? ' class="buzz-me"' : '';
+        return `<li${cls}>${i + 1}. ${esc(e.name)} ${badge}</li>`;
+      }).join('');
       showView('position');
     } else if (currentPhase === 'live') {
+      document.getElementById('player-queue-list').innerHTML = '';
       document.getElementById('buzz-btn').disabled = false;
       showView('buzzer');
     }

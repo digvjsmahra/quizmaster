@@ -127,7 +127,7 @@ Awarded applies to any closed question with entries, including negative-only (e.
 | event | audience | payload |
 |-------|----------|---------|
 | `state:phase` | all | `{ phase }` |
-| `state:queue` | all | `{ queue: [{player_id, name}], locked }` |
+| `state:queue` | all | `{ queue: [{player_id, name, delta_ms}], locked }` — `delta_ms` is ms since first buzz (first entry = 0) |
 | `state:scores` | host | `{ grid, board_totals, cumulative_totals, closed }` |
 | `player:accepted` | one player | `{ player_id, phase }` |
 | `player:rejected` | one player | `{ reason }` |
@@ -160,7 +160,7 @@ Awarded applies to any closed question with entries, including negative-only (e.
 1. Open the shared link → **join screen**: name field only (code is in the URL; no separate code entry).
 2. Lobby phase → **waiting screen**: "You're in — waiting for the host."
 3. Live phase → **buzzer screen**: one large buzz button.
-4. After buzzing → **queue position**: "You are #N in line." Live-updating; resets to the buzzer screen when the host clears the queue.
+4. After buzzing → **buzz list**: full ordered queue with ms intervals (first = "⚡ first", rest = "+X ms" or "+X.X s" if ≥ 1 s); own row highlighted. Live-updating; resets to the buzzer screen when the host clears the queue.
 
 Late joiners (after Start) skip waiting and land directly on the buzzer. They can buzz immediately but aren't on the scorecard until the host adds them.
 

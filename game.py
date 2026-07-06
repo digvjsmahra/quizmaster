@@ -135,9 +135,14 @@ class Game:
         ]
 
     def get_queue_payload(self) -> dict:
+        first_at = self.queue[0].received_at if self.queue else None
         return {
             "queue": [
-                {"player_id": e.player_id, "name": self.players[e.player_id].name}
+                {
+                    "player_id": e.player_id,
+                    "name": self.players[e.player_id].name,
+                    "delta_ms": round((e.received_at - first_at) * 1000) if first_at is not None else 0,
+                }
                 for e in self.queue
                 if e.player_id in self.players
             ],

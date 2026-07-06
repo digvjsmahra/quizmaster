@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Buzzer</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="player-wrap">
+  <div class="player-card">
+
+    <!-- Join -->
+    <div id="view-join">
+      <h1>Join the quiz</h1>
+      <form id="join-form">
+        <input id="name-input" type="text" placeholder="Your name" maxlength="30" autocomplete="off" autofocus>
+        <button type="submit" class="btn-primary">Join</button>
+      </form>
+      <p class="error-msg hidden" id="join-error"></p>
+    </div>
+
+    <!-- Waiting -->
+    <div id="view-waiting" class="hidden">
+      <h1>You're in!</h1>
+      <p class="status-msg">Waiting for the host to start the quiz…</p>
+    </div>
+
+    <!-- Buzzer -->
+    <div id="view-buzzer" class="hidden">
+      <button id="buzz-btn" class="buzz-btn">BUZZ</button>
+    </div>
+
+    <!-- Queue position -->
+    <div id="view-position" class="hidden">
+      <p class="position-text" id="position-text">You are #1 in line</p>
+      <p class="position-sub">Wait for the host to call on you</p>
+    </div>
+
+  </div>
+</div>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/js/player.js"></script>
+</body>
+</html>

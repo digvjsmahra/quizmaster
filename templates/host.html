@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz control center</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="host-wrap">
+
+  <!-- Header -->
+  <header class="host-header">
+    <div>
+      <h1>Quiz control center</h1>
+      <div class="subtitle" id="header-subtitle"></div>
+    </div>
+    <span id="phase-badge" class="phase-badge lobby">⏱ lobby</span>
+  </header>
+
+  <!-- ============================================================ -->
+  <!-- Lobby view                                                    -->
+  <!-- ============================================================ -->
+  <div id="view-lobby" class="lobby-body hidden">
+
+    <div class="card">
+      <div class="card-label">Player join link — share in Zoom chat</div>
+      <div class="join-url-row">
+        <input id="join-url-input" class="join-url-input" type="text" readonly>
+        <button id="copy-btn" class="btn-copy">⎘ copy</button>
+      </div>
+      <div class="join-url-hint">players just open it and type their name — no code to enter</div>
+    </div>
+
+    <div class="card">
+      <div class="players-header">
+        <div class="card-label" style="margin:0">Players joined</div>
+        <span class="players-count" id="lobby-count">0</span>
+      </div>
+      <div class="players-grid" id="lobby-players"></div>
+    </div>
+
+    <div>
+      <button id="start-btn" class="btn-start">▷ Start quiz</button>
+      <div class="start-hint">freezes the scorecard roster — you can still add players after</div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Live view                                                     -->
+  <!-- ============================================================ -->
+  <div id="view-live" class="live-body hidden">
+
+    <!-- Board area -->
+    <div class="board-area">
+
+      <!-- Board navigation -->
+      <div class="board-nav">
+        <button id="btn-prev" class="btn-nav" disabled>← prev</button>
+        <span class="board-nav-label" id="board-label">Board 1 of 1</span>
+        <button id="btn-next" class="btn-nav" disabled>next →</button>
+      </div>
+
+      <!-- Board grid -->
+      <div class="board-grid-wrap">
+        <div class="board-grid" id="board-grid"></div>
+      </div>
+
+      <!-- Scoring panel (shown when a cell is active) -->
+      <div class="scoring-panel hidden" id="scoring-panel"></div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Buzz queue -->
+      <div class="card">
+        <div class="queue-header">
+          <span class="queue-title">Buzz queue</span>
+          <span class="queue-advisory">advisory</span>
+        </div>
+        <div id="queue-locked-badge" class="queue-locked-badge hidden">🔒 frozen</div>
+        <ol class="queue-list" id="queue-list"></ol>
+        <div class="queue-empty hidden" id="queue-empty">no buzzes yet</div>
+        <div class="queue-actions">
+          <button class="btn-queue" id="btn-freeze">freeze</button>
+          <button class="btn-queue" id="btn-reset">reset</button>
+        </div>
+      </div>
+
+      <!-- Totals -->
+      <div class="card">
+        <div class="totals-title">Totals</div>
+        <table class="totals-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Board</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="totals-body"></tbody>
+        </table>
+        <div class="totals-sort-hint">sorted by board score</div>
+      </div>
+
+      <!-- Add player -->
+      <div class="card">
+        <div class="card-label">Add a player</div>
+        <div class="add-player-form">
+          <input id="add-player-input" class="add-player-input" type="text" placeholder="Add a player…" maxlength="30">
+          <button id="btn-add-player" class="btn-add-player">+ add</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/js/host.js"></script>
+</body>
+</html>

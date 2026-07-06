@@ -1,0 +1,5 @@
+flask
+flask-socketio
+eventlet
+gunicorn
+pytest

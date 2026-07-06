@@ -148,7 +148,7 @@ Awarded applies to any closed question with entries, including negative-only (e.
    - Header: `Category · Value` + `default +Value` reminder.
    - **One row per current roster member**, always. The panel reflects the roster at the moment of opening — players added via "Add player" after Start appear in every scoring panel from that point on, including when the host re-opens a previously closed cell.
    - Each row: value input field + `[+value]` `[-value]` quick-fill buttons. Rows with no existing score show `—`.
-   - Click **"Close question"** → all entered values saved atomically, question marked Awarded or Passed, panel closes. Nothing saves before this click.
+   - Click **"Close question"** → rows with a value are saved; blank rows (`—`) are skipped and produce no score entry for that player. If every row is blank, the question is marked Passed; if at least one row has a value, it is marked Awarded. Nothing saves before this click.
    - Dismiss without clicking = changes discarded, question state unchanged.
 7. Re-click any closed cell to reopen the scoring panel with existing values. Roster members added since the question was last closed appear with `—` (no score yet). "Close question" again overwrites.
 8. Navigate boards with **`[← Prev]` `[Next →]`** above the board. Always starts on board 1.
@@ -186,8 +186,8 @@ No reconnection logic. A dropped player reopens the link, enters any name, and i
 - **Open queue with freeze + reset.** Advisory; one entry per player per round.
 - **Split-value scoring.** Host enters per-player amounts; server stores verbatim. `±value` buttons are editable quick-fills, not fixed events.
 - **No undo/redo.** Re-clicking a cell and re-submitting is sufficient.
-- **`host:question_submit` is atomic.** Saves all scores + closes the question in one event. Re-submitting overwrites.
-- **Cell states: Unplayed / Awarded / Passed.** Passed = zero entries only. Negative-only entries = Awarded.
+- **`host:question_submit` is atomic.** Saves all scores + closes the question in one event. Blank rows are skipped (no entry created). All rows blank = Passed; at least one row with a value = Awarded. Re-submitting overwrites.
+- **Cell states: Unplayed / Awarded / Passed.** Passed = zero entries only. Negative-only entries = Awarded. All three states render in a single color per state (no sub-variants within Awarded).
 - **Active cell: blue border** while the scoring panel is open.
 - **Totals: Board + Total columns, always visible, sorted by board score descending.**
 - **Board navigation: `[← Prev]` `[Next →]` above the board.** Always available; starts on board 1.

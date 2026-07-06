@@ -47,10 +47,11 @@ def host_page(secret):
     return render_template("host.html", join_url=f"/play/{game.join_code}")
 
 
-import events  # noqa: F401, E402 — registers socket handlers
+import events
+events.register(socketio, game)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"  Host URL : http://localhost:{port}/host/{HOST_SECRET}")
     print(f"  Player URL: http://localhost:{port}/play/{game.join_code}")
-    socketio.run(app, debug=True, port=port)
+    socketio.run(app, debug=True, use_reloader=False, port=port)

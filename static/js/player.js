@@ -19,6 +19,7 @@
   }
 
   function fmtDelta(ms) {
+    if (ms == null || isNaN(ms)) return '';
     if (ms < 1000) return `+${ms} ms`;
     return `+${(ms / 1000).toFixed(1)} s`;
   }

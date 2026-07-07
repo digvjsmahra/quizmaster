@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: quiz-buzzer
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -k eventlet -w 1 -b 0.0.0.0:$PORT app:app
+    envVars:
+      - key: HOST_SECRET
+        sync: false

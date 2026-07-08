@@ -4,7 +4,7 @@ Guidance for Claude Code in this repo. `SPEC.md` is *what* to build; this file i
 
 ## What this is
 
-A real-time, single-game quiz buzzer. One host screen-shares questions over Zoom and keeps score from a control center at `/host/<secret>`; ~10 players buzz in from phones via a shared permalink. Flask + Flask-SocketIO backend, vanilla-JS frontend, no build step, quiz content from a CSV, all state in memory.
+A real-time quiz buzzer. The host creates a room from the landing page and gets a unique control center URL; ~10 players join via a shared link or by entering a 4-char room code at the landing page. Flask + Flask-SocketIO backend, vanilla-JS frontend, no build step, quiz content from a CSV, all state in memory.
 
 ## Golden rules
 
@@ -25,15 +25,17 @@ Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn. Vanilla JS + HTML; Sock
 ## Project layout
 
 ```
-app.py            # Flask app + SocketIO init + HTTP routes (/play/<code>, /host/<secret>)
+app.py            # Flask app + SocketIO init + HTTP routes
 game.py           # all in-memory state and game logic (phase, roster, queue, scoring)
 events.py         # SocketIO event handlers — thin wrappers that delegate to game.py
 quiz_loader.py    # CSV parsing -> board grids; fails loudly on malformed input
 data/quiz.csv     # board, category, value (thin 3-column; produced offline by host)
 templates/
-  player.html     # join → waiting → buzzer → queue-position (single page, JS-driven)
+  create.html     # landing page — join by code or create a new room
+  player.html     # waiting → buzzer → queue-position (single page, JS-driven)
   host.html       # control center: board scorecard + queue + totals
 static/
+  js/create.js    # OTP input logic, code validation, redirect
   js/player.js
   js/host.js
   css/styles.css
@@ -42,13 +44,9 @@ requirements.txt
 
 ## Configuration
 
-`HOST_SECRET` — required env var. If missing, fail loudly at startup (same pattern as the CSV loader). Never auto-generate; never write to a file.
+No required env vars. Rooms are created dynamically via the landing page UI; each room has a server-generated per-room host token. No HOST_SECRET needed.
 
-- Local dev: `export HOST_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(16))")` once, then reuse.
-- Production: set in PaaS config vars. The value is stable across restarts/redeploys.
-- Do **not** add `python-dotenv`.
-
-The join code (`/play/<code>`) is auto-generated at startup and displayed on the host page for copying. It resets on restart, which is fine — a restart wipes all game state anyway.
+The quiz content is loaded from `data/quiz.csv` at startup. Swap the file and redeploy to change questions. A restart wipes all in-memory room state — acceptable, as each quiz is a single session.
 
 ## Commands
 

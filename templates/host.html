@@ -24,12 +24,17 @@
   <div id="view-lobby" class="lobby-body hidden">
 
     <div class="card">
-      <div class="card-label">Player join link — share in Zoom chat</div>
+      <div class="card-label">Share with players</div>
       <div class="join-url-row">
         <input id="join-url-input" class="join-url-input" type="text" readonly>
         <button id="copy-btn" class="btn-copy">⎘ copy</button>
       </div>
-      <div class="join-url-hint">players just open it and type their name — no code to enter</div>
+      <div class="join-url-hint">or share the room code verbally</div>
+      <div class="otp-boxes otp-display">
+        {% for char in join_code %}
+        <div class="otp-display-box">{{ char }}</div>
+        {% endfor %}
+      </div>
     </div>
 
     <div class="card">

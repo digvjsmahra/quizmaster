@@ -12,12 +12,19 @@
 
     <!-- Join -->
     <div id="view-join">
-      <h1>Join the quiz</h1>
-      <form id="join-form">
-        <input id="name-input" type="text" placeholder="Your name" maxlength="30" autocomplete="off" autofocus>
-        <button type="submit" class="btn-primary">Join</button>
-      </form>
+      <h1>QuizMaster</h1>
+
+      <div class="otp-label">Room code</div>
+      <div class="otp-boxes">
+        {% for char in code %}
+        <input class="otp-box prefilled" value="{{ char }}" type="text" readonly tabindex="-1">
+        {% endfor %}
+      </div>
+
+      <div class="field-label">Your name</div>
+      <input id="name-input" type="text" placeholder="Your name" maxlength="30" autocomplete="off" spellcheck="false">
       <p class="error-msg hidden" id="join-error"></p>
+      <button id="join-btn" class="btn-primary">Join Room</button>
     </div>
 
     <!-- Waiting -->

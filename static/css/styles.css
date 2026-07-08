@@ -43,7 +43,7 @@ body {
 
 .player-card h1 { font-size: 20px; margin: 0 0 24px; }
 
-.player-card input[type="text"] {
+.player-card input[type="text"]:not(.otp-box) {
   width: 100%;
   padding: 12px 14px;
   font-size: 16px;
@@ -52,7 +52,7 @@ body {
   outline: none;
   margin-bottom: 12px;
 }
-.player-card input[type="text"]:focus { border-color: #6366f1; }
+.player-card input[type="text"]:not(.otp-box):focus { border-color: #6366f1; }
 
 .btn-primary {
   width: 100%;
@@ -68,9 +68,90 @@ body {
 .btn-primary:hover { background: #4f46e5; }
 .btn-primary:disabled { background: #a5a6f6; cursor: not-allowed; }
 
-.error-msg { color: #dc2626; font-size: 13px; margin-top: 8px; }
+.error-msg { color: #dc2626; font-size: 13px; margin-top: 8px; margin-bottom: 8px; }
 
 .status-msg { color: #6b7280; font-size: 15px; line-height: 1.5; }
+
+/* OTP boxes — input variant (create + player pages) */
+.otp-label, .field-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  text-align: left;
+  display: block;
+  margin: 0 0 6px;
+}
+.field-label { margin-top: 4px; }
+
+.otp-boxes {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.otp-box {
+  width: 52px;
+  height: 56px;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: #1a1a1a;
+  caret-color: #6366f1;
+  padding: 0;
+}
+.otp-box:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+.otp-box.prefilled { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+
+/* OTP display boxes — host lobby (div, not input) */
+.otp-display { margin-top: 12px; }
+.otp-display-box {
+  width: 52px;
+  height: 56px;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 56px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  color: #1a1a1a;
+  user-select: all;
+}
+
+/* Or divider */
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  color: #9ca3af;
+  font-size: 13px;
+}
+.or-divider::before, .or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+/* Ghost button */
+.btn-ghost {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: #6366f1;
+  border: 1.5px solid #6366f1;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-ghost:hover { background: #f5f3ff; }
 
 /* Buzz button */
 #view-buzzer, #view-position {

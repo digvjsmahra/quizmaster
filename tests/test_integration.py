@@ -80,3 +80,20 @@ def test_host_sees_correct_join_url(room):
     full = next(e for e in events if e["name"] == "state:full")
     assert full["args"][0]["join_code"] == game.join_code
     host_client.disconnect()
+
+
+def test_validate_room_valid(room):
+    join_code, _, _ = room
+    res = app.test_client().get(f"/rooms/{join_code}/validate")
+    assert res.status_code == 200
+
+
+def test_validate_room_invalid(room):
+    res = app.test_client().get("/rooms/XXXX/validate")
+    assert res.status_code == 404
+
+
+def test_validate_room_case_insensitive(room):
+    join_code, _, _ = room
+    res = app.test_client().get(f"/rooms/{join_code.lower()}/validate")
+    assert res.status_code == 200

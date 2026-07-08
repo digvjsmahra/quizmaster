@@ -30,6 +30,14 @@ Scoring is **host-driven, split-value**: for each question the host enters per-p
 - In-memory state only; mobile-responsive player UI.
 - Public deployment as a single always-on host.
 
+### In scope for V2
+- **Unified landing page** (`/`): players enter a 4-character room code + name to join; hosts create a new room. No deploy needed to start a new game.
+- **Room creation flow**: host clicks "Host a new game" → server generates a per-room host token → redirected to control center. Multiple rooms supported in memory simultaneously.
+- **Join by code**: players can join via the full `/play/<code>` URL (code pre-filled) or by typing the 4-char code on the landing page. Code input is OTP-style (auto-advance, auto-uppercase, paste support).
+- **Validate endpoint** (`GET /rooms/<code>/validate`): called before redirect; invalid codes show a human-legible inline error, never a 404.
+- **Host lobby shows room code**: large display-only OTP boxes alongside the copyable URL for verbal sharing.
+- **Responsive host control center**: stacks vertically on mobile and tablet (≤1024px); live view capped at 720px centered on tablet.
+
 ### Out of scope for V1
 - Auth of any kind. `/host/<secret>` is obscurity only.
 - Persistence or database.

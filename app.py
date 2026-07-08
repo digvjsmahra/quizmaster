@@ -47,11 +47,18 @@ def host_page(join_code, host_token):
     return render_template("host.html", join_code=join_code)
 
 
+@app.route("/rooms/<join_code>/validate")
+def validate_room(join_code):
+    if join_code.upper() in rooms:
+        return {"valid": True}
+    return {"valid": False}, 404
+
+
 @app.route("/play/<join_code>")
 def player_page(join_code):
-    if join_code not in rooms:
+    if join_code.upper() not in rooms:
         abort(404)
-    return render_template("player.html", code=join_code)
+    return render_template("player.html", code=join_code.upper())
 
 
 import events  # noqa: E402

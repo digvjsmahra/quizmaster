@@ -10,11 +10,29 @@
 <div class="player-wrap">
   <div class="player-card">
     <h1>QuizMaster</h1>
-    <p class="status-msg">Create a room and share the link with your players.</p>
+
+    <div class="otp-label">Room code</div>
+    <div class="otp-boxes" id="code-boxes">
+      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
+      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
+      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
+      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="field-label">Your name</div>
+    <input id="name-input" type="text" placeholder="Your name" maxlength="30" autocomplete="off" spellcheck="false">
+
+    <p class="error-msg hidden" id="join-error"></p>
+
+    <button id="join-btn" class="btn-primary" disabled>Join Room</button>
+
+    <div class="or-divider"><span>or</span></div>
+
     <form method="POST" action="/rooms">
-      <button type="submit" class="btn-primary">Create Room</button>
+      <button type="submit" class="btn-ghost">Host a new game →</button>
     </form>
   </div>
 </div>
+<script src="/static/js/create.js"></script>
 </body>
 </html>

@@ -30,6 +30,21 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  // ---- Auto-join from URL param ----
+
+  socket.on('connect', () => {
+    const urlName = new URLSearchParams(window.location.search).get('name');
+    if (urlName) {
+      const nameInput = document.getElementById('name-input');
+      nameInput.value = urlName;
+      nameInput.disabled = true;
+      document.getElementById('join-btn').disabled = true;
+      socket.emit('player:join', { name: urlName, room_id: JOIN_CODE });
+    } else {
+      document.getElementById('name-input').focus();
+    }
+  });
+
   // ---- Socket events ----
 
   socket.on('player:accepted', ({ player_id, phase }) => {
@@ -44,6 +59,9 @@
   });
 
   socket.on('player:rejected', ({ reason }) => {
+    const nameInput = document.getElementById('name-input');
+    nameInput.disabled = false;
+    document.getElementById('join-btn').disabled = false;
     const err = document.getElementById('join-error');
     err.textContent = reason;
     err.classList.remove('hidden');
@@ -79,12 +97,16 @@
 
   // ---- UI handlers ----
 
-  document.getElementById('join-form').addEventListener('submit', e => {
-    e.preventDefault();
+  document.getElementById('join-btn').addEventListener('click', () => {
     const name = document.getElementById('name-input').value.trim();
     if (!name) return;
     document.getElementById('join-error').classList.add('hidden');
+    document.getElementById('join-btn').disabled = true;
     socket.emit('player:join', { name, room_id: JOIN_CODE });
+  });
+
+  document.getElementById('name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('join-btn').click();
   });
 
   document.getElementById('buzz-btn').addEventListener('click', () => {

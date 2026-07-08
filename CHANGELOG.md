@@ -3,12 +3,20 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] — V2 planned
+## [Unreleased] — V2 in progress
 
 ### Planned
-- **Room creation flow** — host creates a room from a landing page (no deploy needed), gets an admin link, lands in lobby with the player URL ready to share
-- **Responsive host UI** — Quiz Control Center optimised for mobile phones and iPad
 - **In-app CSV upload** — host uploads quiz content at room creation; no redeploy needed to change questions
+
+## [2.0.0] — 2026-07-08
+
+### Added
+- **Unified landing page** — OTP-style 4-box room code input with auto-advance, auto-uppercase, and paste support; players join by code + name or via direct link
+- **Room creation flow** — host clicks "Host a new game" from the landing page; server generates a unique per-room host token; no env vars or deploy needed to start a new game
+- **Join validation** — `GET /rooms/<code>/validate` returns a human-legible inline error before any redirect; no more 404s for players
+- **Player direct link** — `/play/<code>` pre-fills the code boxes (readonly); auto-joins when `?name` param is in the URL (arriving from the landing page)
+- **Host lobby room code display** — large OTP-style display boxes show the 4-char code alongside the copyable URL for verbal sharing over Zoom
+- **Responsive host control center** — stacks vertically on mobile and tablet (≤1024px); capped at 720px centered on tablet; sidebar (buzz queue) appears above the board on small screens
 
 ## [1.0.0] — 2026-07-08
 

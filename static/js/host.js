@@ -312,7 +312,7 @@
   // Socket events
   // ----------------------------------------------------------------
   socket.on('connect', () => {
-    socket.emit('host:join');
+    socket.emit('host:join', { room_id: JOIN_CODE });
   });
 
   socket.on('state:full', (data) => {

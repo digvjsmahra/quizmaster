@@ -1,43 +1,40 @@
-import os
+import secrets
 import pytest
 
-os.environ.setdefault("HOST_SECRET", "test-secret-token")
-
-from app import app, socketio, game  # noqa: E402
-from quiz_loader import Question  # noqa: E402
+from app import app, socketio, rooms, questions
+from game import Game
 
 
 @pytest.fixture(autouse=True)
-def reset_game():
-    """Reset game state before each test."""
-    game.players.clear()
-    game.roster.clear()
-    game.queue.clear()
-    game.queue_locked = False
-    game.scores.clear()
-    game.closed_questions.clear()
-    game.phase = "lobby"
-    yield
+def room():
+    rooms.clear()
+    g = Game(questions=questions)
+    host_token = secrets.token_urlsafe(16)
+    rooms[g.join_code] = {"game": g, "host_token": host_token}
+    yield g.join_code, g, host_token
+    rooms.clear()
 
 
-def test_join_buzz_queue_broadcast():
+def test_join_buzz_queue_broadcast(room):
+    join_code, game, _ = room
+
     host_client = socketio.test_client(app)
     p1_client = socketio.test_client(app)
     p2_client = socketio.test_client(app)
 
     # Host joins
-    host_client.emit("host:join")
+    host_client.emit("host:join", {"room_id": join_code})
     host_received = host_client.get_received()
     assert any(e["name"] == "state:full" for e in host_received)
 
     # Two players join
-    p1_client.emit("player:join", {"name": "Ankur"})
+    p1_client.emit("player:join", {"name": "Ankur", "room_id": join_code})
     p1_events = p1_client.get_received()
     accepted = next(e for e in p1_events if e["name"] == "player:accepted")
     p1_id = accepted["args"][0]["player_id"]
     assert accepted["args"][0]["phase"] == "lobby"
 
-    p2_client.emit("player:join", {"name": "Dev"})
+    p2_client.emit("player:join", {"name": "Dev", "room_id": join_code})
     p2_events = p2_client.get_received()
     accepted2 = next(e for e in p2_events if e["name"] == "player:accepted")
     p2_id = accepted2["args"][0]["player_id"]
@@ -50,15 +47,12 @@ def test_join_buzz_queue_broadcast():
     assert phase_event["args"][0]["phase"] == "live"
 
     # Players buzz — p1 first, then p2
-    p1_client.get_received()  # clear
+    p1_client.get_received()
     p2_client.get_received()
 
     p1_client.emit("player:buzz")
     p2_client.emit("player:buzz")
 
-    # Host should see queue with p1 before p2 (FIFO)
-    host_client.get_received()  # flush any phase/score events
-    # Give eventlet a moment then check game state directly
     queue = game.get_queue_payload()["queue"]
     assert len(queue) == 2
     assert queue[0]["player_id"] == p1_id
@@ -69,17 +63,19 @@ def test_join_buzz_queue_broadcast():
     p2_client.disconnect()
 
 
-def test_player_rejected_on_empty_name():
+def test_player_rejected_on_empty_name(room):
+    join_code, _, _ = room
     client = socketio.test_client(app)
-    client.emit("player:join", {"name": ""})
+    client.emit("player:join", {"name": "", "room_id": join_code})
     events = client.get_received()
     assert any(e["name"] == "player:rejected" for e in events)
     client.disconnect()
 
 
-def test_host_sees_correct_join_url():
+def test_host_sees_correct_join_url(room):
+    join_code, game, _ = room
     host_client = socketio.test_client(app)
-    host_client.emit("host:join")
+    host_client.emit("host:join", {"room_id": join_code})
     events = host_client.get_received()
     full = next(e for e in events if e["name"] == "state:full")
     assert full["args"][0]["join_code"] == game.join_code

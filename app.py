@@ -5,24 +5,17 @@ import eventlet
 
 eventlet.monkey_patch()
 
-from flask import Flask, render_template, abort  # noqa: E402
+from flask import Flask, render_template, abort, redirect, request  # noqa: E402
 from flask_socketio import SocketIO  # noqa: E402
 from quiz_loader import load_quiz  # noqa: E402
 from game import Game  # noqa: E402
 
 # ------------------------------------------------------------------
-# Startup checks — fail loudly
+# Startup — load quiz content once; fail loudly on bad CSV
 # ------------------------------------------------------------------
 
-HOST_SECRET = os.environ.get("HOST_SECRET")
-if not HOST_SECRET:
-    raise SystemExit(
-        "ERROR: HOST_SECRET environment variable is not set.\n"
-        "Set it with: export HOST_SECRET=$(python -c \"import secrets; print(secrets.token_urlsafe(16))\")"
-    )
-
 questions = load_quiz("data/quiz.csv")
-game = Game(questions=questions)
+rooms: dict[str, dict] = {}  # join_code → {"game": Game, "host_token": str}
 
 # ------------------------------------------------------------------
 # Flask + SocketIO
@@ -33,25 +26,37 @@ app.config["SECRET_KEY"] = secrets.token_hex(16)
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
 
-@app.route("/play/<code>")
-def player_page(code):
-    if code != game.join_code:
+@app.route("/")
+def index():
+    return render_template("create.html")
+
+
+@app.route("/rooms", methods=["POST"])
+def create_room():
+    host_token = secrets.token_urlsafe(16)
+    game = Game(questions=questions)
+    rooms[game.join_code] = {"game": game, "host_token": host_token}
+    return redirect(f"/host/{game.join_code}/{host_token}")
+
+
+@app.route("/host/<join_code>/<host_token>")
+def host_page(join_code, host_token):
+    room = rooms.get(join_code)
+    if not room or room["host_token"] != host_token:
         abort(404)
-    return render_template("player.html", code=code)
+    return render_template("host.html", join_code=join_code)
 
 
-@app.route("/host/<secret>")
-def host_page(secret):
-    if secret != HOST_SECRET:
+@app.route("/play/<join_code>")
+def player_page(join_code):
+    if join_code not in rooms:
         abort(404)
-    return render_template("host.html", join_url=f"/play/{game.join_code}")
+    return render_template("player.html", code=join_code)
 
 
-import events
-events.register(socketio, game)
+import events  # noqa: E402
+events.register(socketio, rooms)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    print(f"  Host URL : http://localhost:{port}/host/{HOST_SECRET}")
-    print(f"  Player URL: http://localhost:{port}/play/{game.join_code}")
     socketio.run(app, debug=True, use_reloader=False, port=port)

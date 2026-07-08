@@ -84,7 +84,7 @@
     const name = document.getElementById('name-input').value.trim();
     if (!name) return;
     document.getElementById('join-error').classList.add('hidden');
-    socket.emit('player:join', { name });
+    socket.emit('player:join', { name, room_id: JOIN_CODE });
   });
 
   document.getElementById('buzz-btn').addEventListener('click', () => {

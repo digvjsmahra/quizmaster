@@ -71,15 +71,17 @@ pytest
 - Emit minimal derived state (e.g. the full ordered queue), never raw internals.
 - Generate IDs server-side; never trust client-supplied IDs.
 - No reconnection identity matching. Buzz identities are disposable; roster entries are durable.
-- Player UI is one page swapping views via JS state driven by phase events, not separate routes.
+- Player UI is one page — buzzer view contains the queue list and sections inline; no separate route or view for queue position.
 - Responsive layout for phones; no design polish.
 - Fail loudly on malformed CSV at startup.
+- **Two player identity types**: `virtual=False` (real socket connection, joined via URL/code) and `virtual=True` (host-added scorecard entry, no socket). `get_active_players()` returns only non-virtual connected players for `state:players`. The roster contains both; the scorecard shows both; player phones see only non-virtual.
+- **`state:players`** is the player-facing presence event (who's in the room). **`state:roster`** does not exist — the host's roster is derived from `state:scores`. Never conflate the two.
 
 ## Testing
 
-Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot, `roster_add`, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals.
+Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals.
 
-One integration test with the Flask-SocketIO test client: join → buzz → queue broadcast. No browser/E2E tooling.
+Integration tests with the Flask-SocketIO test client: join → buzz → queue broadcast; room validation (valid/invalid/case-insensitive); late joiner behind frozen queue. No browser/E2E tooling.
 
 ## Workflow
 

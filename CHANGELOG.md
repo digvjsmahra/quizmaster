@@ -3,10 +3,30 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] — V2 in progress
+## [Unreleased] — V3 scope
 
 ### Planned
 - **In-app CSV upload** — host uploads quiz content at room creation; no redeploy needed to change questions
+
+## [2.1.0] — 2026-07-08
+
+### Added
+- **3D circular red buzzer** — CSS-only radial-gradient dome with layered box-shadow depth and translateY press animation
+- **Buzzer stays visible after buzzing** — button greys out (disabled) instead of switching to a separate view; queue list renders below it
+- **"Players buzzed" section** — shows the full ordered queue with timing badges (⚡ first, +X ms, +X.X s) directly below the buzzer
+- **"Others" section** — chips for all connected players not yet in the queue; names move to "Players buzzed" in real time when they buzz
+- **Frozen queue feedback** — if the host freezes the queue, unbuzzed players see a greyed buzzer and "Host has frozen the queue" label
+- **Player screen title** renamed to "QuizMaster"; host control center renamed to "QM Control Center"
+
+### Changed
+- **Roster split** — real players (joined via URL/code) are auto-snapshotted into the scorecard at Start Quiz; host-added entries ("Add player") are scorecard-only and never shown on player phones. A `virtual` flag on `Player` enforces the split.
+- **`state:players` replaces `state:roster`** for the player-facing view — built from all connected non-virtual players, broadcast whenever someone joins or disconnects
+- **Late joiners receive `state:queue`** on join so a frozen buzzer renders correctly immediately
+- **Player disconnect** broadcasts updated `state:players` so the "Others" list updates in real time for everyone
+
+### Fixed
+- Late joiner behind a frozen queue could see an enabled buzzer (server already rejected the buzz; now the client also shows it correctly)
+- Roster chips showed host-added players on the player phone screen
 
 ## [2.0.0] — 2026-07-08
 

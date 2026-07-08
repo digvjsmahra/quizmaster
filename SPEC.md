@@ -37,6 +37,10 @@ Scoring is **host-driven, split-value**: for each question the host enters per-p
 - **Validate endpoint** (`GET /rooms/<code>/validate`): called before redirect; invalid codes show a human-legible inline error, never a 404.
 - **Host lobby shows room code**: large display-only OTP boxes alongside the copyable URL for verbal sharing.
 - **Responsive host control center**: stacks vertically on mobile and tablet (≤1024px); live view capped at 720px centered on tablet.
+- **3D circular red buzzer**: CSS-only dome with press animation; stays visible (greyed) after buzzing rather than switching views.
+- **"Players buzzed" / "Others" sections**: below the buzzer, players see who has buzzed (with timing badges) and who hasn't. Names move between sections in real time.
+- **Frozen queue feedback on player phone**: greyed buzzer + label when host freezes; correct state delivered to late joiners immediately on join.
+- **Roster split**: real players (socket-joined) auto-snapshot into scorecard at Start Quiz; host-added entries are scorecard-only (never shown on phones).
 
 ### Out of scope for V1
 - Auth of any kind. `/host/<secret>` is obscurity only.
@@ -76,24 +80,25 @@ Conceptual shape; implementer may use dataclasses.
 Game
   phase: "lobby" | "live"
   join_code: str                          # auto-generated at startup; in /play/<code>
-  players: dict[player_id → Player]       # all buzz identities
+  players: dict[player_id → Player]       # all identities: real + virtual
   roster: list[player_id]                 # scorecard rows; snapshotted at Start, extendable
   queue: list[BuzzEntry]                  # ordered by server arrival
   queue_locked: bool
   scores: dict[player_id → dict[question_id → float]]   # host-entered; stored verbatim
   closed_questions: set[question_id]
 
-Player:    id, name, connected, joined_at
+Player:    id, name, connected, joined_at, virtual
 BuzzEntry: player_id, received_at         # monotonic server timestamp
 Question:  id, board, category, value     # id = f"{board}:{category}:{value}"
 ```
 
 ### Two-tier identity
 
-**Buzz identity** — any joined connection; can buzz and appear in the queue.
-**Roster entry** — durable scorecard row, snapshotted at Start; scores attach only here.
+**Buzz identity** (`virtual=False`) — any player who joined via URL or room code. Has a live socket, can buzz, appears in the player-facing "Players buzzed" / "Others" sections. Auto-snapshotted into the roster at Start.
 
-A player who reconnects under a different name becomes a new buzz identity; the host bridges them to their roster row when scoring.
+**Host-added entry** (`virtual=True`) — created by the host via "Add player" after Start. Scorecard row only; no socket, never shown on player phones. Allows the host to add late joiners to the scorecard independently of their buzz identity.
+
+A player who reconnects under a different name becomes a new buzz identity; the host bridges them to their roster row when scoring. Duplicate names are allowed — the host is trusted to manage this consciously.
 
 ### Cell states
 
@@ -137,11 +142,14 @@ Awarded applies to any closed question with entries, including negative-only (e.
 | `state:phase` | all | `{ phase }` |
 | `state:queue` | all | `{ queue: [{player_id, name, delta_ms}], locked }` — `delta_ms` is ms since first buzz (first entry = 0) |
 | `state:scores` | host | `{ grid, board_totals, cumulative_totals, closed }` |
+| `state:players` | players | `{ players: [{player_id, name}] }` — all connected non-virtual players; broadcast on join and disconnect |
 | `player:accepted` | one player | `{ player_id, phase }` |
 | `player:rejected` | one player | `{ reason }` |
 | `error` | any | `{ message }` |
 
 `state:scores` is host-only. `grid` is grouped by board. `board_totals` and `cumulative_totals` are both included so the host UI can render two columns without a second request.
+
+`state:players` is player-only. It drives the "Others" section on the player phone — all connected players with `virtual=False`, regardless of roster membership. Never sent to the host.
 
 ## 8. User flows
 
@@ -165,12 +173,15 @@ Awarded applies to any closed question with entries, including negative-only (e.
 
 ### Player flow
 
-1. Open the shared link → **join screen**: name field only (code is in the URL; no separate code entry).
+1. Open the shared link or enter the 4-char code on the landing page → **join screen**: name field + pre-filled code.
 2. Lobby phase → **waiting screen**: "You're in — waiting for the host."
-3. Live phase → **buzzer screen**: one large buzz button.
-4. After buzzing → **buzz list**: full ordered queue with ms intervals (first = "⚡ first", rest = "+X ms" or "+X.X s" if ≥ 1 s); own row highlighted. Live-updating; resets to the buzzer screen when the host clears the queue.
+3. Live phase → **buzzer screen**: one large 3D circular red buzz button.
+4. After buzzing → buzzer greys out (disabled) in place; **"Players buzzed"** section appears below showing the full ordered queue with timing badges (⚡ first, +X ms, +X.X s); own row bolded.
+5. **"Others"** section shows all connected players not yet in the queue as chips; names move to "Players buzzed" in real time when they buzz.
+6. If the host freezes the queue before the player buzzes → buzzer greys out with "Host has frozen the queue" label.
+7. Host resets queue → buzzer re-activates, sections clear.
 
-Late joiners (after Start) skip waiting and land directly on the buzzer. They can buzz immediately but aren't on the scorecard until the host adds them.
+Late joiners (after Start) skip waiting and land directly on the buzzer. They receive the current queue state immediately so frozen/unfrozen renders correctly. They can buzz immediately but aren't on the scorecard until the host adds them.
 
 ### Reconnection
 

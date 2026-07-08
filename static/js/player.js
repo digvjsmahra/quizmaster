@@ -75,8 +75,11 @@
     }
   });
 
-  socket.on('state:queue', ({ queue }) => {
+  socket.on('state:queue', ({ queue, locked }) => {
     if (!playerId) return;
+    const buzzBtn = document.getElementById('buzz-btn');
+    const frozenLabel = document.getElementById('frozen-label');
+
     const pos = queue.findIndex(e => e.player_id === playerId);
     if (pos >= 0) {
       const listEl = document.getElementById('player-queue-list');
@@ -90,9 +93,25 @@
       showView('position');
     } else if (currentPhase === 'live') {
       document.getElementById('player-queue-list').innerHTML = '';
-      document.getElementById('buzz-btn').disabled = false;
+      buzzBtn.disabled = !!locked;
+      if (locked) {
+        frozenLabel.classList.remove('hidden');
+      } else {
+        frozenLabel.classList.add('hidden');
+      }
       showView('buzzer');
     }
+  });
+
+  socket.on('state:roster', ({ names }) => {
+    const rosterEl = document.getElementById('roster-display');
+    const namesEl = document.getElementById('roster-names');
+    if (!names || names.length === 0) {
+      rosterEl.classList.add('hidden');
+      return;
+    }
+    namesEl.innerHTML = names.map(n => `<span class="roster-chip">${esc(n)}</span>`).join('');
+    rosterEl.classList.remove('hidden');
   });
 
   // ---- UI handlers ----

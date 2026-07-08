@@ -5,6 +5,10 @@ _sid_player: dict[str, str] = {}  # sid → player_id
 _sid_room: dict[str, str] = {}    # sid → join_code
 
 
+def _roster_names(game) -> list[str]:
+    return [game.players[pid].name for pid in game.roster if pid in game.players]
+
+
 def register(socketio, rooms):
     @socketio.on("disconnect")
     def on_disconnect():
@@ -71,7 +75,9 @@ def register(socketio, rooms):
         if not room:
             return
         room["game"].start_quiz()
+        roster_payload = {"names": _roster_names(room["game"])}
         socketio.emit("state:phase", {"phase": "live"}, to=f"players_{join_code}")
+        socketio.emit("state:roster", roster_payload, to=f"players_{join_code}")
         socketio.emit("state:phase", {"phase": "live"}, to=f"host_{join_code}")
         emit("state:scores", room["game"].get_scores_payload())
 
@@ -90,6 +96,7 @@ def register(socketio, rooms):
         except ValueError as e:
             emit("error", {"message": str(e)})
             return
+        socketio.emit("state:roster", {"names": _roster_names(room["game"])}, to=f"players_{join_code}")
         emit("state:scores", room["game"].get_scores_payload())
 
     @socketio.on("host:queue_freeze")

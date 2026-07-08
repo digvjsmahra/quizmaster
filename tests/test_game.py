@@ -73,14 +73,24 @@ def test_start_quiz_snapshots_roster_in_join_order():
     assert g.roster == [pid1, pid2, pid3]
 
 
+def test_start_quiz_excludes_virtual_from_snapshot():
+    g = make_game()
+    pid1, _ = g.player_join("Ankur")
+    g.start_quiz()
+    pid_virtual = g.roster_add("HostAdded")
+    roster_real = [pid for pid in g.roster if not g.players[pid].virtual]
+    assert pid1 in roster_real
+    assert pid_virtual not in roster_real
+
+
 def test_start_quiz_is_idempotent():
     g = make_game()
-    g.player_join("Ankur")
+    pid1, _ = g.player_join("Ankur")
     g.start_quiz()
     roster_first = list(g.roster)
     g.player_join("Late")
-    g.start_quiz()
-    assert g.roster == roster_first  # late joiner not added
+    g.start_quiz()  # second call must not change roster
+    assert g.roster == roster_first
 
 
 # ------------------------------------------------------------------
@@ -179,15 +189,33 @@ def test_roster_add_rejects_empty_name():
         g.roster_add("")
 
 
-def test_roster_add_creates_independent_entry():
+def test_roster_add_creates_virtual_entry():
+    g = make_game()
+    g.start_quiz()
+    pid = g.roster_add("Priya")
+    assert g.players[pid].virtual is True
+
+
+def test_roster_add_is_independent_of_buzz_identity():
     g = make_game()
     pid_buzz, _ = g.player_join("Ankur")
+    g.start_quiz()  # pid_buzz auto-snapshotted into roster
+    pid_virtual = g.roster_add("Ankur")  # separate virtual entry, same name allowed
+    assert pid_buzz in g.roster
+    assert pid_virtual in g.roster
+    assert pid_virtual != pid_buzz
+    assert g.players[pid_virtual].virtual is True
+    assert g.players[pid_buzz].virtual is False
+
+
+def test_active_players_excludes_virtual():
+    g = make_game()
+    pid_real, _ = g.player_join("Ankur")
     g.start_quiz()
-    # Priya joins late — not in the snapshotted roster
-    pid_roster = g.roster_add("Priya")
-    assert pid_roster in g.roster
-    assert pid_roster != pid_buzz
-    assert g.players[pid_roster].name == "Priya"
+    pid_virtual = g.roster_add("Ankur")  # virtual scorecard entry
+    active_ids = {p["player_id"] for p in g.get_active_players()}
+    assert pid_real in active_ids
+    assert pid_virtual not in active_ids
 
 
 # ------------------------------------------------------------------

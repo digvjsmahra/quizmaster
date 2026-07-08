@@ -18,6 +18,7 @@ class Player:
     name: str
     connected: bool
     joined_at: float
+    virtual: bool = False  # True for host-added scorecard entries; never buzzes, never shown to players
 
 
 @dataclass
@@ -62,7 +63,8 @@ class Game:
             return self.roster
         self.phase = "live"
         self.roster = sorted(
-            self.players.keys(), key=lambda pid: self.players[pid].joined_at
+            [pid for pid, p in self.players.items() if not p.virtual],
+            key=lambda pid: self.players[pid].joined_at,
         )
         return self.roster
 
@@ -99,7 +101,7 @@ class Game:
             raise ValueError("Name cannot be empty.")
         player_id = secrets.token_urlsafe(8)
         self.players[player_id] = Player(
-            id=player_id, name=name, connected=True, joined_at=time.monotonic()
+            id=player_id, name=name, connected=True, joined_at=time.monotonic(), virtual=True
         )
         self.roster.append(player_id)
         return player_id
@@ -132,6 +134,13 @@ class Game:
         return [
             {"player_id": pid, "name": p.name}
             for pid, p in sorted(self.players.items(), key=lambda x: x[1].joined_at)
+        ]
+
+    def get_active_players(self) -> list[dict]:
+        return [
+            {"player_id": pid, "name": p.name}
+            for pid, p in sorted(self.players.items(), key=lambda x: x[1].joined_at)
+            if p.connected and not p.virtual
         ]
 
     def get_queue_payload(self) -> dict:

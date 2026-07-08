@@ -97,3 +97,31 @@ def test_validate_room_case_insensitive(room):
     join_code, _, _ = room
     res = app.test_client().get(f"/rooms/{join_code.lower()}/validate")
     assert res.status_code == 200
+
+
+def test_late_joiner_receives_queue_state_when_frozen(room):
+    join_code, game, _ = room
+
+    host_client = socketio.test_client(app)
+    host_client.emit("host:join", {"room_id": join_code})
+    host_client.get_received()
+
+    host_client.emit("host:start_quiz")
+    host_client.get_received()
+
+    host_client.emit("host:queue_freeze")
+    host_client.get_received()
+
+    late_client = socketio.test_client(app)
+    late_client.emit("player:join", {"name": "Late", "room_id": join_code})
+    events = late_client.get_received()
+
+    queue_event = next((e for e in events if e["name"] == "state:queue"), None)
+    assert queue_event is not None, "late joiner should receive state:queue"
+    assert queue_event["args"][0]["locked"] is True, "queue should be locked"
+
+    late_client.emit("player:buzz")
+    assert len(game.queue) == 0, "frozen queue should reject the buzz"
+
+    host_client.disconnect()
+    late_client.disconnect()

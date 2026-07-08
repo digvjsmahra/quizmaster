@@ -210,27 +210,26 @@ body {
   margin-top: 4px;
 }
 
-/* Roster display — shown to players after quiz starts */
-.roster-display {
-  margin-top: 24px;
+/* Buzzed / Others sections */
+.queue-section {
   width: 100%;
+  margin-top: 20px;
   border-top: 1px solid #f3f4f6;
-  padding-top: 16px;
+  padding-top: 14px;
 }
-.roster-label {
+.section-label {
   font-size: 11px;
   font-weight: 600;
   color: #9ca3af;
   text-transform: uppercase;
   letter-spacing: .06em;
   margin-bottom: 10px;
-  text-align: center;
+  text-align: left;
 }
 .roster-names {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  justify-content: center;
 }
 .roster-chip {
   background: #f3f4f6;

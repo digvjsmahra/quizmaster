@@ -5,12 +5,13 @@
 
   let playerId = null;
   let currentPhase = null;
+  let activePlayers = [];  // [{player_id, name}] — all connected players
+  let currentQueue = [];   // [{player_id, name, delta_ms}]
 
   const views = {
     join: document.getElementById('view-join'),
     waiting: document.getElementById('view-waiting'),
     buzzer: document.getElementById('view-buzzer'),
-    position: document.getElementById('view-position'),
   };
 
   function showView(name) {
@@ -28,6 +29,37 @@
     return String(str)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function renderSections() {
+    const buzzedSection = document.getElementById('section-buzzed');
+    const othersSection = document.getElementById('section-others');
+    const listEl = document.getElementById('player-queue-list');
+    const othersEl = document.getElementById('others-names');
+
+    if (currentQueue.length > 0) {
+      listEl.innerHTML = currentQueue.map((e, i) => {
+        const badge = i === 0
+          ? `<span class="buzz-delta first">⚡ first</span>`
+          : `<span class="buzz-delta">${fmtDelta(e.delta_ms)}</span>`;
+        const cls = e.player_id === playerId ? ' class="buzz-me"' : '';
+        return `<li${cls}>${i + 1}. ${esc(e.name)} ${badge}</li>`;
+      }).join('');
+      buzzedSection.classList.remove('hidden');
+    } else {
+      listEl.innerHTML = '';
+      buzzedSection.classList.add('hidden');
+    }
+
+    const buzzedIds = new Set(currentQueue.map(e => e.player_id));
+    const others = activePlayers.filter(p => !buzzedIds.has(p.player_id));
+    if (others.length > 0) {
+      othersEl.innerHTML = others.map(p => `<span class="roster-chip">${esc(p.name)}</span>`).join('');
+      othersSection.classList.remove('hidden');
+    } else {
+      othersEl.innerHTML = '';
+      othersSection.classList.add('hidden');
+    }
   }
 
   // ---- Auto-join from URL param ----
@@ -77,41 +109,21 @@
 
   socket.on('state:queue', ({ queue, locked }) => {
     if (!playerId) return;
+    currentQueue = queue;
+    const inQueue = queue.some(e => e.player_id === playerId);
     const buzzBtn = document.getElementById('buzz-btn');
     const frozenLabel = document.getElementById('frozen-label');
-
-    const pos = queue.findIndex(e => e.player_id === playerId);
-    if (pos >= 0) {
-      const listEl = document.getElementById('player-queue-list');
-      listEl.innerHTML = queue.map((e, i) => {
-        const badge = i === 0
-          ? `<span class="buzz-delta first">⚡ first</span>`
-          : `<span class="buzz-delta">${fmtDelta(e.delta_ms)}</span>`;
-        const cls = e.player_id === playerId ? ' class="buzz-me"' : '';
-        return `<li${cls}>${i + 1}. ${esc(e.name)} ${badge}</li>`;
-      }).join('');
-      showView('position');
-    } else if (currentPhase === 'live') {
-      document.getElementById('player-queue-list').innerHTML = '';
-      buzzBtn.disabled = !!locked;
-      if (locked) {
-        frozenLabel.classList.remove('hidden');
-      } else {
-        frozenLabel.classList.add('hidden');
-      }
+    buzzBtn.disabled = inQueue || !!locked;
+    frozenLabel.classList.toggle('hidden', !locked || inQueue);
+    if (currentPhase === 'live') {
+      renderSections();
       showView('buzzer');
     }
   });
 
-  socket.on('state:roster', ({ names }) => {
-    const rosterEl = document.getElementById('roster-display');
-    const namesEl = document.getElementById('roster-names');
-    if (!names || names.length === 0) {
-      rosterEl.classList.add('hidden');
-      return;
-    }
-    namesEl.innerHTML = names.map(n => `<span class="roster-chip">${esc(n)}</span>`).join('');
-    rosterEl.classList.remove('hidden');
+  socket.on('state:players', ({ players }) => {
+    activePlayers = players || [];
+    if (currentPhase === 'live') renderSections();
   });
 
   // ---- UI handlers ----

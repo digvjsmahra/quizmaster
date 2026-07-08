@@ -33,22 +33,20 @@
       <p class="status-msg">Waiting for the host to start the quiz…</p>
     </div>
 
-    <!-- Buzzer -->
+    <!-- Buzzer + live sections (single view) -->
     <div id="view-buzzer" class="hidden">
       <button id="buzz-btn" class="buzz-btn">BUZZ</button>
       <p class="frozen-label hidden" id="frozen-label">Host has frozen the queue</p>
-    </div>
 
-    <!-- Queue position -->
-    <div id="view-position" class="hidden">
-      <ol class="buzz-queue-list" id="player-queue-list"></ol>
-      <p class="position-sub">Wait for the host to call on you</p>
-    </div>
+      <div id="section-buzzed" class="queue-section hidden">
+        <div class="section-label">Players buzzed</div>
+        <ol class="buzz-queue-list" id="player-queue-list"></ol>
+      </div>
 
-    <!-- Persistent roster (shown after quiz starts, visible across all views) -->
-    <div id="roster-display" class="roster-display hidden">
-      <div class="roster-label">Playing with</div>
-      <div id="roster-names" class="roster-names"></div>
+      <div id="section-others" class="queue-section hidden">
+        <div class="section-label">Others</div>
+        <div id="others-names" class="roster-names"></div>
+      </div>
     </div>
 
   </div>

@@ -2,17 +2,22 @@ import secrets
 import pytest
 
 from app import app, socketio, rooms, questions
+import events
 from game import Game
 
 
 @pytest.fixture(autouse=True)
 def room():
     rooms.clear()
+    events._sid_player.clear()
+    events._sid_room.clear()
     g = Game(questions=questions)
     host_token = secrets.token_urlsafe(16)
     rooms[g.join_code] = {"game": g, "host_token": host_token}
     yield g.join_code, g, host_token
     rooms.clear()
+    events._sid_player.clear()
+    events._sid_room.clear()
 
 
 def test_join_buzz_queue_broadcast(room):

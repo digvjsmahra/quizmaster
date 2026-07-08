@@ -5,8 +5,6 @@ _sid_player: dict[str, str] = {}  # sid → player_id
 _sid_room: dict[str, str] = {}    # sid → join_code
 
 
-
-
 def register(socketio, rooms):
     @socketio.on("disconnect")
     def on_disconnect():

@@ -153,12 +153,12 @@
   function renderQueue(data) {
     const list = el('queue-list');
     const empty = el('queue-empty');
-    const badge = el('queue-locked-badge');
+    const lockedBadge = el('queue-locked-badge');
 
     if (data.locked) {
-      badge.classList.remove('hidden');
+      lockedBadge.classList.remove('hidden');
     } else {
-      badge.classList.add('hidden');
+      lockedBadge.classList.add('hidden');
     }
 
     if (data.queue.length === 0) {

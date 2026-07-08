@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] — V3 scope
 
+## [2.1.1] — 2026-07-09
+
+### Fixed
+- `badge` variable in `host.js` `renderQueue()` shadowed by inner `badge` in `.map()` — renamed outer to `lockedBadge`
+- `_sid_player` / `_sid_room` dicts in `events.py` not cleared between tests — fixture now resets them before and after each test, preventing stale sid leakage on test failure
+- Stale blank lines in `events.py`
+
+### Added
+- 5 new multi-client integration tests covering `state:players` broadcast on join, disconnect, start quiz, `roster_add`; virtual player exclusion; and late joiner receiving current queue state (47 tests total)
+
 ### Planned
 - **In-app CSV upload** — host uploads quiz content at room creation; no redeploy needed to change questions
 

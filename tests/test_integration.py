@@ -125,3 +125,134 @@ def test_late_joiner_receives_queue_state_when_frozen(room):
 
     host_client.disconnect()
     late_client.disconnect()
+
+
+def test_players_broadcast_to_room_on_join(room):
+    join_code, _, _ = room
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()  # clear — p1's own join event
+
+    p2 = socketio.test_client(app)
+    p2.emit("player:join", {"name": "Dev", "room_id": join_code})
+
+    # p1 should receive state:players broadcast triggered by p2 joining
+    p1_events = p1.get_received()
+    players_event = next((e for e in p1_events if e["name"] == "state:players"), None)
+    assert players_event is not None, "p1 should receive state:players when p2 joins"
+    names = [p["name"] for p in players_event["args"][0]["players"]]
+    assert "Ankur" in names
+    assert "Dev" in names
+
+    p1.disconnect()
+    p2.disconnect()
+
+
+def test_players_broadcast_on_disconnect(room):
+    join_code, _, _ = room
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()
+
+    p2 = socketio.test_client(app)
+    p2.emit("player:join", {"name": "Dev", "room_id": join_code})
+    p1.get_received()  # clear the join broadcast
+    p2.get_received()
+
+    p2.disconnect()
+
+    p1_events = p1.get_received()
+    players_event = next((e for e in p1_events if e["name"] == "state:players"), None)
+    assert players_event is not None, "p1 should receive state:players when p2 disconnects"
+    names = [p["name"] for p in players_event["args"][0]["players"]]
+    assert "Dev" not in names
+    assert "Ankur" in names
+
+    p1.disconnect()
+
+
+def test_start_quiz_broadcasts_state_players(room):
+    join_code, _, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()
+
+    host.emit("host:start_quiz")
+    p1_events = p1.get_received()
+
+    players_event = next((e for e in p1_events if e["name"] == "state:players"), None)
+    assert players_event is not None, "start_quiz should broadcast state:players to players"
+    names = [p["name"] for p in players_event["args"][0]["players"]]
+    assert "Ankur" in names
+
+    host.disconnect()
+    p1.disconnect()
+
+
+def test_roster_add_excludes_virtual_from_state_players(room):
+    join_code, _, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()
+
+    host.emit("host:start_quiz")
+    host.get_received()
+    p1.get_received()
+
+    host.emit("host:roster_add", {"name": "VirtualDev"})
+
+    p1_events = p1.get_received()
+    players_event = next((e for e in p1_events if e["name"] == "state:players"), None)
+    assert players_event is not None, "roster_add should broadcast state:players to players"
+    names = [p["name"] for p in players_event["args"][0]["players"]]
+    assert "Ankur" in names
+    assert "VirtualDev" not in names  # virtual entry must never appear on player phones
+
+    host.disconnect()
+    p1.disconnect()
+
+
+def test_late_joiner_receives_current_queue(room):
+    join_code, _, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()
+
+    host.emit("host:start_quiz")
+    host.get_received()
+    p1.get_received()
+
+    p1.emit("player:buzz")
+    p1.get_received()
+    host.get_received()
+
+    late = socketio.test_client(app)
+    late.emit("player:join", {"name": "Late", "room_id": join_code})
+    late_events = late.get_received()
+
+    queue_event = next((e for e in late_events if e["name"] == "state:queue"), None)
+    assert queue_event is not None, "late joiner should receive current state:queue"
+    queue = queue_event["args"][0]["queue"]
+    assert len(queue) == 1
+    assert queue[0]["name"] == "Ankur"
+
+    host.disconnect()
+    p1.disconnect()
+    late.disconnect()

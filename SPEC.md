@@ -4,11 +4,15 @@ A real-time, Jeopardy-style buzzer for a quiz hosted over Zoom. The host screen-
 
 This is the source of truth for V1. `CLAUDE.md` covers how to build it.
 
+> V3 delta lives in `SPEC V3.md`. Sections below marked `[V3: ...]` describe
+> V1/V2 behavior that V3 changes. See CLAUDE.md's "Spec precedence" section
+> for how to resolve conflicts between this file and newer delta files.
+
 ---
 
 ## 1. Goal & shape
 
-One host runs a single live quiz for ~10 players. Questions live only in the host's slide deck — never in this app. A player's phone does three things in sequence: join, buzz, show queue position. The host has the only rich interface.
+One host runs a single live quiz for ~10 players. Questions live only in the host's slide deck — never in this app. `[V3: superseded — see SPEC V3.md §1]` A player's phone does three things in sequence: join, buzz, show queue position. The host has the only rich interface.
 
 Players join via a **shared permalink** (`/play/<code>`) and enter a name. The host works from `/host/<secret>`.
 
@@ -26,7 +30,7 @@ Scoring is **host-driven, split-value**: for each question the host enters per-p
 - Host scorecard: per-board Jeopardy-style grids with split-value scoring, board and cumulative totals, board navigation.
 - Host queue controls: view live ordered queue, freeze, reset.
 - Host can add a player to the roster after Start.
-- Quiz content from a CSV (`board, category, value`).
+- Quiz content from a CSV (`board, category, value`). `[V3: superseded — see SPEC V3.md §1]`
 - In-memory state only; mobile-responsive player UI.
 - Public deployment as a single always-on host.
 
@@ -41,6 +45,10 @@ Scoring is **host-driven, split-value**: for each question the host enters per-p
 - **"Players buzzed" / "Others" sections**: below the buzzer, players see who has buzzed (with timing badges) and who hasn't. Names move between sections in real time.
 - **Frozen queue feedback on player phone**: greyed buzzer + label when host freezes; correct state delivered to late joiners immediately on join.
 - **Roster split**: real players (socket-joined) auto-snapshot into scorecard at Start Quiz; host-added entries are scorecard-only (never shown on phones).
+
+### In scope for V3
+
+- **Presentation platform**: upload-gated quiz content (question/answer/media, no longer a bare CSV), a reveal → answer-reveal → cancel/score-close state machine, and a read-only `/present/<...>` view for screen-sharing. See `SPEC V3.md` for the full contract — this is a pointer, not a summary of the detail.
 
 ### Out of scope for V1
 - Auth of any kind. `/host/<secret>` is obscurity only.
@@ -70,16 +78,25 @@ Host browser  ──WebSocket──┘          │                    (phase, r
                                       └── reads ─► CSV          scores)
 ```
 
-Socket.IO rooms: players in a shared player room; host in a `host` room. **No question text, answers, or scores ever reach a player socket.**
+Socket.IO rooms: players in a shared player room; host in a `host` room. **No question text, answers, or scores ever reach a player socket.** `[V3 widens this to routes and media — see SPEC V3.md §1]`
 
 ## 5. Data model
 
-Conceptual shape; implementer may use dataclasses.
+Conceptual shape; implementer may use dataclasses. Corrected from the V1
+single-`Game` diagram to match the actual V2 multi-room shape.
 
 ```
+rooms: dict[join_code → RoomEntry]        # one entry per active room; join_code
+                                           # is also embedded in /play/<code>
+
+RoomEntry
+  game: Game
+  host_token: str                         # server-generated per room, not a
+                                           # global HOST_SECRET; forms
+                                           # /host/<join_code>/<host_token>
+
 Game
   phase: "lobby" | "live"
-  join_code: str                          # auto-generated at startup; in /play/<code>
   players: dict[player_id → Player]       # all identities: real + virtual
   roster: list[player_id]                 # scorecard rows; snapshotted at Start, extendable
   queue: list[BuzzEntry]                  # ordered by server arrival
@@ -91,6 +108,9 @@ Player:    id, name, connected, joined_at, virtual
 BuzzEntry: player_id, received_at         # monotonic server timestamp
 Question:  id, board, category, value     # id = f"{board}:{category}:{value}"
 ```
+
+`[V3: Question gains question/answer/media fields once quiz content moves
+from a CSV to an uploaded bundle — see SPEC V3.md §3.]`
 
 ### Two-tier identity
 
@@ -111,6 +131,8 @@ A player who reconnects under a different name becomes a new buzz identity; the 
 Awarded applies to any closed question with entries, including negative-only (e.g. "Dev −50"). Passed is strictly zero attempts — a wrong answer is still an entry.
 
 ## 6. CSV format
+
+> `[V1/V2 only — retired under V3, see SPEC V3.md §3 for the XLSX/zip import contract]`
 
 | column | required | purpose |
 |--------|----------|---------|
@@ -191,16 +213,16 @@ No reconnection logic. A dropped player reopens the link, enters any name, and i
 
 - **Single worker mandatory.** `gunicorn -k eventlet -w 1`. Two workers without shared state silently breaks the queue and scorecard.
 - **Async mode pinned to `eventlet`.** Not substitutable — a mismatch produces silent connection failures.
-- **`HOST_SECRET` required.** Read from `os.environ` at startup; fail loudly if missing. Never auto-generate.
+- **Per-room host token.** Server-generated (`secrets.token_urlsafe`) at room creation; forms `/host/<join_code>/<host_token>`. Not read from `os.environ`; no global secret to configure. *(Correction: this replaces the V1-era single required `HOST_SECRET` env var, which no code path reads anymore.)*
 - **Latency.** Buzz ordering is server-arrival FIFO. Network RTT differences are accepted, not equalized.
 - **Scale.** ~11 sockets. Load is trivial.
-- **Volatility.** A restart wipes all state. Acceptable — a quiz is one session. The join code resets on restart; only `HOST_SECRET` (set via env var) is stable.
-- **Deployment.** Single small always-on host (VM or PaaS dyno), HTTPS, WebSocket upgrades permitted. Quiz CSV committed at `data/quiz.csv`; swap content by replacing the file and redeploying.
+- **Volatility.** A restart wipes all state. Acceptable — a quiz is one session. Both the join code and each room's host token reset on restart; nothing is configured to survive it.
+- **Deployment.** Single small always-on host (VM or PaaS dyno), HTTPS, WebSocket upgrades permitted. Quiz CSV committed at `data/quiz.csv`; swap content by replacing the file and redeploying. `[V3: retired — see SPEC V3.md §2, no redeploy needed]`
 
 ## 10. Decisions (resolved — do not revisit in V1)
 
 - **Shared permalink, no code entry.** `/play/<code>` embeds the join code; players only type a name.
-- **`HOST_SECRET` env var.** Required, stable, set once. Not auto-generated.
+- **Per-room host token, not a `HOST_SECRET` env var.** *(Correction: this V1-era decision was superseded during the V2 migration — see CLAUDE.md's Configuration section and §9 above. No code path reads a `HOST_SECRET` env var today.)*
 - **FIFO buzz ordering** by server arrival time.
 - **Open queue with freeze + reset.** Advisory; one entry per player per round.
 - **Split-value scoring.** Host enters per-player amounts; server stores verbatim. `±value` buttons are editable quick-fills, not fixed events.
@@ -214,7 +236,7 @@ No reconnection logic. A dropped player reopens the link, enters any name, and i
 - **No reconnection matching.** Buzz identities disposable; roster entries durable; host bridges.
 - **Scoring panel always reflects the live roster.** Players added post-Start via "Add player" appear in every scoring panel opened after that point, including re-opened closed cells. Late-added players show `—` on questions closed before they were added; the host can re-open and score those cells retroactively.
 - **`host:roster_add { name }` creates a standalone roster entry.** The server assigns a new player_id; no link to any buzz identity. Host bridges the mapping mentally.
-- **CSV: `board, category, value` only.** Produced offline. App never sees question text or answers.
+- **CSV: `board, category, value` only.** Produced offline. App never sees question text or answers. `[V3: superseded — see SPEC V3.md §3]`
 
 ## 11. Acceptance criteria (V1 "done")
 
@@ -233,7 +255,7 @@ No reconnection logic. A dropped player reopens the link, enters any name, and i
 
 ## 12. V2 / later
 
-- QM presentation platform (owns board + questions, drives tile navigation, auto-marks closed tiles).
+- ~~QM presentation platform (owns board + questions, drives tile navigation, auto-marks closed tiles).~~ → Specified as V3.0, see `SPEC V3.md`.
 - In-app board authoring.
 - Read-only audience board projection.
 - Player/audience live scorecard.

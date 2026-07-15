@@ -92,3 +92,10 @@ Integration tests with the Flask-SocketIO test client: join → buzz → queue b
 ## When unsure
 
 Pause and confirm if a request requires a database, auth, multiple games, pushing content to players, board authoring, undo/redo, or anything not in `SPEC.md §2`.
+
+## Legacy reference material (do not use)
+
+These files predate current spec/design decisions and must not be treated as the current data or design contract:
+
+- `legacy-qm-control-center-mockup.jpg` — predates V2 (its cell states don't even distinguish awarded from negative; both render green).
+- `data/legacy-quiz_sample.csv` — wide-format CSV (`Category, Q10, A10, Q20, A20, ...`); `SPEC V3.md` §3 commits to long-format `.xlsx` in a `.zip` bundle as the only import contract. Do not use this file's shape as a reference when building the V3 loader.

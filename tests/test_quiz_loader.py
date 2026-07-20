@@ -27,7 +27,7 @@ def test_load_quiz_valid_multi_board(tmp_path):
 
     assert list(boards.keys()) == ["1", "2"]
     assert [q.id for q in boards["1"]] == ["1:History:10", "1:History:20"]
-    assert boards["2"][0] == boards["2"][0]
+    assert boards["2"][0].id == "2:Movies:10"
     q = boards["1"][0]
     assert q.board == "1" and q.category == "History" and q.value == 10
     assert isinstance(q.value, int)
@@ -37,6 +37,15 @@ def test_load_quiz_case_insensitive_columns(tmp_path):
     path = write_csv(tmp_path, "  BOARD , category ,VALUE\n1,History,10\n")
     boards = load_quiz(path)
     assert boards["1"][0].category == "History"
+
+
+def test_load_quiz_board_stays_string_in_file_order(tmp_path):
+    # Board is never coerced to int and never sorted numerically — display
+    # order (and, eventually, Prev/Next navigation) follows file row order.
+    path = write_csv(tmp_path, "Board,Category,Value\n10,History,10\n2,Movies,10\n")
+    boards = load_quiz(path)
+    assert list(boards.keys()) == ["10", "2"]
+    assert all(isinstance(b, str) for b in boards.keys())
 
 
 # ------------------------------------------------------------------
@@ -101,6 +110,17 @@ def test_load_quiz_empty_field(tmp_path, row):
 
 def test_load_quiz_non_integer_value(tmp_path):
     path = write_csv(tmp_path, "Board,Category,Value\n1,History,abc\n")
+    with pytest.raises(SystemExit) as exc:
+        load_quiz(path)
+    assert "value must be a positive integer" in str(exc.value)
+
+
+@pytest.mark.parametrize("value", ["True", "False", "10.5"])
+def test_load_quiz_value_rejects_boolean_and_decimal_looking_text(tmp_path, value):
+    # CSV has no typed cells (unlike bundle_loader's xlsx path) — a cell is
+    # always plain text, so "True"/"False" fail int() the same as any other
+    # non-numeric string. No bool-vs-int leak-through is possible here.
+    path = write_csv(tmp_path, f"Board,Category,Value\n1,History,{value}\n")
     with pytest.raises(SystemExit) as exc:
         load_quiz(path)
     assert "value must be a positive integer" in str(exc.value)

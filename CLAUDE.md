@@ -23,7 +23,7 @@ A real-time quiz buzzer. The host creates a room from the landing page and gets 
 6. **No undo/redo.** The always-open scorecard grid is the correction mechanism — the host re-clicks a cell and re-submits. (V3's `question_cancel` is a pre-score reveal-undo, not a scoring undo — distinct from this rule. See SPEC V3.md §4. This rule still governs scoring corrections.)
 7. **Async mode is pinned to `eventlet`.** Do not substitute `gevent` or `threading`.
 8. **No features beyond `SPEC.md §2` or `SPEC V3.md`'s delta scope.** Stop and ask before building anything not listed in either.
-9. **Minimal dependencies.** Flask, Flask-SocketIO, eventlet, gunicorn. stdlib csv for parsing. Justify anything else. (V3 Session A adds `openpyxl` — justified in SPEC V3.md §3. Not yet a dependency; update this rule and `requirements.txt` together when Session A lands.)
+9. **Minimal dependencies.** Flask, Flask-SocketIO, eventlet, gunicorn, `openpyxl`. stdlib csv for parsing (still used by V1/V2's CSV path until A2 retires it). Justify anything else. (`openpyxl` added for V3 Session A's xlsx bundle parser — justified in SPEC V3.md §3.)
 
 ## Tech stack
 
@@ -35,7 +35,8 @@ Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn. Vanilla JS + HTML; Sock
 app.py            # Flask app + SocketIO init + HTTP routes
 game.py           # all in-memory state and game logic (phase, roster, queue, scoring)
 events.py         # SocketIO event handlers — thin wrappers that delegate to game.py
-quiz_loader.py    # CSV parsing -> board grids; fails loudly on malformed input
+quiz_loader.py    # CSV parsing -> board grids; fails loudly on malformed input (V1/V2 path, still used until A2 retires it)
+bundle_loader.py  # V3 zip/xlsx bundle parser + validation (SPEC V3.md §3); no route/storage wiring yet — see A2
 data/quiz.csv     # board, category, value (thin 3-column; produced offline by host)
 templates/
   create.html     # landing page — join by code or create a new room
@@ -49,7 +50,7 @@ static/
 requirements.txt
 ```
 
-V3 will add `present.html`, `static/js/present.js`, upload/media routes, and an xlsx bundle loader — not yet present; see `SPEC V3.md` when Session A/B land.
+V3 will still add `present.html`, `static/js/present.js`, and upload/media routes — not yet present; see `SPEC V3.md` when A2/B1/B2 land.
 
 ## Configuration
 

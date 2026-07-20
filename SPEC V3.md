@@ -72,10 +72,10 @@ bundle.zip
 |------------|----------|----------------------------------------------------------|
 | `board`    | yes      | Board/round name. Multiple boards per file supported.    |
 | `category` | yes      | Category within the board.                               |
-| `value`    | yes      | Positive number. +value correct / −value incorrect.      |
+| `value`    | yes      | Positive integer. +value correct / −value incorrect.     |
 | `question` | see note | Question text. May be empty **only if** `media` is set.  |
 | `answer`   | yes      | Answer text (revealed on `answer_reveal`).               |
-| `media`    | no       | Comma-separated filenames relative to `media/` (e.g. `biopics_30a.jpg,biopics_30b.jpg`). One flat `media/` folder for the whole bundle — no per-question subfolders, so QM authoring overhead doesn't grow with image count. |
+| `media`    | no       | Comma-separated filenames relative to `media/` (e.g. `biopics_30a.jpg,biopics_30b.jpg`). One flat `media/` folder for the whole bundle — no per-question subfolders, so QM authoring overhead doesn't grow with image count. A **blank** cell means no media — a non-blank placeholder (e.g. `NA`, `-`) is validated as a literal filename and errors if not found in `media/`. |
 
 - `(board, category, value)` must be unique → forms `question_id`.
 - Row order in the file defines display order of boards and categories.
@@ -83,6 +83,9 @@ bundle.zip
   extension in `media` is a validation error.
 
 **Validation (fail loudly, at upload time, in the browser):**
+- The whole file is validated in a single pass — every row's errors are
+  collected and reported together on one upload, not just the first bad
+  row, so the QM doesn't have to fix-and-reupload repeatedly.
 - Structural errors reported per row with row number and reason: missing
   required field, non-numeric value, duplicate `question_id`, empty
   question+media pair, unknown media extension.

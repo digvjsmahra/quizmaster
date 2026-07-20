@@ -91,6 +91,8 @@ pytest
 
 Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals.
 
+Unit-test `quiz_loader.py` (V1/V2 CSV path) and `bundle_loader.py` (V3 xlsx/zip path) independently of `game.py`: valid parse, every `sys.exit`/structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows), case-insensitive columns.
+
 Integration tests with the Flask-SocketIO test client: join → buzz → queue broadcast; room validation (valid/invalid/case-insensitive); late joiner behind frozen queue. No browser/E2E tooling.
 
 ## Workflow

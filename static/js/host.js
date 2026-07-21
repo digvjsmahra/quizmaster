@@ -38,17 +38,33 @@
   function showLobby() {
     state.phase = 'lobby';
     el('view-lobby').classList.remove('hidden');
-    el('view-live').classList.add('hidden');
     el('phase-badge').className = 'phase-badge lobby';
     el('phase-badge').textContent = '⏱ lobby';
+    updateSidebarVisibility();
+    updateBoardAreaVisibility();
   }
 
   function showLive() {
     state.phase = 'live';
     el('view-lobby').classList.add('hidden');
-    el('view-live').classList.remove('hidden');
     el('phase-badge').className = 'phase-badge live';
     el('phase-badge').textContent = '⏺ live';
+    updateSidebarVisibility();
+    updateBoardAreaVisibility();
+  }
+
+  // Board area (#view-live) is visible whenever a board has been uploaded,
+  // independent of phase — this is what lets the host preview the board
+  // before Start. The sidebar (queue/totals/add-player) within it only
+  // shows once actually live, since none of it is meaningful pre-Start.
+  function updateBoardAreaVisibility() {
+    const hasBoard = state.boards && state.boards.length > 0;
+    el('view-live').classList.toggle('hidden', !hasBoard);
+    el('board-preview-hint').classList.toggle('hidden', !(hasBoard && state.phase !== 'live'));
+  }
+
+  function updateSidebarVisibility() {
+    el('sidebar').classList.toggle('hidden', state.phase !== 'live');
   }
 
   // ----------------------------------------------------------------
@@ -190,7 +206,35 @@
     }
     state.activeCellId = qid;
     renderBoard();
-    showScoringPanel(qid, board, cat, val);
+    if (state.phase === 'live') {
+      showScoringPanel(qid, board, cat, val);
+    } else {
+      // Pre-Start: read-only Q&A preview, not the scoring panel — the
+      // roster doesn't exist yet (populated by start_quiz()), so a
+      // scoring panel here would just show zero player rows.
+      showQuestionPeek(qid, board, cat, val);
+    }
+  }
+
+  function showQuestionPeek(qid, board, cat, val) {
+    const panel = el('scoring-panel');
+    const grid = state.scoresData && state.scoresData.grid[board];
+    const cellData = grid && grid[cat] && grid[cat][String(val)];
+    if (!cellData) return;
+
+    const mediaHtml = (cellData.media || [])
+      .map(fn => `<img class="peek-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
+      .join('');
+
+    panel.innerHTML = `
+      <div class="panel-header">
+        <span class="panel-title">${esc(cat)} · ${val}</span>
+      </div>
+      <div class="peek-question">${esc(cellData.question || '')}</div>
+      ${mediaHtml}
+      <div class="peek-answer"><strong>Answer:</strong> ${esc(cellData.answer || '')}</div>
+    `;
+    panel.classList.remove('hidden');
   }
 
   function showScoringPanel(qid, board, cat, val) {
@@ -329,12 +373,18 @@
 
     if (data.phase === 'live') {
       showLive();
-      renderBoard();
       renderQueue(data.queue);
     } else {
       showLobby();
       renderLobbyPlayers(data.lobby_players || []);
     }
+
+    // Board state must reflect an already-successful upload on
+    // reconnect/second-tab, not just on the tab that did the upload —
+    // previously this only happened in the live branch, so a reload
+    // after uploading but before Start showed an empty board.
+    updateBoardAreaVisibility();
+    if (state.boards.length > 0) renderBoard();
   });
 
   socket.on('state:players', ({ players }) => {
@@ -343,6 +393,14 @@
 
   socket.on('state:phase', ({ phase }) => {
     if (phase === 'live') {
+      // This event fires exactly once, at the moment Start is clicked —
+      // not on every reconnect (state:full handles that separately) — so
+      // this is the right, and only, place to reset the pre-Start
+      // preview back to a clean slate: Board 1, no leftover peek/scoring
+      // panel from wherever the host had navigated to during preview.
+      state.currentBoardIdx = 0;
+      state.activeCellId = null;
+      hideScoringPanel();
       showLive();
       if (state.scoresData) renderBoard();
     }
@@ -353,6 +411,7 @@
     state.boards = data.boards || [];
     // Keep currentBoardIdx in bounds
     if (state.currentBoardIdx >= state.boards.length) state.currentBoardIdx = 0;
+    updateBoardAreaVisibility();
     renderBoard();
     if (state.activeCellId) updateScoringPanelRoster();
   });
@@ -363,6 +422,13 @@
 
   socket.on('error', ({ message }) => {
     console.error('Server error:', message);
+    // A rejected host:start_quiz (server-side backstop for the client-side
+    // check below) must not leave the Start button stuck disabled with no
+    // feedback — re-enable it and surface the message.
+    el('start-btn').disabled = false;
+    const errEl = el('start-error');
+    errEl.textContent = message;
+    errEl.classList.remove('hidden');
   });
 
   // ----------------------------------------------------------------
@@ -381,11 +447,81 @@
     });
   });
 
-  // Start quiz
+  // Start quiz. Always clickable (never a silently-disabled dead end,
+  // same lesson as the upload button below) — clicking with no content
+  // uploaded yet shows a message immediately instead of doing nothing.
   el('start-btn').addEventListener('click', () => {
+    if (!state.boards || state.boards.length === 0) {
+      const errEl = el('start-error');
+      errEl.textContent = 'Upload a quiz bundle above before starting.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    el('start-error').classList.add('hidden');
     el('start-btn').disabled = true;
     socket.emit('host:start_quiz');
   });
+
+  // Upload quiz bundle — a single button. Clicking it opens the native
+  // file picker (no separate "choose" vs "upload" steps to get wrong);
+  // picking a .zip there uploads it immediately.
+  const uploadBtnLabel = el('upload-btn').textContent;
+
+  el('upload-btn').addEventListener('click', () => {
+    el('bundle-input').click();
+  });
+
+  el('bundle-input').addEventListener('change', () => {
+    if (el('bundle-input').files.length) uploadBundle();
+  });
+
+  async function uploadBundle() {
+    const fileInput = el('bundle-input');
+    const file = fileInput.files[0];
+    const btn = el('upload-btn');
+    const errEl = el('upload-error');
+    const successEl = el('upload-success');
+
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+    errEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    const formData = new FormData();
+    formData.append('bundle', file);
+
+    try {
+      const res = await fetch(`/host/${JOIN_CODE}/${HOST_TOKEN}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const body = await res.json();
+
+      if (res.ok) {
+        const warningNote = (body.warnings && body.warnings.length)
+          ? ` — ${body.warnings.length} warning(s): ${body.warnings.join('; ')}`
+          : '';
+        successEl.textContent = `${file.name} loaded.${warningNote}`;
+        successEl.classList.remove('hidden');
+        // Board itself renders via the server's state:scores broadcast —
+        // this handler only owns the upload card's own feedback.
+      } else {
+        errEl.innerHTML = `<strong>${esc(file.name)}</strong> couldn't be loaded:<br>` + body.errors
+          .map(e => `${e.row ? `Row ${e.row}: ` : ''}${esc(e.message)}`)
+          .join('<br>');
+        errEl.classList.remove('hidden');
+        // A failed (re-)upload must not disturb an already-loaded board —
+        // nothing here touches state.boards/renderBoard().
+      }
+    } catch {
+      errEl.textContent = 'Unable to reach the server. Please try again.';
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = uploadBtnLabel;
+      fileInput.value = ''; // allow re-selecting the same file to retry
+    }
+  }
 
   // Board navigation
   el('btn-prev').addEventListener('click', () => {

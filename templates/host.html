@@ -45,15 +45,32 @@
       <div class="players-grid" id="lobby-players"></div>
     </div>
 
+    <div class="card">
+      <div class="card-label">Quiz content</div>
+      <div class="upload-hint">
+        Upload a <strong>.zip</strong> containing <code>quiz.xlsx</code> (columns: board, category, value, question, answer, media) and an optional <code>media/</code> folder.
+        Leave the <code>media</code> cell blank for no image — not "NA" or "-". Multiple images for one question: comma-separate the filenames.
+        Filenames must exactly match a file in <code>media/</code>, case-sensitively.
+      </div>
+      <input type="file" id="bundle-input" accept=".zip" class="hidden">
+      <button id="upload-btn" class="btn-ghost">📁 Upload .zip</button>
+      <p class="error-msg hidden" id="upload-error"></p>
+      <p class="status-msg hidden" id="upload-success"></p>
+    </div>
+
     <div>
       <button id="start-btn" class="btn-start">▷ Start quiz</button>
       <div class="start-hint">freezes the scorecard roster — you can still add players after</div>
+      <p class="error-msg hidden" id="start-error"></p>
     </div>
 
   </div>
 
   <!-- ============================================================ -->
-  <!-- Live view                                                     -->
+  <!-- Board + sidebar row. Visibility is now two independent toggles -->
+  <!-- (see host.js): this whole row shows once a board is uploaded,  -->
+  <!-- regardless of phase (pre-Start preview); #sidebar within it    -->
+  <!-- only shows once phase is actually live.                       -->
   <!-- ============================================================ -->
   <div id="view-live" class="live-body hidden">
 
@@ -67,6 +84,8 @@
         <button id="btn-next" class="btn-nav" disabled>next →</button>
       </div>
 
+      <p class="board-preview-hint hidden" id="board-preview-hint">👇 Click a tile to preview its question and answer before you start</p>
+
       <!-- Board grid -->
       <div class="board-grid-wrap">
         <div class="board-grid" id="board-grid"></div>
@@ -78,7 +97,7 @@
     </div>
 
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
 
       <!-- Buzz queue -->
       <div class="card">
@@ -125,7 +144,7 @@
 
 </div>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script>const JOIN_CODE = "{{ join_code }}";</script>
+<script>const JOIN_CODE = "{{ join_code }}"; const HOST_TOKEN = "{{ host_token }}";</script>
 <script src="/static/js/host.js"></script>
 </body>
 </html>

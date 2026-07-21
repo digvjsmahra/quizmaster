@@ -2,4 +2,5 @@ flask
 flask-socketio
 eventlet
 gunicorn==22.0.0
+openpyxl
 pytest

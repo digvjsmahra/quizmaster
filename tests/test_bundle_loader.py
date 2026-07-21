@@ -1,10 +1,11 @@
 import io
+import os
 import zipfile
 
 import openpyxl
 import pytest
 
-from bundle_loader import parse_bundle
+from bundle_loader import extract_media, parse_bundle
 
 DEFAULT_COLUMNS = ["board", "category", "value", "question", "answer", "media"]
 
@@ -251,3 +252,44 @@ def test_only_first_sheet_is_read():
     result = parse_bundle(bundle)
     assert result.errors == []
     assert list(result.boards.keys()) == ["1"]
+
+
+# ------------------------------------------------------------------
+# extract_media
+# ------------------------------------------------------------------
+
+def test_extract_media_writes_referenced_and_unreferenced_files(tmp_path):
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+    ]
+    bundle = make_bundle(rows, media_files={"pic.jpg": b"pic-bytes", "orphan.png": b"orphan-bytes"})
+
+    extract_media(bundle, str(tmp_path))
+
+    assert (tmp_path / "pic.jpg").read_bytes() == b"pic-bytes"
+    assert (tmp_path / "orphan.png").read_bytes() == b"orphan-bytes"
+
+
+def test_extract_media_noop_when_no_media_folder(tmp_path):
+    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
+    bundle = make_bundle(rows)
+
+    extract_media(bundle, str(tmp_path))
+
+    assert os.listdir(tmp_path) == []
+
+
+def test_extract_media_works_after_parse_bundle_already_consumed_the_stream(tmp_path):
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+    ]
+    bundle = make_bundle(rows, media_files={"pic.jpg": b"pic-bytes"})
+
+    result = parse_bundle(bundle)
+    assert result.errors == []
+
+    # bundle's read position is now wherever parse_bundle left it —
+    # extract_media must seek(0) itself, not assume the caller does.
+    extract_media(bundle, str(tmp_path))
+
+    assert (tmp_path / "pic.jpg").read_bytes() == b"pic-bytes"

@@ -1,21 +1,63 @@
 import pytest
-from quiz_loader import Question
+from bundle_loader import BundleQuestion
 from game import Game
+
+
+def _q(id, board, category, value):
+    return BundleQuestion(
+        id=id, board=board, category=category, value=value,
+        question=f"Q for {id}", answer=f"A for {id}", media=[],
+    )
 
 
 def make_game(boards=None) -> Game:
     if boards is None:
         boards = {
             "1": [
-                Question("1:History:10", "1", "History", 10),
-                Question("1:History:20", "1", "History", 20),
-                Question("1:Science:10", "1", "Science", 10),
+                _q("1:History:10", "1", "History", 10),
+                _q("1:History:20", "1", "History", 20),
+                _q("1:Science:10", "1", "Science", 10),
             ],
             "2": [
-                Question("2:Movies:10", "2", "Movies", 10),
+                _q("2:Movies:10", "2", "Movies", 10),
             ],
         }
     return Game(questions=boards)
+
+
+# ------------------------------------------------------------------
+# construction / load_questions
+# ------------------------------------------------------------------
+
+def test_game_constructs_empty_with_no_args():
+    g = Game()
+    assert g.questions == {}
+    assert g._boards == []
+    assert g._all_questions == {}
+    assert g.media_dir is None
+
+
+def test_load_questions_populates_after_construction():
+    g = Game()
+    boards = {"1": [_q("1:History:10", "1", "History", 10)]}
+    g.load_questions(boards)
+    assert g.questions == boards
+    assert g._boards == ["1"]
+    assert "1:History:10" in g._all_questions
+
+
+def test_start_quiz_raises_when_no_questions_loaded():
+    g = Game()
+    with pytest.raises(ValueError):
+        g.start_quiz()
+    assert g.phase == "lobby"
+
+
+def test_start_quiz_succeeds_after_load_questions():
+    g = Game()
+    g.load_questions({"1": [_q("1:History:10", "1", "History", 10)]})
+    g.start_quiz()
+    assert g.phase == "live"
 
 
 # ------------------------------------------------------------------
@@ -287,6 +329,16 @@ def test_cell_state_unplayed():
     cell = g._cell_state("1:History:10")
     assert cell["state"] == "unplayed"
     assert cell["value"] == 10
+
+
+def test_cell_state_includes_question_answer_media():
+    # Host-only payload (state:scores never reaches a player socket) —
+    # this is what powers the pre-Start Q&A peek in the control center.
+    g, _, _ = _started_game()
+    cell = g._cell_state("1:History:10")
+    assert cell["question"] == "Q for 1:History:10"
+    assert cell["answer"] == "A for 1:History:10"
+    assert cell["media"] == []
 
 
 def test_cell_state_awarded_positive():

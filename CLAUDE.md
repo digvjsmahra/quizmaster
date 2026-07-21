@@ -4,7 +4,7 @@ Guidance for Claude Code in this repo. `SPEC.md` is *what* to build; this file i
 
 ## What this is
 
-A real-time quiz buzzer. The host creates a room from the landing page and gets a unique control center URL; ~10 players join via a shared link or by entering a 4-char room code at the landing page. Flask + Flask-SocketIO backend, vanilla-JS frontend, no build step, quiz content from a CSV, all state in memory.
+A real-time quiz buzzer. The host creates a room from the landing page and gets a unique control center URL; ~10 players join via a shared link or by entering a 4-char room code at the landing page. Flask + Flask-SocketIO backend, vanilla-JS frontend, no build step, quiz content uploaded per-room as an xlsx/zip bundle, all state in memory.
 
 ## Spec precedence
 
@@ -16,28 +16,26 @@ A real-time quiz buzzer. The host creates a room from the landing page and gets 
 ## Golden rules
 
 1. **Single worker.** State is in-process and unshared. Run as exactly one worker (`gunicorn -k eventlet -w 1`). Never add Redis or a message queue.
-2. **In-memory only.** No database, no ORM, no on-disk persistence. CSV is read-only input. (V3 permits ephemeral temp-dir writes for uploaded media, wiped on restart — distinct from durable persistence, which remains banned. See SPEC V3.md §3.)
+2. **In-memory only.** No database, no ORM, no durable on-disk persistence. Quiz content comes from a per-room uploaded bundle (SPEC V3.md §3), held in memory plus an ephemeral temp-dir for media, wiped on restart.
 3. **No build step.** Vanilla JS + server-rendered HTML. Socket.IO client from CDN. No npm, bundlers, or transpilers.
 4. **Never leak questions or scores to players.** Player-bound emits carry only join state and queue position. Any question, answer, or score in a player payload is a bug. (V3 widens this to routes and media, not just payloads — see SPEC V3.md §1.)
-5. **Host enters scores; server stores verbatim.** Awards may be decimal or negative. The server never computes scores from the CSV — `value` is used only for tile labels and `±value` quick-fill defaults. Scoring is always against roster entries, never from the queue.
+5. **Host enters scores; server stores verbatim.** Awards may be decimal or negative. The server never computes scores from the uploaded quiz content — `value` is used only for tile labels and `±value` quick-fill defaults. Scoring is always against roster entries, never from the queue.
 6. **No undo/redo.** The always-open scorecard grid is the correction mechanism — the host re-clicks a cell and re-submits. (V3's `question_cancel` is a pre-score reveal-undo, not a scoring undo — distinct from this rule. See SPEC V3.md §4. This rule still governs scoring corrections.)
 7. **Async mode is pinned to `eventlet`.** Do not substitute `gevent` or `threading`.
 8. **No features beyond `SPEC.md §2` or `SPEC V3.md`'s delta scope.** Stop and ask before building anything not listed in either.
-9. **Minimal dependencies.** Flask, Flask-SocketIO, eventlet, gunicorn, `openpyxl`. stdlib csv for parsing (still used by V1/V2's CSV path until A2 retires it). Justify anything else. (`openpyxl` added for V3 Session A's xlsx bundle parser — justified in SPEC V3.md §3.)
+9. **Minimal dependencies.** Flask, Flask-SocketIO, eventlet, gunicorn, `openpyxl`. Justify anything else. (`openpyxl` added for V3 Session A's xlsx bundle parser — justified in SPEC V3.md §3. The V1/V2 CSV path and its stdlib `csv` usage were retired in A2.)
 
 ## Tech stack
 
-Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn. Vanilla JS + HTML; Socket.IO client via CDN. CSV for quiz content; in-memory Python objects for state.
+Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn, openpyxl. Vanilla JS + HTML; Socket.IO client via CDN. Quiz content from a per-room uploaded xlsx/zip bundle; in-memory Python objects for state.
 
 ## Project layout
 
 ```
-app.py            # Flask app + SocketIO init + HTTP routes
+app.py            # Flask app + SocketIO init + HTTP routes (incl. per-room upload + media routes)
 game.py           # all in-memory state and game logic (phase, roster, queue, scoring)
 events.py         # SocketIO event handlers — thin wrappers that delegate to game.py
-quiz_loader.py    # CSV parsing -> board grids; fails loudly on malformed input (V1/V2 path, still used until A2 retires it)
-bundle_loader.py  # V3 zip/xlsx bundle parser + validation (SPEC V3.md §3); no route/storage wiring yet — see A2
-data/quiz.csv     # board, category, value (thin 3-column; produced offline by host)
+bundle_loader.py  # V3 zip/xlsx bundle parser + validation + media extraction (SPEC V3.md §3)
 templates/
   create.html     # landing page — join by code or create a new room
   player.html     # waiting → buzzer → queue-position (single page, JS-driven)
@@ -50,13 +48,13 @@ static/
 requirements.txt
 ```
 
-V3 will still add `present.html`, `static/js/present.js`, and upload/media routes — not yet present; see `SPEC V3.md` when A2/B1/B2 land.
+V3 will still add `present.html` and `static/js/present.js` — not yet present; see `SPEC V3.md` when B1/B2 land.
 
 ## Configuration
 
 No required env vars. Rooms are created dynamically via the landing page UI; each room has a server-generated per-room host token. No HOST_SECRET needed.
 
-The quiz content is loaded from `data/quiz.csv` at startup. Swap the file and redeploy to change questions. A restart wipes all in-memory room state — acceptable, as each quiz is a single session.
+The server boots with no quiz content. Each room's QM uploads a quiz bundle (`.zip` of `quiz.xlsx` + optional `media/`) from the control center before the quiz can start — content is per-room, not shared. A restart wipes all in-memory room state, including uploaded content — acceptable, as each quiz is a single session and the QM re-uploads.
 
 ## Commands
 
@@ -83,7 +81,7 @@ pytest
 - No reconnection identity matching. Buzz identities are disposable; roster entries are durable.
 - Player UI is one page — buzzer view contains the queue list and sections inline; no separate route or view for queue position.
 - Responsive layout for phones; no design polish.
-- Fail loudly on malformed CSV at startup.
+- Fail loudly on a malformed upload: every row's errors surface together in one pass, not just the first.
 - **Two player identity types**: `virtual=False` (real socket connection, joined via URL/code) and `virtual=True` (host-added scorecard entry, no socket). `get_active_players()` returns only non-virtual connected players for `state:players`. The roster contains both; the scorecard shows both; player phones see only non-virtual.
 - **`state:players`** is the player-facing presence event (who's in the room). **`state:roster`** does not exist — the host's roster is derived from `state:scores`. Never conflate the two.
 
@@ -91,7 +89,7 @@ pytest
 
 Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals.
 
-Unit-test `quiz_loader.py` (V1/V2 CSV path) and `bundle_loader.py` (V3 xlsx/zip path) independently of `game.py`: valid parse, every `sys.exit`/structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows), case-insensitive columns.
+Unit-test `bundle_loader.py` independently of `game.py`: valid parse, every structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows, unsupported/missing media), xlsx cell-type normalization, and `extract_media`.
 
 Integration tests with the Flask-SocketIO test client: join → buzz → queue broadcast; room validation (valid/invalid/case-insensitive); late joiner behind frozen queue. No browser/E2E tooling.
 

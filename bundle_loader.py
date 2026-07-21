@@ -1,10 +1,12 @@
 """Parses and validates a V3 quiz bundle: a .zip containing quiz.xlsx (+ optional media/).
 
-No route, no storage, no filesystem writes — see SPEC V3.md §3 for the file
-format contract this enforces. A2 wires this into an upload route and
-per-room storage.
+See SPEC V3.md §3 for the file format contract this enforces. parse_bundle()
+is pure/side-effect-free (no filesystem writes); extract_media() is the one
+function here that writes to disk, used by A2's upload route to persist a
+room's media into its own temp dir.
 """
 
+import os
 import zipfile
 from dataclasses import dataclass
 from io import BytesIO
@@ -184,7 +186,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
                 if ext not in ALLOWED_MEDIA_EXTENSIONS:
                     row_errors.append(f"unsupported media extension: {filename!r}")
                 elif filename not in media_names:
-                    row_errors.append(f"media file {filename!r} not found in media/")
+                    row_errors.append(f"{filename!r} was not found among the uploaded media files")
                 else:
                     referenced_media.add(filename)
 
@@ -192,7 +194,10 @@ def parse_bundle(fileobj) -> BundleParseResult:
             if board and category and value is not None:
                 question_key = (board, category, value)
                 if question_key in seen_ids:
-                    row_errors.append(f"duplicate question_id {board}:{category}:{value}")
+                    row_errors.append(
+                        f"this board/category/value combination ('{board} / {category} / {value}') "
+                        "is used by more than one row — that's a duplicate question"
+                    )
                 else:
                     seen_ids.add(question_key)
 
@@ -223,3 +228,20 @@ def parse_bundle(fileobj) -> BundleParseResult:
             warnings=warnings,
             media_names=media_names,
         )
+
+
+def extract_media(fileobj, dest_dir: str) -> None:
+    """Writes every file under media/ in the bundle to dest_dir (flat, by basename).
+
+    Re-opens fileobj as a zip from the start — callers that already ran
+    parse_bundle() on the same fileobj don't need to seek() first.
+    """
+    fileobj.seek(0)
+    with zipfile.ZipFile(fileobj) as zf:
+        for name in zf.namelist():
+            if not name.startswith("media/") or name.endswith("/"):
+                continue
+            basename = name.rsplit("/", 1)[-1]
+            with zf.open(name) as src:
+                with open(os.path.join(dest_dir, basename), "wb") as dst:
+                    dst.write(src.read())

@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-from quiz_loader import Question
+from bundle_loader import BundleQuestion
 
 
 def _generate_join_code() -> str:
@@ -28,12 +28,11 @@ class BuzzEntry:
 
 
 class Game:
-    def __init__(self, questions: dict[str, list[Question]]):
-        self.questions: dict[str, list[Question]] = questions
-        self._boards: list[str] = list(questions.keys())
-        self._all_questions: dict[str, Question] = {
-            q.id: q for qs in questions.values() for q in qs
-        }
+    def __init__(self, questions: dict[str, list[BundleQuestion]] | None = None):
+        self.questions: dict[str, list[BundleQuestion]] = {}
+        self._boards: list[str] = []
+        self._all_questions: dict[str, BundleQuestion] = {}
+        self.load_questions(questions or {})
 
         self.phase: Literal["lobby", "live"] = "lobby"
         self.join_code: str = _generate_join_code()
@@ -43,6 +42,12 @@ class Game:
         self.queue_locked: bool = False
         self.scores: dict[str, dict[str, float]] = {}
         self.closed_questions: set[str] = set()
+        self.media_dir: str | None = None
+
+    def load_questions(self, questions: dict[str, list[BundleQuestion]]) -> None:
+        self.questions = questions
+        self._boards = list(questions.keys())
+        self._all_questions = {q.id: q for qs in questions.values() for q in qs}
 
     # ------------------------------------------------------------------
     # Lobby
@@ -61,6 +66,8 @@ class Game:
     def start_quiz(self) -> list[str]:
         if self.phase == "live":
             return self.roster
+        if not self.questions:
+            raise ValueError("Cannot start: no quiz content uploaded.")
         self.phase = "live"
         self.roster = sorted(
             [pid for pid, p in self.players.items() if not p.virtual],
@@ -160,8 +167,14 @@ class Game:
 
     def _cell_state(self, question_id: str) -> dict:
         q = self._all_questions[question_id]
+        # Host-only payload (state:scores never reaches a player socket) —
+        # question/answer/media are safe here per SPEC V3.md §1's widened
+        # invariant, and let the control center show a read-only Q&A peek
+        # before Start (SPEC V3.md §2).
+        base = {"value": q.value, "question": q.question, "answer": q.answer, "media": q.media}
+
         if question_id not in self.closed_questions:
-            return {"state": "unplayed", "value": q.value, "entries": []}
+            return {**base, "state": "unplayed", "entries": []}
 
         entries = [
             {
@@ -174,8 +187,8 @@ class Game:
         ]
 
         if entries:
-            return {"state": "awarded", "value": q.value, "entries": entries}
-        return {"state": "passed", "value": q.value, "entries": []}
+            return {**base, "state": "awarded", "entries": entries}
+        return {**base, "state": "passed", "entries": []}
 
     def get_scores_payload(self) -> dict:
         # Grid: board → category → str(value) → cell_state

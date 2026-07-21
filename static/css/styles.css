@@ -346,6 +346,26 @@ body {
 .player-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #374151; }
 .player-item::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
 
+.upload-hint {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.upload-hint code {
+  background: #f3f4f6;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.upload-row { display: flex; gap: 8px; }
+.upload-row input[type="file"] {
+  flex: 1;
+  font-size: 13px;
+  min-width: 0;
+}
+
 .btn-start {
   width: 100%;
   padding: 16px;
@@ -535,6 +555,11 @@ body {
 .btn-close-question:hover { background: #f5f3ff; }
 
 .panel-hint { text-align: center; font-size: 12px; color: #9ca3af; margin-top: 8px; }
+
+/* Pre-Start Q&A peek (reuses .scoring-panel/.panel-header/.panel-title) */
+.peek-question { font-size: 16px; font-weight: 600; margin-bottom: 12px; line-height: 1.4; }
+.peek-media { max-width: 100%; border-radius: 8px; margin-bottom: 12px; display: block; }
+.peek-answer { font-size: 14px; color: #374151; padding-top: 12px; border-top: 1px solid #f3f4f6; }
 
 /* ------------------------------------------------------------------ */
 /* Sidebar                                                              */

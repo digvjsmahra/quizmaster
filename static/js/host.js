@@ -38,17 +38,29 @@
   function showLobby() {
     state.phase = 'lobby';
     el('view-lobby').classList.remove('hidden');
-    el('view-live').classList.add('hidden');
     el('phase-badge').className = 'phase-badge lobby';
     el('phase-badge').textContent = '⏱ lobby';
+    updateSidebarVisibility();
   }
 
   function showLive() {
     state.phase = 'live';
     el('view-lobby').classList.add('hidden');
-    el('view-live').classList.remove('hidden');
     el('phase-badge').className = 'phase-badge live';
     el('phase-badge').textContent = '⏺ live';
+    updateSidebarVisibility();
+  }
+
+  // Board area (#view-live) is visible whenever a board has been uploaded,
+  // independent of phase — this is what lets the host preview the board
+  // before Start. The sidebar (queue/totals/add-player) within it only
+  // shows once actually live, since none of it is meaningful pre-Start.
+  function updateBoardAreaVisibility() {
+    el('view-live').classList.toggle('hidden', !(state.boards && state.boards.length > 0));
+  }
+
+  function updateSidebarVisibility() {
+    el('sidebar').classList.toggle('hidden', state.phase !== 'live');
   }
 
   // ----------------------------------------------------------------
@@ -190,7 +202,35 @@
     }
     state.activeCellId = qid;
     renderBoard();
-    showScoringPanel(qid, board, cat, val);
+    if (state.phase === 'live') {
+      showScoringPanel(qid, board, cat, val);
+    } else {
+      // Pre-Start: read-only Q&A preview, not the scoring panel — the
+      // roster doesn't exist yet (populated by start_quiz()), so a
+      // scoring panel here would just show zero player rows.
+      showQuestionPeek(qid, board, cat, val);
+    }
+  }
+
+  function showQuestionPeek(qid, board, cat, val) {
+    const panel = el('scoring-panel');
+    const grid = state.scoresData && state.scoresData.grid[board];
+    const cellData = grid && grid[cat] && grid[cat][String(val)];
+    if (!cellData) return;
+
+    const mediaHtml = (cellData.media || [])
+      .map(fn => `<img class="peek-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
+      .join('');
+
+    panel.innerHTML = `
+      <div class="panel-header">
+        <span class="panel-title">${esc(cat)} · ${val}</span>
+      </div>
+      <div class="peek-question">${esc(cellData.question || '')}</div>
+      ${mediaHtml}
+      <div class="peek-answer"><strong>Answer:</strong> ${esc(cellData.answer || '')}</div>
+    `;
+    panel.classList.remove('hidden');
   }
 
   function showScoringPanel(qid, board, cat, val) {
@@ -329,11 +369,20 @@
 
     if (data.phase === 'live') {
       showLive();
-      renderBoard();
       renderQueue(data.queue);
     } else {
       showLobby();
       renderLobbyPlayers(data.lobby_players || []);
+    }
+
+    // Board + Start-button state must reflect an already-successful
+    // upload on reconnect/second-tab, not just on the tab that did the
+    // upload — previously this only happened in the live branch, so a
+    // reload after uploading but before Start showed an empty board.
+    updateBoardAreaVisibility();
+    if (state.boards.length > 0) {
+      renderBoard();
+      el('start-btn').disabled = false;
     }
   });
 
@@ -353,6 +402,7 @@
     state.boards = data.boards || [];
     // Keep currentBoardIdx in bounds
     if (state.currentBoardIdx >= state.boards.length) state.currentBoardIdx = 0;
+    updateBoardAreaVisibility();
     renderBoard();
     if (state.activeCellId) updateScoringPanelRoster();
   });
@@ -363,6 +413,13 @@
 
   socket.on('error', ({ message }) => {
     console.error('Server error:', message);
+    // A rejected host:start_quiz (e.g. server-side "no content uploaded"
+    // guard) must not leave the Start button stuck disabled with no
+    // feedback — re-enable it and surface the message.
+    el('start-btn').disabled = false;
+    const errEl = el('upload-error');
+    errEl.textContent = message;
+    errEl.classList.remove('hidden');
   });
 
   // ----------------------------------------------------------------
@@ -385,6 +442,58 @@
   el('start-btn').addEventListener('click', () => {
     el('start-btn').disabled = true;
     socket.emit('host:start_quiz');
+  });
+
+  // Upload quiz bundle
+  el('bundle-input').addEventListener('change', () => {
+    el('upload-btn').disabled = !el('bundle-input').files.length;
+  });
+
+  el('upload-btn').addEventListener('click', async () => {
+    const fileInput = el('bundle-input');
+    if (!fileInput.files.length) return;
+
+    const btn = el('upload-btn');
+    const errEl = el('upload-error');
+    const successEl = el('upload-success');
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+    errEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    const formData = new FormData();
+    formData.append('bundle', fileInput.files[0]);
+
+    try {
+      const res = await fetch(`/host/${JOIN_CODE}/${HOST_TOKEN}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const body = await res.json();
+
+      if (res.ok) {
+        successEl.textContent = (body.warnings && body.warnings.length)
+          ? `Loaded, with ${body.warnings.length} warning(s): ${body.warnings.join('; ')}`
+          : 'Quiz content loaded.';
+        successEl.classList.remove('hidden');
+        el('start-btn').disabled = false;
+        // Board itself renders via the server's state:scores broadcast —
+        // this handler only owns the upload card's own feedback.
+      } else {
+        errEl.innerHTML = body.errors
+          .map(e => `${e.row ? `Row ${e.row}: ` : ''}${esc(e.message)}`)
+          .join('<br>');
+        errEl.classList.remove('hidden');
+        // A failed (re-)upload must not disturb an already-loaded board —
+        // nothing here touches state.boards/renderBoard().
+      }
+    } catch {
+      errEl.textContent = 'Unable to reach the server. Please try again.';
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = !fileInput.files.length;
+      btn.textContent = 'Upload';
+    }
   });
 
   // Board navigation

@@ -44,10 +44,18 @@ Concretely:
    that room's `Game` instance — not shared globally. Simultaneous rooms can
    run different quizzes.
 3. On successful upload, the board materializes **immediately in the control
-   center**, so the QM can visually verify it before going live. "Start quiz"
-   remains a separate, deliberate second click (same lobby→live gate as
-   V1/V2) — the QM confirms the board, then starts; players never see the
-   board ahead of the QM.
+   center**, so the QM can visually verify it before going live. Clicking a
+   board cell at this stage shows that question's text/answer/media,
+   read-only — a pre-flight content check, **not** the §4 reveal mechanism:
+   no state transition, no phase change, and it's only available before
+   Start (once live, this affordance is gone until B1 adds reveal-based
+   Q&A visibility). "Start quiz" remains a separate, deliberate second
+   click (same lobby→live gate as V1/V2) — the QM confirms the board, then
+   starts; players never see the board ahead of the QM.
+4. **Re-upload is lobby-only.** Once the quiz has gone live, a further
+   upload to the same room is rejected — the only way to load a different
+   bundle is a new room. Prevents a re-upload from silently orphaning
+   scores tied to `question_id`s that don't exist in a newly-uploaded board.
 
 The server boots content-less. `data/quiz.csv` and the startup CSV loader are
 retired. A restart wipes quiz content along with all other state (consistent
@@ -92,6 +100,9 @@ bundle.zip
 - Every filename in `media` (split on comma, trimmed) must exist in `media/`
   → error if missing.
 - Files in `media/` referenced by no row → warning (not an error).
+- Error messages avoid internal vocabulary (no raw `question_id`, no
+  internal folder-path references) so a non-technical QM can act on them
+  directly.
 - Nothing is half-loaded: any error rejects the whole upload; the QM fixes and
   re-uploads. Warnings alone don't block.
 

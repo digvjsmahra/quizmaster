@@ -74,7 +74,11 @@ def register(socketio, rooms):
         room = rooms.get(join_code) if join_code else None
         if not room:
             return
-        room["game"].start_quiz()
+        try:
+            room["game"].start_quiz()
+        except ValueError as e:
+            emit("error", {"message": str(e)})
+            return
         socketio.emit("state:phase", {"phase": "live"}, to=f"players_{join_code}")
         socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
         socketio.emit("state:phase", {"phase": "live"}, to=f"host_{join_code}")

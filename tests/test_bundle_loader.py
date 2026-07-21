@@ -10,12 +10,16 @@ from bundle_loader import extract_media, parse_bundle
 DEFAULT_COLUMNS = ["board", "category", "value", "question", "answer", "media"]
 
 
-def make_bundle(rows, *, media_files=None, columns=None, include_xlsx=True, extra_sheets=None):
+def make_bundle(
+    rows, *, media_files=None, columns=None, include_xlsx=True, extra_sheets=None,
+    xlsx_name="quiz.xlsx", media_folder="media",
+):
     """Builds an in-memory .zip bundle from row dicts keyed by column name.
 
     Missing keys in a row dict become a blank cell. `media_files` is a dict
     of filename -> bytes written under media/. `extra_sheets` is a dict of
     sheet name -> list of raw row lists, appended after the main sheet.
+    `xlsx_name`/`media_folder` let tests exercise casing variations.
     """
     columns = columns or DEFAULT_COLUMNS
     wb = openpyxl.Workbook()
@@ -35,9 +39,9 @@ def make_bundle(rows, *, media_files=None, columns=None, include_xlsx=True, extr
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w") as zf:
         if include_xlsx:
-            zf.writestr("quiz.xlsx", xlsx_buf.getvalue())
+            zf.writestr(xlsx_name, xlsx_buf.getvalue())
         for filename, content in (media_files or {}).items():
-            zf.writestr(f"media/{filename}", content)
+            zf.writestr(f"{media_folder}/{filename}", content)
     zip_buf.seek(0)
     return zip_buf
 
@@ -243,6 +247,26 @@ def test_rejects_missing_required_header_column():
     assert any("answer" in e.message and e.row is None for e in result.errors)
 
 
+@pytest.mark.parametrize("xlsx_name", ["Quiz.xlsx", "QUIZ.XLSX", "quiz.XLSX"])
+def test_quiz_xlsx_name_matched_case_insensitively(xlsx_name):
+    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
+    bundle = make_bundle(rows, xlsx_name=xlsx_name)
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    assert result.boards["1"][0].id == "1:History:10"
+
+
+@pytest.mark.parametrize("media_folder", ["Media", "MEDIA"])
+def test_media_folder_matched_case_insensitively(media_folder):
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+    ]
+    bundle = make_bundle(rows, media_files={"pic.jpg": b"x"}, media_folder=media_folder)
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    assert result.boards["1"][0].media == ["pic.jpg"]
+
+
 def test_only_first_sheet_is_read():
     rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
     bundle = make_bundle(
@@ -268,6 +292,17 @@ def test_extract_media_writes_referenced_and_unreferenced_files(tmp_path):
 
     assert (tmp_path / "pic.jpg").read_bytes() == b"pic-bytes"
     assert (tmp_path / "orphan.png").read_bytes() == b"orphan-bytes"
+
+
+def test_extract_media_matches_media_folder_case_insensitively(tmp_path):
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+    ]
+    bundle = make_bundle(rows, media_files={"pic.jpg": b"pic-bytes"}, media_folder="Media")
+
+    extract_media(bundle, str(tmp_path))
+
+    assert (tmp_path / "pic.jpg").read_bytes() == b"pic-bytes"
 
 
 def test_extract_media_noop_when_no_media_folder(tmp_path):

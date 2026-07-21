@@ -52,17 +52,16 @@
         Leave the <code>media</code> cell blank for no image — not "NA" or "-". Multiple images for one question: comma-separate the filenames.
         Filenames must exactly match a file in <code>media/</code>, case-sensitively.
       </div>
-      <div class="upload-row">
-        <input type="file" id="bundle-input" accept=".zip">
-        <button id="upload-btn" class="btn-ghost" disabled>Upload</button>
-      </div>
+      <input type="file" id="bundle-input" accept=".zip" class="hidden">
+      <button id="upload-btn" class="btn-ghost">📁 Upload .zip</button>
       <p class="error-msg hidden" id="upload-error"></p>
       <p class="status-msg hidden" id="upload-success"></p>
     </div>
 
     <div>
-      <button id="start-btn" class="btn-start" disabled>▷ Start quiz</button>
+      <button id="start-btn" class="btn-start">▷ Start quiz</button>
       <div class="start-hint">freezes the scorecard roster — you can still add players after</div>
+      <p class="error-msg hidden" id="start-error"></p>
     </div>
 
   </div>
@@ -84,6 +83,8 @@
         <span class="board-nav-label" id="board-label">Board 1 of 1</span>
         <button id="btn-next" class="btn-nav" disabled>next →</button>
       </div>
+
+      <p class="board-preview-hint hidden" id="board-preview-hint">👇 Click a tile to preview its question and answer before you start</p>
 
       <!-- Board grid -->
       <div class="board-grid-wrap">

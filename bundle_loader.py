@@ -98,11 +98,18 @@ def parse_bundle(fileobj) -> BundleParseResult:
         return BundleParseResult(None, [ValidationError(None, "not a valid .zip file")], [], set())
 
     with zf:
-        if "quiz.xlsx" not in zf.namelist():
+        # "quiz.xlsx" and the "media/" folder are names the app itself
+        # dictates (unlike individual media filenames, which are the
+        # host's own identifiers and must match exactly) — matched
+        # case-insensitively so "Quiz.xlsx" or "Media/" don't produce a
+        # confusing "missing" error over something that's just a casing
+        # difference.
+        quiz_entry = next((n for n in zf.namelist() if n.lower() == "quiz.xlsx"), None)
+        if quiz_entry is None:
             return BundleParseResult(None, [ValidationError(None, "bundle is missing quiz.xlsx")], [], set())
 
         try:
-            workbook = openpyxl.load_workbook(BytesIO(zf.read("quiz.xlsx")), data_only=True, read_only=True)
+            workbook = openpyxl.load_workbook(BytesIO(zf.read(quiz_entry)), data_only=True, read_only=True)
         except Exception:
             # openpyxl can raise a range of exception types for malformed
             # xlsx content — all of them mean "reject this upload".
@@ -111,7 +118,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
         media_names = {
             name.rsplit("/", 1)[-1]
             for name in zf.namelist()
-            if name.startswith("media/") and not name.endswith("/")
+            if name.lower().startswith("media/") and not name.endswith("/")
         }
 
         sheet = workbook.worksheets[0]
@@ -239,7 +246,7 @@ def extract_media(fileobj, dest_dir: str) -> None:
     fileobj.seek(0)
     with zipfile.ZipFile(fileobj) as zf:
         for name in zf.namelist():
-            if not name.startswith("media/") or name.endswith("/"):
+            if not name.lower().startswith("media/") or name.endswith("/"):
                 continue
             basename = name.rsplit("/", 1)[-1]
             with zf.open(name) as src:

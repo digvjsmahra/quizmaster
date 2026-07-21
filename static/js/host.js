@@ -41,6 +41,7 @@
     el('phase-badge').className = 'phase-badge lobby';
     el('phase-badge').textContent = '⏱ lobby';
     updateSidebarVisibility();
+    updateBoardAreaVisibility();
   }
 
   function showLive() {
@@ -49,6 +50,7 @@
     el('phase-badge').className = 'phase-badge live';
     el('phase-badge').textContent = '⏺ live';
     updateSidebarVisibility();
+    updateBoardAreaVisibility();
   }
 
   // Board area (#view-live) is visible whenever a board has been uploaded,
@@ -56,7 +58,9 @@
   // before Start. The sidebar (queue/totals/add-player) within it only
   // shows once actually live, since none of it is meaningful pre-Start.
   function updateBoardAreaVisibility() {
-    el('view-live').classList.toggle('hidden', !(state.boards && state.boards.length > 0));
+    const hasBoard = state.boards && state.boards.length > 0;
+    el('view-live').classList.toggle('hidden', !hasBoard);
+    el('board-preview-hint').classList.toggle('hidden', !(hasBoard && state.phase !== 'live'));
   }
 
   function updateSidebarVisibility() {
@@ -375,15 +379,12 @@
       renderLobbyPlayers(data.lobby_players || []);
     }
 
-    // Board + Start-button state must reflect an already-successful
-    // upload on reconnect/second-tab, not just on the tab that did the
-    // upload — previously this only happened in the live branch, so a
-    // reload after uploading but before Start showed an empty board.
+    // Board state must reflect an already-successful upload on
+    // reconnect/second-tab, not just on the tab that did the upload —
+    // previously this only happened in the live branch, so a reload
+    // after uploading but before Start showed an empty board.
     updateBoardAreaVisibility();
-    if (state.boards.length > 0) {
-      renderBoard();
-      el('start-btn').disabled = false;
-    }
+    if (state.boards.length > 0) renderBoard();
   });
 
   socket.on('state:players', ({ players }) => {
@@ -392,6 +393,14 @@
 
   socket.on('state:phase', ({ phase }) => {
     if (phase === 'live') {
+      // This event fires exactly once, at the moment Start is clicked —
+      // not on every reconnect (state:full handles that separately) — so
+      // this is the right, and only, place to reset the pre-Start
+      // preview back to a clean slate: Board 1, no leftover peek/scoring
+      // panel from wherever the host had navigated to during preview.
+      state.currentBoardIdx = 0;
+      state.activeCellId = null;
+      hideScoringPanel();
       showLive();
       if (state.scoresData) renderBoard();
     }
@@ -413,11 +422,11 @@
 
   socket.on('error', ({ message }) => {
     console.error('Server error:', message);
-    // A rejected host:start_quiz (e.g. server-side "no content uploaded"
-    // guard) must not leave the Start button stuck disabled with no
+    // A rejected host:start_quiz (server-side backstop for the client-side
+    // check below) must not leave the Start button stuck disabled with no
     // feedback — re-enable it and surface the message.
     el('start-btn').disabled = false;
-    const errEl = el('upload-error');
+    const errEl = el('start-error');
     errEl.textContent = message;
     errEl.classList.remove('hidden');
   });
@@ -438,31 +447,48 @@
     });
   });
 
-  // Start quiz
+  // Start quiz. Always clickable (never a silently-disabled dead end,
+  // same lesson as the upload button below) — clicking with no content
+  // uploaded yet shows a message immediately instead of doing nothing.
   el('start-btn').addEventListener('click', () => {
+    if (!state.boards || state.boards.length === 0) {
+      const errEl = el('start-error');
+      errEl.textContent = 'Upload a quiz bundle above before starting.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    el('start-error').classList.add('hidden');
     el('start-btn').disabled = true;
     socket.emit('host:start_quiz');
   });
 
-  // Upload quiz bundle
-  el('bundle-input').addEventListener('change', () => {
-    el('upload-btn').disabled = !el('bundle-input').files.length;
+  // Upload quiz bundle — a single button. Clicking it opens the native
+  // file picker (no separate "choose" vs "upload" steps to get wrong);
+  // picking a .zip there uploads it immediately.
+  const uploadBtnLabel = el('upload-btn').textContent;
+
+  el('upload-btn').addEventListener('click', () => {
+    el('bundle-input').click();
   });
 
-  el('upload-btn').addEventListener('click', async () => {
-    const fileInput = el('bundle-input');
-    if (!fileInput.files.length) return;
+  el('bundle-input').addEventListener('change', () => {
+    if (el('bundle-input').files.length) uploadBundle();
+  });
 
+  async function uploadBundle() {
+    const fileInput = el('bundle-input');
+    const file = fileInput.files[0];
     const btn = el('upload-btn');
     const errEl = el('upload-error');
     const successEl = el('upload-success');
+
     btn.disabled = true;
     btn.textContent = 'Uploading…';
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
 
     const formData = new FormData();
-    formData.append('bundle', fileInput.files[0]);
+    formData.append('bundle', file);
 
     try {
       const res = await fetch(`/host/${JOIN_CODE}/${HOST_TOKEN}/upload`, {
@@ -472,15 +498,15 @@
       const body = await res.json();
 
       if (res.ok) {
-        successEl.textContent = (body.warnings && body.warnings.length)
-          ? `Loaded, with ${body.warnings.length} warning(s): ${body.warnings.join('; ')}`
-          : 'Quiz content loaded.';
+        const warningNote = (body.warnings && body.warnings.length)
+          ? ` — ${body.warnings.length} warning(s): ${body.warnings.join('; ')}`
+          : '';
+        successEl.textContent = `${file.name} loaded.${warningNote}`;
         successEl.classList.remove('hidden');
-        el('start-btn').disabled = false;
         // Board itself renders via the server's state:scores broadcast —
         // this handler only owns the upload card's own feedback.
       } else {
-        errEl.innerHTML = body.errors
+        errEl.innerHTML = `<strong>${esc(file.name)}</strong> couldn't be loaded:<br>` + body.errors
           .map(e => `${e.row ? `Row ${e.row}: ` : ''}${esc(e.message)}`)
           .join('<br>');
         errEl.classList.remove('hidden');
@@ -491,10 +517,11 @@
       errEl.textContent = 'Unable to reach the server. Please try again.';
       errEl.classList.remove('hidden');
     } finally {
-      btn.disabled = !fileInput.files.length;
-      btn.textContent = 'Upload';
+      btn.disabled = false;
+      btn.textContent = uploadBtnLabel;
+      fileInput.value = ''; // allow re-selecting the same file to retry
     }
-  });
+  }
 
   // Board navigation
   el('btn-prev').addEventListener('click', () => {

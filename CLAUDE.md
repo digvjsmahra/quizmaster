@@ -101,6 +101,7 @@ Integration tests with the Flask-SocketIO test client: join → buzz → queue b
 - Read files only when making a specific change, not to "understand" them.
 - Commit between features, not within them.
 - When drafting a new `SPEC V<N>.md`, its reconciliation pass (pointer annotations + precedence-chain update in this file) is part of the same deliverable, not a follow-up.
+- This also applies when planning against an *already-existing* `SPEC V<N>.md`, not just when drafting a brand-new delta: if a plan locks in a decision, gate, or behavior the current spec chain doesn't yet state, fold the needed spec edit into the same work item before presenting the plan for approval. Before calling `ExitPlanMode`, explicitly check the plan's locked-in decisions against the current spec chain — don't wait for the user to notice a gap and ask (this nearly happened during A2 planning: re-upload gating and the pre-Start Q&A peek were both new decisions with no spec trace until caught in review).
 
 ### V3 build sequencing
 

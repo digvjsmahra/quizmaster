@@ -74,6 +74,15 @@ bundle.zip
     ...
 ```
 
+The parser also accepts this same content nested one level under a single
+wrapper folder — the shape produced by zipping a *folder* (rather than its
+contents) via macOS Finder's "Compress" command, the most natural
+non-technical workflow. Finder also drops a `__MACOSX/` sidecar tree of
+AppleDouble files and stray `.DS_Store` entries alongside the real content;
+both are ignored wherever they appear, as an artifact of the zip tool, not
+QM-authored bundle content. Deeper nesting than one wrapper folder is not
+supported.
+
 **`quiz.xlsx` — long format, one row per question.** Header row required:
 
 | column     | required | notes                                                    |

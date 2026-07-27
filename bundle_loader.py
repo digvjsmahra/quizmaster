@@ -3,7 +3,10 @@
 See SPEC V3.md §3 for the file format contract this enforces. parse_bundle()
 is pure/side-effect-free (no filesystem writes); extract_media() is the one
 function here that writes to disk, used by A2's upload route to persist a
-room's media into its own temp dir.
+room's media into its own temp dir. Both tolerate the zip shape produced by
+macOS Finder's "Compress" on a folder (contents nested one level under a
+wrapper folder, plus __MACOSX/ and .DS_Store junk) — see
+_resolve_bundle_entries().
 """
 
 import os
@@ -91,6 +94,49 @@ def _row_cell(row, header, key):
     return row[idx]
 
 
+def _filter_mac_junk(namelist):
+    """Drops macOS Finder zip artifacts: the __MACOSX/ AppleDouble sidecar
+    tree, stray .DS_Store files, and ._-prefixed resource-fork files —
+    wherever they appear, since they're an artifact of the zip tool, not
+    part of the QM's bundle content.
+    """
+    return [
+        n for n in namelist
+        if not n.startswith("__MACOSX/")
+        and os.path.basename(n.rstrip("/")) != ".DS_Store"
+        and not os.path.basename(n.rstrip("/")).startswith("._")
+    ]
+
+
+def _resolve_bundle_entries(namelist):
+    """Maps each real zip entry to the effective path used to match
+    quiz.xlsx / media/, unwrapping a single top-level wrapper folder if
+    every entry lives under one.
+
+    Finder's "Compress" on a folder (rather than on its contents) nests
+    everything one level under a folder named after the original directory
+    — the most natural non-technical zip workflow. Only a single level of
+    unwrapping is attempted; deeper nesting isn't a shape that workflow
+    produces.
+
+    Returns a list of (effective_name, original_name) tuples. A bundle
+    that's already flat (quiz.xlsx and media/ as zip-root siblings) has more
+    than one top-level path segment, so the unwrap condition below naturally
+    doesn't fire and effective_name == original_name for every entry.
+    """
+    names = _filter_mac_junk(namelist)
+    if not names:
+        return []
+
+    top_segments = {n.split("/", 1)[0] for n in names}
+    if len(top_segments) == 1:
+        prefix = next(iter(top_segments)) + "/"
+        if all(n.startswith(prefix) for n in names):
+            return [(n[len(prefix):], n) for n in names if n != prefix]
+
+    return [(n, n) for n in names]
+
+
 def parse_bundle(fileobj) -> BundleParseResult:
     try:
         zf = zipfile.ZipFile(fileobj)
@@ -98,13 +144,15 @@ def parse_bundle(fileobj) -> BundleParseResult:
         return BundleParseResult(None, [ValidationError(None, "not a valid .zip file")], [], set())
 
     with zf:
+        entries = _resolve_bundle_entries(zf.namelist())
+
         # "quiz.xlsx" and the "media/" folder are names the app itself
         # dictates (unlike individual media filenames, which are the
         # host's own identifiers and must match exactly) — matched
         # case-insensitively so "Quiz.xlsx" or "Media/" don't produce a
         # confusing "missing" error over something that's just a casing
         # difference.
-        quiz_entry = next((n for n in zf.namelist() if n.lower() == "quiz.xlsx"), None)
+        quiz_entry = next((orig for eff, orig in entries if eff.lower() == "quiz.xlsx"), None)
         if quiz_entry is None:
             return BundleParseResult(None, [ValidationError(None, "bundle is missing quiz.xlsx")], [], set())
 
@@ -116,9 +164,9 @@ def parse_bundle(fileobj) -> BundleParseResult:
             return BundleParseResult(None, [ValidationError(None, "quiz.xlsx is not a valid Excel file")], [], set())
 
         media_names = {
-            name.rsplit("/", 1)[-1]
-            for name in zf.namelist()
-            if name.lower().startswith("media/") and not name.endswith("/")
+            eff.rsplit("/", 1)[-1]
+            for eff, orig in entries
+            if eff.lower().startswith("media/") and not eff.endswith("/")
         }
 
         sheet = workbook.worksheets[0]
@@ -245,10 +293,10 @@ def extract_media(fileobj, dest_dir: str) -> None:
     """
     fileobj.seek(0)
     with zipfile.ZipFile(fileobj) as zf:
-        for name in zf.namelist():
-            if not name.lower().startswith("media/") or name.endswith("/"):
+        for eff, orig in _resolve_bundle_entries(zf.namelist()):
+            if not eff.lower().startswith("media/") or eff.endswith("/"):
                 continue
-            basename = name.rsplit("/", 1)[-1]
-            with zf.open(name) as src:
+            basename = eff.rsplit("/", 1)[-1]
+            with zf.open(orig) as src:
                 with open(os.path.join(dest_dir, basename), "wb") as dst:
                     dst.write(src.read())

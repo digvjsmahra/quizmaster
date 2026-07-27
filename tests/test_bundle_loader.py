@@ -12,7 +12,7 @@ DEFAULT_COLUMNS = ["board", "category", "value", "question", "answer", "media"]
 
 def make_bundle(
     rows, *, media_files=None, columns=None, include_xlsx=True, extra_sheets=None,
-    xlsx_name="quiz.xlsx", media_folder="media",
+    xlsx_name="quiz.xlsx", media_folder="media", wrapper_folder=None, include_mac_junk=False,
 ):
     """Builds an in-memory .zip bundle from row dicts keyed by column name.
 
@@ -20,6 +20,10 @@ def make_bundle(
     of filename -> bytes written under media/. `extra_sheets` is a dict of
     sheet name -> list of raw row lists, appended after the main sheet.
     `xlsx_name`/`media_folder` let tests exercise casing variations.
+    `wrapper_folder` nests every entry one level under that folder name
+    (the shape produced by macOS Finder's "Compress" on a folder);
+    `include_mac_junk` additionally writes a .DS_Store and a __MACOSX/
+    AppleDouble entry, matching what Finder actually produces.
     """
     columns = columns or DEFAULT_COLUMNS
     wb = openpyxl.Workbook()
@@ -36,12 +40,18 @@ def make_bundle(
     xlsx_buf = io.BytesIO()
     wb.save(xlsx_buf)
 
+    def _path(p):
+        return f"{wrapper_folder}/{p}" if wrapper_folder else p
+
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, "w") as zf:
         if include_xlsx:
-            zf.writestr(xlsx_name, xlsx_buf.getvalue())
+            zf.writestr(_path(xlsx_name), xlsx_buf.getvalue())
         for filename, content in (media_files or {}).items():
-            zf.writestr(f"{media_folder}/{filename}", content)
+            zf.writestr(_path(f"{media_folder}/{filename}"), content)
+        if include_mac_junk:
+            zf.writestr(_path(".DS_Store"), b"junk")
+            zf.writestr("__MACOSX/._quiz.xlsx", b"junk")
     zip_buf.seek(0)
     return zip_buf
 
@@ -267,6 +277,38 @@ def test_media_folder_matched_case_insensitively(media_folder):
     assert result.boards["1"][0].media == ["pic.jpg"]
 
 
+def test_tolerates_finder_wrapper_folder_and_mac_junk():
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+    ]
+    bundle = make_bundle(
+        rows, media_files={"pic.jpg": b"x"},
+        wrapper_folder="QuizMaster 3000", include_mac_junk=True,
+    )
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    assert result.boards["1"][0].media == ["pic.jpg"]
+
+
+def test_wrapper_folder_without_media_still_works():
+    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
+    bundle = make_bundle(rows, wrapper_folder="MyQuiz")
+    result = parse_bundle(bundle)
+    assert result.errors == []
+
+
+def test_mac_junk_does_not_produce_spurious_warning():
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+    ]
+    bundle = make_bundle(
+        rows, media_files={"pic.jpg": b"x"},
+        wrapper_folder="Quiz", include_mac_junk=True,
+    )
+    result = parse_bundle(bundle)
+    assert result.warnings == []
+
+
 def test_only_first_sheet_is_read():
     rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
     bundle = make_bundle(
@@ -312,6 +354,22 @@ def test_extract_media_noop_when_no_media_folder(tmp_path):
     extract_media(bundle, str(tmp_path))
 
     assert os.listdir(tmp_path) == []
+
+
+def test_extract_media_tolerates_finder_wrapper_folder(tmp_path):
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+    ]
+    bundle = make_bundle(
+        rows, media_files={"pic.jpg": b"pic-bytes"},
+        wrapper_folder="QuizMaster 3000", include_mac_junk=True,
+    )
+
+    extract_media(bundle, str(tmp_path))
+
+    assert (tmp_path / "pic.jpg").read_bytes() == b"pic-bytes"
+    assert not (tmp_path / ".DS_Store").exists()
+    assert os.listdir(tmp_path) == ["pic.jpg"]
 
 
 def test_extract_media_works_after_parse_bundle_already_consumed_the_stream(tmp_path):

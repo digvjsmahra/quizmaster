@@ -42,6 +42,7 @@ class Game:
         self.queue_locked: bool = False
         self.scores: dict[str, dict[str, float]] = {}
         self.closed_questions: set[str] = set()
+        self.live_question: dict | None = None
         self.media_dir: str | None = None
 
     def load_questions(self, questions: dict[str, list[BundleQuestion]]) -> None:
@@ -99,6 +100,53 @@ class Game:
         self.queue_locked = False
 
     # ------------------------------------------------------------------
+    # Reveal / answer / cancel (SPEC V3.md §4)
+    # ------------------------------------------------------------------
+
+    def question_reveal(self, question_id: str) -> None:
+        if question_id not in self._all_questions:
+            raise ValueError("Unknown question.")
+        if self.live_question and self.live_question["question_id"] != question_id:
+            raise ValueError("Another question is already live.")
+        reviewing = question_id in self.closed_questions
+        self.live_question = {
+            "question_id": question_id,
+            "status": "answer_shown" if reviewing else "revealed",
+            "reviewing": reviewing,
+        }
+
+    def answer_reveal(self) -> None:
+        if not self.live_question:
+            raise ValueError("No question is currently revealed.")
+        if self.live_question["status"] != "revealed":
+            raise ValueError("Answer can only be revealed from an active question reveal.")
+        self.live_question["status"] = "answer_shown"
+
+    def question_cancel(self) -> None:
+        if not self.live_question:
+            raise ValueError("No question is currently live.")
+        self.live_question = None
+        self.queue_reset()
+
+    def get_live_question_payload(self) -> dict:
+        if not self.live_question:
+            return {"live_question": None}
+        q = self._all_questions[self.live_question["question_id"]]
+        return {
+            "live_question": {
+                "question_id": q.id,
+                "board": q.board,
+                "category": q.category,
+                "value": q.value,
+                "question": q.question,
+                "answer": q.answer,
+                "media": q.media,
+                "status": self.live_question["status"],
+                "reviewing": self.live_question["reviewing"],
+            }
+        }
+
+    # ------------------------------------------------------------------
     # Scoring
     # ------------------------------------------------------------------
 
@@ -132,6 +180,10 @@ class Game:
             self.scores[pid][question_id] = float(value)
 
         self.closed_questions.add(question_id)
+
+        if self.live_question and self.live_question["question_id"] == question_id:
+            self.live_question = None
+        self.queue_reset()
 
     # ------------------------------------------------------------------
     # Derived state for broadcasts
@@ -240,4 +292,5 @@ class Game:
             "lobby_players": self.get_lobby_players(),
             "queue": self.get_queue_payload(),
             "scores": self.get_scores_payload(),
+            **self.get_live_question_payload(),
         }

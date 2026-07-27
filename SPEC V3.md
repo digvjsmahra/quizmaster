@@ -236,6 +236,18 @@ a reopened closed question (§4) rather than a fresh reveal — the
 presentation view uses it to show a "reviewing" badge instead of implying a
 new question is being asked.
 
+**B1 implementation note:** B1 (server-side state machine only, no
+presentation route/client yet) ships an interim, host-only
+`state:live_question` event carrying just `{live_question}` — not the full
+`{live_question, board, totals, queue}` shape above. There's no presentation
+client yet to design the full contract against, and embedding board/totals/
+queue here would create a second source of truth alongside the existing
+`state:scores`/`state:queue` broadcasts that every future scoring/queue
+change would need to remember to keep in sync. B2 decides the final
+`state:presentation` contract once an actual presentation view exists to
+build it against — defaulting to reusing `state:scores`/`state:queue` rather
+than duplicating them here, unless a concrete need for duplication turns up.
+
 Player-facing events are unchanged from V2.
 
 ## 7. QM authoring workflow (documented trade-offs)

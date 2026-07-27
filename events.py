@@ -124,6 +124,49 @@ def register(socketio, rooms):
         socketio.emit("state:queue", payload, to=f"players_{join_code}")
         socketio.emit("state:queue", payload, to=f"host_{join_code}")
 
+    @socketio.on("host:question_reveal")
+    def on_question_reveal(data):
+        join_code = _sid_room.get(request.sid)
+        room = rooms.get(join_code) if join_code else None
+        if not room:
+            return
+        question_id = (data or {}).get("question_id")
+        try:
+            room["game"].question_reveal(question_id)
+        except ValueError as e:
+            emit("error", {"message": str(e)})
+            return
+        socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+
+    @socketio.on("host:answer_reveal")
+    def on_answer_reveal():
+        join_code = _sid_room.get(request.sid)
+        room = rooms.get(join_code) if join_code else None
+        if not room:
+            return
+        try:
+            room["game"].answer_reveal()
+        except ValueError as e:
+            emit("error", {"message": str(e)})
+            return
+        socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+
+    @socketio.on("host:question_cancel")
+    def on_question_cancel():
+        join_code = _sid_room.get(request.sid)
+        room = rooms.get(join_code) if join_code else None
+        if not room:
+            return
+        try:
+            room["game"].question_cancel()
+        except ValueError as e:
+            emit("error", {"message": str(e)})
+            return
+        socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+        queue_payload = room["game"].get_queue_payload()
+        socketio.emit("state:queue", queue_payload, to=f"players_{join_code}")
+        socketio.emit("state:queue", queue_payload, to=f"host_{join_code}")
+
     @socketio.on("host:question_submit")
     def on_question_submit(data):
         join_code = _sid_room.get(request.sid)
@@ -145,4 +188,8 @@ def register(socketio, rooms):
                 pass
 
         room["game"].question_submit(question_id, scores)
-        emit("state:scores", room["game"].get_scores_payload())
+        socketio.emit("state:scores", room["game"].get_scores_payload(), to=f"host_{join_code}")
+        socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+        queue_payload = room["game"].get_queue_payload()
+        socketio.emit("state:queue", queue_payload, to=f"players_{join_code}")
+        socketio.emit("state:queue", queue_payload, to=f"host_{join_code}")

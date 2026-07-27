@@ -500,6 +500,187 @@ def test_state_full_includes_board_before_start_after_upload(room):
     host.disconnect()
 
 
+# ------------------------------------------------------------------
+# B1: question_reveal / answer_reveal / question_cancel state machine
+# ------------------------------------------------------------------
+
+def test_question_reveal_broadcasts_state_live_question_to_host(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    events_received = host.get_received()
+    live_event = next((e for e in events_received if e["name"] == "state:live_question"), None)
+    assert live_event is not None
+    assert live_event["args"][0]["live_question"]["question_id"] == "1:History:10"
+    assert live_event["args"][0]["live_question"]["status"] == "revealed"
+
+    host.disconnect()
+
+
+def test_question_reveal_rejects_second_different_question(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:20"})
+    events_received = host.get_received()
+    error_event = next((e for e in events_received if e["name"] == "error"), None)
+    assert error_event is not None
+    assert game.live_question["question_id"] == "1:History:10"
+
+    host.disconnect()
+
+
+def test_answer_reveal_broadcasts_updated_status(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+
+    host.emit("host:answer_reveal")
+    events_received = host.get_received()
+    live_event = next((e for e in events_received if e["name"] == "state:live_question"), None)
+    assert live_event is not None
+    assert live_event["args"][0]["live_question"]["status"] == "answer_shown"
+
+    host.disconnect()
+
+
+def test_question_cancel_broadcasts_cleared_live_question_and_queue(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()
+    host.get_received()
+
+    p1.emit("player:buzz")
+    host.get_received()
+    p1.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+
+    host.emit("host:question_cancel")
+    host_events = host.get_received()
+    live_event = next((e for e in host_events if e["name"] == "state:live_question"), None)
+    assert live_event is not None
+    assert live_event["args"][0]["live_question"] is None
+    queue_event = next((e for e in host_events if e["name"] == "state:queue"), None)
+    assert queue_event is not None
+    assert queue_event["args"][0]["queue"] == []
+
+    p1_events = p1.get_received()
+    p1_queue_event = next((e for e in p1_events if e["name"] == "state:queue"), None)
+    assert p1_queue_event is not None
+    assert p1_queue_event["args"][0]["queue"] == []
+
+    host.disconnect()
+    p1.disconnect()
+
+
+def test_question_submit_broadcasts_to_whole_host_room(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host1 = socketio.test_client(app)
+    host1.emit("host:join", {"room_id": join_code})
+    host1.get_received()
+
+    host2 = socketio.test_client(app)
+    host2.emit("host:join", {"room_id": join_code})
+    host2.get_received()
+
+    host1.emit("host:question_submit", {"question_id": "1:History:10", "scores": {}})
+
+    for client in (host1, host2):
+        events_received = client.get_received()
+        scores_event = next((e for e in events_received if e["name"] == "state:scores"), None)
+        assert scores_event is not None, "both host tabs should receive state:scores on submit"
+
+    host1.disconnect()
+    host2.disconnect()
+
+
+def test_question_submit_broadcasts_cleared_state_queue(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()
+    host.get_received()
+
+    p1.emit("player:buzz")
+    host.get_received()
+    p1.get_received()
+
+    host.emit("host:question_submit", {"question_id": "1:History:10", "scores": {}})
+    host_events = host.get_received()
+    queue_event = next((e for e in host_events if e["name"] == "state:queue"), None)
+    assert queue_event is not None
+    assert queue_event["args"][0]["queue"] == []
+    assert queue_event["args"][0]["locked"] is False
+
+    host.disconnect()
+    p1.disconnect()
+
+
+def test_player_never_receives_state_live_question(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    p1.get_received()
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+    host.emit("host:answer_reveal")
+    host.get_received()
+    host.emit("host:question_submit", {"question_id": "1:History:10", "scores": {}})
+    host.get_received()
+
+    p1_events = p1.get_received()
+    assert not any(e["name"] == "state:live_question" for e in p1_events)
+    for e in p1_events:
+        for arg in e["args"]:
+            _assert_no_content_leak(arg)
+
+    host.disconnect()
+    p1.disconnect()
+
+
 def test_player_payloads_never_leak_question_or_answer(room):
     # Safety regression: golden rule 4 / SPEC V3.md §1 now carries real
     # teeth since state:scores' cell payloads include question/answer/media.

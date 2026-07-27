@@ -321,6 +321,153 @@ def test_question_submit_marks_closed():
 
 
 # ------------------------------------------------------------------
+# question_reveal / answer_reveal / question_cancel
+# ------------------------------------------------------------------
+
+def test_question_reveal_sets_revealed_on_unplayed_question():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    assert g.live_question == {
+        "question_id": "1:History:10",
+        "status": "revealed",
+        "reviewing": False,
+    }
+
+
+def test_question_reveal_on_closed_question_reopens_as_reviewing():
+    g, pid1, _ = _started_game()
+    g.question_submit("1:History:10", {pid1: 10.0})
+    g.question_reveal("1:History:10")
+    assert g.live_question == {
+        "question_id": "1:History:10",
+        "status": "answer_shown",
+        "reviewing": True,
+    }
+
+
+def test_question_reveal_rejects_unknown_question():
+    g, _, _ = _started_game()
+    with pytest.raises(ValueError):
+        g.question_reveal("nonexistent")
+
+
+def test_question_reveal_rejects_different_question_while_one_is_live():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    with pytest.raises(ValueError):
+        g.question_reveal("1:History:20")
+    assert g.live_question["question_id"] == "1:History:10"
+
+
+def test_question_reveal_same_question_again_is_idempotent():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.question_reveal("1:History:10")  # must not raise
+    assert g.live_question["question_id"] == "1:History:10"
+
+
+def test_answer_reveal_moves_revealed_to_answer_shown():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.answer_reveal()
+    assert g.live_question["status"] == "answer_shown"
+
+
+def test_answer_reveal_rejects_when_nothing_live():
+    g, _, _ = _started_game()
+    with pytest.raises(ValueError):
+        g.answer_reveal()
+
+
+def test_answer_reveal_rejects_when_already_answer_shown():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.answer_reveal()
+    with pytest.raises(ValueError):
+        g.answer_reveal()
+
+
+def test_question_cancel_clears_live_question_and_unlocks_queue():
+    g, pid1, _ = _started_game()
+    g.player_buzz(pid1)
+    g.queue_freeze()
+    g.question_reveal("1:History:10")
+    g.question_cancel()
+    assert g.live_question is None
+    assert g.queue == []
+    assert g.queue_locked is False
+
+
+def test_question_cancel_rejects_when_nothing_live():
+    g, _, _ = _started_game()
+    with pytest.raises(ValueError):
+        g.question_cancel()
+
+
+def test_question_cancel_on_reopened_question_leaves_score_unchanged():
+    g, pid1, _ = _started_game()
+    g.question_submit("1:History:10", {pid1: 10.0})
+    g.question_reveal("1:History:10")  # reopen
+    g.question_cancel()
+    assert g.live_question is None
+    assert "1:History:10" in g.closed_questions
+    assert g.scores[pid1]["1:History:10"] == 10.0
+
+
+def test_question_submit_clears_matching_live_question():
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.question_submit("1:History:10", {pid1: 10.0})
+    assert g.live_question is None
+
+
+def test_question_submit_leaves_unrelated_live_question_untouched():
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.question_submit("1:Science:10", {pid1: 10.0})
+    assert g.live_question is not None
+    assert g.live_question["question_id"] == "1:History:10"
+
+
+def test_question_submit_on_reopened_question_clears_live_question():
+    g, pid1, _ = _started_game()
+    g.question_submit("1:History:10", {pid1: 10.0})
+    g.question_reveal("1:History:10")  # reopen for correction
+    g.question_submit("1:History:10", {pid1: 5.0})
+    assert g.live_question is None
+    assert g.scores[pid1]["1:History:10"] == 5.0
+
+
+def test_question_submit_always_clears_and_unlocks_queue():
+    g, pid1, pid2 = _started_game()
+    g.player_buzz(pid1)
+    g.queue_freeze()
+    g.question_submit("1:History:10", {pid2: 10.0})  # no reveal involved at all
+    assert g.queue == []
+    assert g.queue_locked is False
+
+
+def test_get_live_question_payload_none_when_nothing_live():
+    g, _, _ = _started_game()
+    assert g.get_live_question_payload() == {"live_question": None}
+
+
+def test_get_live_question_payload_shape_when_live():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    payload = g.get_live_question_payload()["live_question"]
+    assert payload["question_id"] == "1:History:10"
+    assert payload["board"] == "1"
+    assert payload["category"] == "History"
+    assert payload["value"] == 10
+    assert payload["question"] == "Q for 1:History:10"
+    assert payload["answer"] == "A for 1:History:10"
+    assert payload["media"] == []
+    assert payload["status"] == "revealed"
+    assert payload["reviewing"] is False
+
+
+# ------------------------------------------------------------------
 # Cell state derivation
 # ------------------------------------------------------------------
 

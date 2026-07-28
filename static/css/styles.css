@@ -331,6 +331,19 @@ body {
 .host-header h1 { font-size: 17px; font-weight: 700; margin: 0; }
 .host-header .subtitle { font-size: 12px; color: var(--color-text-faint); margin: 2px 0 0; }
 
+.host-header-actions { display: flex; align-items: center; gap: 10px; }
+.present-link {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.present-link:hover { background: var(--color-primary-light); }
+
 .phase-badge {
   font-size: 12px;
   font-weight: 600;
@@ -613,6 +626,20 @@ body {
 
 .panel-hint { text-align: center; font-size: 12px; color: var(--color-text-faint); margin-top: 8px; }
 
+.btn-cancel-reveal {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--color-surface);
+  color: var(--color-danger);
+  border: 1.5px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-cancel-reveal:hover { background: var(--color-border-subtle); }
+
 /* Pre-Start Q&A peek (reuses .scoring-panel/.panel-header/.panel-title) */
 .peek-question { font-size: 16px; font-weight: 600; margin-bottom: 12px; line-height: 1.4; }
 .peek-media { max-width: 100%; border-radius: var(--radius-md); margin-bottom: 12px; display: block; }
@@ -707,6 +734,102 @@ body {
   white-space: nowrap;
 }
 .btn-add-player:hover { background: var(--color-border); }
+
+/* ------------------------------------------------------------------ */
+/* Presentation view                                                    */
+/* ------------------------------------------------------------------ */
+.present-wrap {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding: 16px;
+}
+
+.present-header { text-align: center; margin-bottom: 16px; }
+.present-board-label { font-size: 18px; font-weight: 700; color: var(--color-text); }
+
+.present-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.present-stage {
+  flex: 1;
+  min-width: 0;
+  aspect-ratio: 16 / 9;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.present-board-slide { height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
+.present-board-slide .board-grid-wrap { box-shadow: none; padding: 0; background: transparent; width: 100%; }
+
+.present-question-slide {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.reviewing-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.present-question-text {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  max-width: 90%;
+}
+
+.present-question-media {
+  max-width: 80%;
+  max-height: 40%;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.present-media { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--radius-md); }
+
+.present-answer {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-success-strong-text);
+  max-width: 90%;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity .4s ease, max-height .4s ease;
+}
+.present-answer.answer-shown { opacity: 1; max-height: 200px; }
+
+.present-sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+
+@media (max-width: 900px) {
+  .present-layout { flex-direction: column; }
+  .present-sidebar { width: 100%; }
+}
 
 /* ------------------------------------------------------------------ */
 /* Responsive — mobile + tablet (≤ 1024px)                             */

@@ -179,6 +179,19 @@ Unplayed ──(host:question_reveal)──► Revealed ──(host:answer_revea
   Awarded or Passed, tile grays on both views, presentation returns to the
   board. Works identically whether this is the first close or a reopened
   correction's resubmit — `question_submit` already overwrites atomically.
+  **Hard-gated** (B2): `question_submit` is rejected unless the question is
+  currently live *and* `answer_shown` — matching the diagram above, where
+  score+close only ever originates from AnswerShown or Reviewing, never
+  directly from Revealed. (B1 shipped this ungated, deferred deliberately
+  until B2 built the only UI that could ever drive a reveal in the first
+  place — see `CLAUDE.md`'s B1 note.)
+- **Board navigation is locked while a question is live** (B2): the control
+  center's prev/next board controls are disabled for any `live_question`
+  state (Revealed, AnswerShown, or Reviewing) — the QM must `question_cancel`
+  or close the question before switching boards. This is what keeps the
+  presentation view's board unambiguous (§5): it can always be derived from
+  wherever `live_question` is, since the host is provably not looking
+  anywhere else while one is live.
 - Manual queue **freeze/reset controls remain** as overrides (e.g. freeze
   after the first buzz burst mid-question).
 
@@ -203,16 +216,36 @@ after `answer_reveal`. Player sockets never see it.
 
 - Route: `/present/<join_code>/<host_token>` (same per-room host token as the
   control center — no `HOST_SECRET` env var). Not linked from any
-  player-reachable page.
+  player-reachable page. Opened manually by the QM (a plain link in the
+  control center header) — not auto-opened on Start, so there's time to set
+  up Zoom screen-share calmly beforehand; opening it at any point always
+  bootstraps full current state, so there's no wrong moment to open it.
 - Read-only, socket-driven; the QM never interacts with it. Intended use:
   second browser window on the QM's screen, and **that window** (not the full
   screen) is what's shared on Zoom.
-- Shows: board grid with live tile states (unplayed / grayed), the revealed
-  question (text + image), the answer once revealed, running score totals, and
-  the live buzz queue. Never shows: unrevealed answers, scoring controls,
-  upload UI.
-- Board grid updating on question close replaces the PPT "gray out the slide"
-  step entirely.
+- **Layout: a fixed-size stage plus a persistent sidebar.** The stage is one
+  fixed-aspect-ratio box (16:9) that never resizes, showing exactly one of:
+  - *Board slide* (resting state, nothing live): the board grid with live
+    tile states (unplayed / awarded-with-names / passed).
+  - *Question slide* (something's live): the question (text + image), with
+    the answer fading in below it — via a CSS transition inside the same
+    box, not a hard cut or a full slide swap — once `answer_reveal` fires.
+    Reopening a closed question (`reviewing`) renders straight into this
+    same layout with question+answer already together, no phasing, marked
+    with a "reviewing" badge.
+
+    The board shown is always `live_question`'s board when something's
+    live; otherwise it's whatever the QM last navigated to via the control
+    center's board-select controls (`host:board_select`, §6) — never both,
+    and never ambiguous, since board navigation is locked while a question
+    is live (§4).
+  - The stage never shows scoring controls or upload UI, and never shows an
+    unrevealed answer.
+  - Board grid updating on question close replaces the PPT "gray out the
+    slide" step entirely.
+  - Sidebar (outside the stage, always visible, independent of whatever's
+    on stage): running score totals (a live leaderboard) and the live buzz
+    queue.
 
 ## 6. Real-time protocol delta
 
@@ -222,31 +255,34 @@ New client → server (host-authenticated socket only):
 | `host:question_reveal` | `{ question_id }`  |
 | `host:answer_reveal`   | `{}`               |
 | `host:question_cancel` | `{}`               |
+| `host:board_select`    | `{ board_index }`  |
 
-New server → client (host + presentation rooms only, never players):
-| event                | payload                                                        |
-|----------------------|----------------------------------------------------------------|
-| `state:presentation` | `{ live_question: {id, text, media_urls, answer?, phase, reviewing} \| null, board, totals, queue }` |
+`host:board_select` (B2) changes which board the control center — and, by
+extension, the presentation view when nothing's live — is showing. Rejected
+if a question is currently live (§4's navigation lock) or the index is out
+of range.
 
-`answer` is included only when `phase == answer_shown` for the presentation
-room; the host room receives it from `phase == revealed`. (Alternatively two
-tailored emits — implementer's choice, but the presentation room must never
-receive an unrevealed answer.) `reviewing` is `true` when `live_question` is
-a reopened closed question (§4) rather than a fresh reveal — the
-presentation view uses it to show a "reviewing" badge instead of implying a
-new question is being asked.
+Host-only (B1): `state:live_question`, `{ live_question: {question_id,
+board, category, value, question, answer, media, status, reviewing} |
+null }`. Broadcast to the host room only. `answer` is always included once
+`live_question` is set — the QM's private judging aid, visible from the
+moment of reveal regardless of presentation-facing phasing.
 
-**B1 implementation note:** B1 (server-side state machine only, no
-presentation route/client yet) ships an interim, host-only
-`state:live_question` event carrying just `{live_question}` — not the full
-`{live_question, board, totals, queue}` shape above. There's no presentation
-client yet to design the full contract against, and embedding board/totals/
-queue here would create a second source of truth alongside the existing
-`state:scores`/`state:queue` broadcasts that every future scoring/queue
-change would need to remember to keep in sync. B2 decides the final
-`state:presentation` contract once an actual presentation view exists to
-build it against — defaulting to reusing `state:scores`/`state:queue` rather
-than duplicating them here, unless a concrete need for duplication turns up.
+Presentation-room-only (B2): `state:presentation`, `{ board_name,
+board_index, board_count, board, totals, live_question }`. `board` is a
+redacted grid (`value`/`state`/`entries` per cell — no `question`/`answer`/
+`media`, unlike the host's `state:scores`) for whichever board is current
+(§5). `live_question` mirrors `state:live_question`'s shape minus `board`/
+`category`/`value`, with `answer` included **only** when
+`status == "answer_shown"` — the presentation room must never receive an
+unrevealed answer. **No `queue` field** — the presentation room also
+receives the existing `state:queue` broadcast directly (same event, same
+payload, no redaction needed — queue entries never carried question/answer
+content), rather than duplicating queue data inside `state:presentation`.
+This deliberately diverges from embedding `queue` in one bundled payload:
+avoids a second source of truth for board/totals-adjacent data that every
+future scoring/queue-touching event would otherwise need to remember to
+keep in sync inside `state:presentation` too.
 
 Player-facing events are unchanged from V2.
 

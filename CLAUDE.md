@@ -39,16 +39,16 @@ bundle_loader.py  # V3 zip/xlsx bundle parser + validation + media extraction (S
 templates/
   create.html     # landing page — join by code or create a new room
   player.html     # waiting → buzzer → queue-position (single page, JS-driven)
-  host.html       # control center: board scorecard + queue + totals
+  host.html       # control center: board scorecard + reveal panel + queue + totals
+  present.html    # read-only presentation view (SPEC V3.md §5) — stage + sidebar, no interaction
 static/
   js/create.js    # OTP input logic, code validation, redirect
   js/player.js
-  js/host.js
-  css/styles.css
+  js/host.js      # includes the reveal-flow rewire (question_reveal/answer_reveal/question_cancel/board_select)
+  js/present.js   # pure rendering — state:presentation + state:queue, no emits beyond present:join
+  css/styles.css  # :root token block (colors/radii/shadows) + all page styles
 requirements.txt
 ```
-
-V3 will still add `present.html` and `static/js/present.js` — not yet present; see `SPEC V3.md` when B1/B2 land.
 
 ## Configuration
 

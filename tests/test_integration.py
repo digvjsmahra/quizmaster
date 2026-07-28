@@ -612,6 +612,13 @@ def test_question_submit_broadcasts_to_whole_host_room(room):
     host2.emit("host:join", {"room_id": join_code})
     host2.get_received()
 
+    host1.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host1.get_received()
+    host2.get_received()
+    host1.emit("host:answer_reveal")
+    host1.get_received()
+    host2.get_received()
+
     host1.emit("host:question_submit", {"question_id": "1:History:10", "scores": {}})
 
     for client in (host1, host2):
@@ -639,6 +646,11 @@ def test_question_submit_broadcasts_cleared_state_queue(room):
     p1.emit("player:buzz")
     host.get_received()
     p1.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+    host.emit("host:answer_reveal")
+    host.get_received()
 
     host.emit("host:question_submit", {"question_id": "1:History:10", "scores": {}})
     host_events = host.get_received()
@@ -707,3 +719,161 @@ def test_player_payloads_never_leak_question_or_answer(room):
 
     host.disconnect()
     p1.disconnect()
+
+
+# ------------------------------------------------------------------
+# B2: presentation view + board_select
+# ------------------------------------------------------------------
+
+def test_present_join_bootstraps_state_presentation_and_queue(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    present = socketio.test_client(app)
+    present.emit("present:join", {"room_id": join_code})
+    events_received = present.get_received()
+
+    presentation_event = next((e for e in events_received if e["name"] == "state:presentation"), None)
+    assert presentation_event is not None
+    assert presentation_event["args"][0]["board_name"] == "1"
+
+    queue_event = next((e for e in events_received if e["name"] == "state:queue"), None)
+    assert queue_event is not None
+
+    present.disconnect()
+
+
+def test_presentation_board_never_leaks_question_or_answer(room):
+    # Redaction regression, mirrors test_player_payloads_never_leak_question_or_answer
+    # but scoped to state:presentation's "board" field — live_question
+    # legitimately carries question/answer/media once revealed, so the
+    # blanket _assert_no_content_leak helper can't apply to the whole payload.
+    join_code, game, _ = room
+    game.start_quiz()
+
+    present = socketio.test_client(app)
+    present.emit("present:join", {"room_id": join_code})
+    all_events = present.get_received()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+    all_events += present.get_received()
+
+    host.emit("host:answer_reveal")
+    host.get_received()
+    all_events += present.get_received()
+
+    host.emit("host:question_submit", {"question_id": "1:History:10", "scores": {}})
+    host.get_received()
+    all_events += present.get_received()
+
+    presentation_events = [e for e in all_events if e["name"] == "state:presentation"]
+    assert presentation_events, "expected at least one state:presentation broadcast"
+    for e in presentation_events:
+        board = e["args"][0].get("board", {})
+        for category_cells in board.values():
+            for cell in category_cells.values():
+                assert "question" not in cell
+                assert "answer" not in cell
+                assert "media" not in cell
+
+    host.disconnect()
+    present.disconnect()
+
+
+def test_presentation_never_receives_answer_until_answer_reveal(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    present = socketio.test_client(app)
+    present.emit("present:join", {"room_id": join_code})
+    present.get_received()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+    presentation_event = next(e for e in present.get_received() if e["name"] == "state:presentation")
+    assert "answer" not in presentation_event["args"][0]["live_question"]
+    assert presentation_event["args"][0]["live_question"]["status"] == "revealed"
+
+    host.emit("host:answer_reveal")
+    host.get_received()
+    presentation_event = next(e for e in present.get_received() if e["name"] == "state:presentation")
+    assert presentation_event["args"][0]["live_question"]["answer"] == "A for 1:History:10"
+    assert presentation_event["args"][0]["live_question"]["status"] == "answer_shown"
+
+    host.disconnect()
+    present.disconnect()
+
+
+def test_question_submit_hard_gate_rejection_over_socket(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    # No reveal at all — submit must be rejected by the hard gate.
+    host.emit("host:question_submit", {"question_id": "1:History:10", "scores": {}})
+    events_received = host.get_received()
+    error_event = next((e for e in events_received if e["name"] == "error"), None)
+    assert error_event is not None
+    assert error_event["args"][0]["context"] == "question_submit"
+    assert "1:History:10" not in game.closed_questions
+
+    host.disconnect()
+
+
+def test_board_select_broadcasts_to_presentation_room(room):
+    join_code, game, _ = room
+    boards = {
+        "1": [BundleQuestion(id="1:History:10", board="1", category="History", value=10, question="Q1", answer="A1", media=[])],
+        "2": [BundleQuestion(id="2:Movies:10", board="2", category="Movies", value=10, question="Q2", answer="A2", media=[])],
+    }
+    game.load_questions(boards)
+    game.start_quiz()
+
+    present = socketio.test_client(app)
+    present.emit("present:join", {"room_id": join_code})
+    present.get_received()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:board_select", {"board_index": 1})
+    host.get_received()
+    presentation_event = next(e for e in present.get_received() if e["name"] == "state:presentation")
+    assert presentation_event["args"][0]["board_name"] == "2"
+    assert game.current_board_index == 1
+
+    host.disconnect()
+    present.disconnect()
+
+
+def test_board_select_rejected_while_question_live(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+
+    host.emit("host:board_select", {"board_index": 0})
+    events_received = host.get_received()
+    error_event = next((e for e in events_received if e["name"] == "error"), None)
+    assert error_event is not None
+    assert error_event["args"][0]["context"] == "board_select"
+
+    host.disconnect()

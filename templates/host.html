@@ -15,7 +15,10 @@
       <h1>QM Control Center</h1>
       <div class="subtitle" id="header-subtitle"></div>
     </div>
-    <span id="phase-badge" class="phase-badge lobby">⏱ lobby</span>
+    <div class="host-header-actions">
+      <a href="/present/{{ join_code }}/{{ host_token }}" target="_blank" rel="noopener" class="present-link">🖥 Open presentation view →</a>
+      <span id="phase-badge" class="phase-badge lobby">⏱ lobby</span>
+    </div>
   </header>
 
   <!-- ============================================================ -->
@@ -85,6 +88,7 @@
       </div>
 
       <p class="board-preview-hint hidden" id="board-preview-hint">👇 Click a tile to preview its question and answer before you start</p>
+      <p class="error-msg hidden" id="reveal-error"></p>
 
       <!-- Board grid -->
       <div class="board-grid-wrap">

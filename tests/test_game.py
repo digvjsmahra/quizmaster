@@ -272,28 +272,40 @@ def _started_game():
     return g, pid1, pid2
 
 
+def _score(g, qid, scores):
+    """Drives a question through reveal -> answer_reveal -> submit, since
+    question_submit now hard-gates on status == "answer_shown" (B2). A
+    reopen (already-closed question) starts at answer_shown already, so
+    answer_reveal is skipped in that case.
+    """
+    g.question_reveal(qid)
+    if g.live_question["status"] != "answer_shown":
+        g.answer_reveal()
+    g.question_submit(qid, scores)
+
+
 def test_question_submit_stores_values():
     g, pid1, pid2 = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0, pid2: -10.0})
+    _score(g, "1:History:10", {pid1: 10.0, pid2: -10.0})
     assert g.scores[pid1]["1:History:10"] == 10.0
     assert g.scores[pid2]["1:History:10"] == -10.0
 
 
 def test_question_submit_stores_decimal():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {pid1: 12.5})
+    _score(g, "1:History:10", {pid1: 12.5})
     assert g.scores[pid1]["1:History:10"] == 12.5
 
 
 def test_question_submit_blank_rows_skipped():
     g, pid1, pid2 = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0})
+    _score(g, "1:History:10", {pid1: 10.0})
     assert "1:History:10" not in g.scores.get(pid2, {})
 
 
 def test_question_submit_all_blank_is_passed():
     g, _, _ = _started_game()
-    g.question_submit("1:History:10", {})
+    _score(g, "1:History:10", {})
     assert "1:History:10" in g.closed_questions
     cell = g._cell_state("1:History:10")
     assert cell["state"] == "passed"
@@ -301,22 +313,22 @@ def test_question_submit_all_blank_is_passed():
 
 def test_question_submit_overwrites_prior_entries():
     g, pid1, pid2 = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0, pid2: -10.0})
-    g.question_submit("1:History:10", {pid1: 5.0})
+    _score(g, "1:History:10", {pid1: 10.0, pid2: -10.0})
+    _score(g, "1:History:10", {pid1: 5.0})  # reopen + resubmit
     assert g.scores[pid1]["1:History:10"] == 5.0
     assert "1:History:10" not in g.scores.get(pid2, {})
 
 
 def test_question_submit_ignores_non_roster_players():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {"nonexistent": 99.0, pid1: 10.0})
+    _score(g, "1:History:10", {"nonexistent": 99.0, pid1: 10.0})
     assert "nonexistent" not in g.scores
     assert g.scores[pid1]["1:History:10"] == 10.0
 
 
 def test_question_submit_marks_closed():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0})
+    _score(g, "1:History:10", {pid1: 10.0})
     assert "1:History:10" in g.closed_questions
 
 
@@ -336,7 +348,7 @@ def test_question_reveal_sets_revealed_on_unplayed_question():
 
 def test_question_reveal_on_closed_question_reopens_as_reviewing():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0})
+    _score(g, "1:History:10", {pid1: 10.0})
     g.question_reveal("1:History:10")
     assert g.live_question == {
         "question_id": "1:History:10",
@@ -406,7 +418,7 @@ def test_question_cancel_rejects_when_nothing_live():
 
 def test_question_cancel_on_reopened_question_leaves_score_unchanged():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0})
+    _score(g, "1:History:10", {pid1: 10.0})
     g.question_reveal("1:History:10")  # reopen
     g.question_cancel()
     assert g.live_question is None
@@ -417,21 +429,26 @@ def test_question_cancel_on_reopened_question_leaves_score_unchanged():
 def test_question_submit_clears_matching_live_question():
     g, pid1, _ = _started_game()
     g.question_reveal("1:History:10")
+    g.answer_reveal()
     g.question_submit("1:History:10", {pid1: 10.0})
     assert g.live_question is None
 
 
-def test_question_submit_leaves_unrelated_live_question_untouched():
+def test_question_submit_rejects_mismatched_question_id():
+    # Hard gate (B2): can't submit a question that isn't the currently
+    # live+answer-shown one — a different reveal must be live or none at all.
     g, pid1, _ = _started_game()
     g.question_reveal("1:History:10")
-    g.question_submit("1:Science:10", {pid1: 10.0})
+    g.answer_reveal()
+    with pytest.raises(ValueError):
+        g.question_submit("1:Science:10", {pid1: 10.0})
     assert g.live_question is not None
     assert g.live_question["question_id"] == "1:History:10"
 
 
 def test_question_submit_on_reopened_question_clears_live_question():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0})
+    _score(g, "1:History:10", {pid1: 10.0})
     g.question_reveal("1:History:10")  # reopen for correction
     g.question_submit("1:History:10", {pid1: 5.0})
     assert g.live_question is None
@@ -442,9 +459,96 @@ def test_question_submit_always_clears_and_unlocks_queue():
     g, pid1, pid2 = _started_game()
     g.player_buzz(pid1)
     g.queue_freeze()
-    g.question_submit("1:History:10", {pid2: 10.0})  # no reveal involved at all
+    _score(g, "1:History:10", {pid2: 10.0})
     assert g.queue == []
     assert g.queue_locked is False
+
+
+def test_question_submit_rejects_when_nothing_live():
+    g, pid1, _ = _started_game()
+    with pytest.raises(ValueError):
+        g.question_submit("1:History:10", {pid1: 10.0})
+
+
+def test_question_submit_rejects_when_still_revealed_not_answer_shown():
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    with pytest.raises(ValueError):
+        g.question_submit("1:History:10", {pid1: 10.0})
+
+
+def test_select_board_switches_current_board_index():
+    g, _, _ = _started_game()
+    g.select_board(1)
+    assert g.current_board_index == 1
+
+
+def test_select_board_rejects_out_of_range():
+    g, _, _ = _started_game()
+    with pytest.raises(ValueError):
+        g.select_board(99)
+    with pytest.raises(ValueError):
+        g.select_board(-1)
+
+
+def test_select_board_rejects_while_question_live():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    with pytest.raises(ValueError):
+        g.select_board(1)
+    assert g.current_board_index == 0
+
+
+def test_get_presentation_payload_board_none_when_no_boards_loaded():
+    g = Game()
+    payload = g.get_presentation_payload()
+    assert payload["board_name"] is None
+    assert payload["board"] == {}
+    assert payload["totals"] == []
+    assert payload["live_question"] is None
+
+
+def test_get_presentation_payload_uses_current_board_index_when_nothing_live():
+    g, _, _ = _started_game()
+    g.select_board(1)
+    payload = g.get_presentation_payload()
+    assert payload["board_name"] == "2"
+    assert payload["board_index"] == 1
+    assert payload["board_count"] == 2
+
+
+def test_get_presentation_payload_uses_live_question_board_when_live():
+    g, _, _ = _started_game()
+    g.select_board(1)  # browsing board "2"
+    g.question_reveal("1:History:10")  # but this reopens/reveals a board "1" question
+    payload = g.get_presentation_payload()
+    assert payload["board_name"] == "1"
+    assert payload["board_index"] == 0
+
+
+def test_get_presentation_payload_board_cells_never_leak_question_answer_media():
+    g, pid1, _ = _started_game()
+    _score(g, "1:History:10", {pid1: 10.0})
+    payload = g.get_presentation_payload()
+    for category_cells in payload["board"].values():
+        for cell in category_cells.values():
+            assert "question" not in cell
+            assert "answer" not in cell
+            assert "media" not in cell
+            assert set(cell.keys()) == {"value", "state", "entries"}
+
+
+def test_get_presentation_payload_live_question_answer_gated_on_status():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    payload = g.get_presentation_payload()
+    assert "answer" not in payload["live_question"]
+    assert payload["live_question"]["status"] == "revealed"
+
+    g.answer_reveal()
+    payload = g.get_presentation_payload()
+    assert payload["live_question"]["answer"] == "A for 1:History:10"
+    assert payload["live_question"]["status"] == "answer_shown"
 
 
 def test_get_live_question_payload_none_when_nothing_live():
@@ -490,7 +594,7 @@ def test_cell_state_includes_question_answer_media():
 
 def test_cell_state_awarded_positive():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0})
+    _score(g, "1:History:10", {pid1: 10.0})
     cell = g._cell_state("1:History:10")
     assert cell["state"] == "awarded"
     assert cell["entries"][0]["value"] == 10.0
@@ -498,14 +602,14 @@ def test_cell_state_awarded_positive():
 
 def test_cell_state_awarded_negative_only():
     g, pid1, _ = _started_game()
-    g.question_submit("1:History:10", {pid1: -10.0})
+    _score(g, "1:History:10", {pid1: -10.0})
     cell = g._cell_state("1:History:10")
     assert cell["state"] == "awarded"
 
 
 def test_cell_state_passed():
     g, _, _ = _started_game()
-    g.question_submit("1:History:10", {})
+    _score(g, "1:History:10", {})
     cell = g._cell_state("1:History:10")
     assert cell["state"] == "passed"
 
@@ -516,8 +620,8 @@ def test_cell_state_passed():
 
 def test_board_totals_correct():
     g, pid1, pid2 = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0})
-    g.question_submit("1:History:20", {pid1: 20.0, pid2: -20.0})
+    _score(g, "1:History:10", {pid1: 10.0})
+    _score(g, "1:History:20", {pid1: 20.0, pid2: -20.0})
     payload = g.get_scores_payload()
     board1_totals = {r["player_id"]: r for r in payload["per_board_totals"]["1"]}
     assert board1_totals[pid1]["board_total"] == 30.0
@@ -528,8 +632,8 @@ def test_cumulative_totals_span_all_boards():
     g = make_game()
     pid1, _ = g.player_join("Ankur")
     g.start_quiz()
-    g.question_submit("1:History:10", {pid1: 10.0})
-    g.question_submit("2:Movies:10", {pid1: 20.0})
+    _score(g, "1:History:10", {pid1: 10.0})
+    _score(g, "2:Movies:10", {pid1: 20.0})
     payload = g.get_scores_payload()
     board1 = {r["player_id"]: r for r in payload["per_board_totals"]["1"]}
     assert board1[pid1]["board_total"] == 10.0
@@ -538,7 +642,7 @@ def test_cumulative_totals_span_all_boards():
 
 def test_board_totals_sorted_descending():
     g, pid1, pid2 = _started_game()
-    g.question_submit("1:History:10", {pid1: 10.0, pid2: 30.0})
+    _score(g, "1:History:10", {pid1: 10.0, pid2: 30.0})
     payload = g.get_scores_payload()
     rows = payload["per_board_totals"]["1"]
     assert rows[0]["player_id"] == pid2
@@ -547,7 +651,7 @@ def test_board_totals_sorted_descending():
 
 def test_split_value_award():
     g, pid1, pid2 = _started_game()
-    g.question_submit("1:History:20", {pid1: 10.0, pid2: 10.0})
+    _score(g, "1:History:20", {pid1: 10.0, pid2: 10.0})
     payload = g.get_scores_payload()
     board1 = {r["player_id"]: r for r in payload["per_board_totals"]["1"]}
     assert board1[pid1]["board_total"] == 10.0

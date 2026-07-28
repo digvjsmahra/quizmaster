@@ -11,7 +11,8 @@
     boards: [],          // ordered board ids from server
     currentBoardIdx: 0,
     scoresData: null,    // latest scores payload from server
-    activeCellId: null,  // question_id of currently open scoring panel
+    activeCellId: null,  // question_id of the currently open pre-Start peek (live phase uses liveQuestion instead)
+    liveQuestion: null,  // server-confirmed reveal state (B1's state:live_question), or null
   };
 
   // ----------------------------------------------------------------
@@ -129,7 +130,12 @@
           cell.textContent = '~passed~';
         }
 
-        if (state.activeCellId === qid) {
+        // Live phase: highlight whatever the server confirms is live.
+        // Pre-Start: highlight the locally-toggled peek cell.
+        const isActive = state.phase === 'live'
+          ? (state.liveQuestion && state.liveQuestion.question_id === qid)
+          : (state.activeCellId === qid);
+        if (isActive) {
           cell.classList.add('cell-scoring');
         }
 
@@ -140,8 +146,12 @@
 
     // Board nav
     el('board-label').textContent = `Board ${state.currentBoardIdx + 1} of ${state.boards.length}`;
-    el('btn-prev').disabled = state.currentBoardIdx === 0;
-    el('btn-next').disabled = state.currentBoardIdx === state.boards.length - 1;
+    // Locked while a question is live — the host must cancel/close it
+    // before navigating away (keeps the presentation view's board
+    // unambiguous: it's always wherever the live question is).
+    const navLocked = !!state.liveQuestion;
+    el('btn-prev').disabled = state.currentBoardIdx === 0 || navLocked;
+    el('btn-next').disabled = state.currentBoardIdx === state.boards.length - 1 || navLocked;
 
     // Update totals for this board
     renderTotals(board);
@@ -194,11 +204,23 @@
   }
 
   // ----------------------------------------------------------------
-  // Cell click + scoring panel
+  // Cell click — pre-Start peek vs. live reveal flow
   // ----------------------------------------------------------------
   function onCellClick(qid, board, cat, val) {
+    if (state.phase === 'live') {
+      if (state.liveQuestion && state.liveQuestion.question_id === qid) {
+        confirmCancelReveal();
+      } else {
+        socket.emit('host:question_reveal', { question_id: qid });
+      }
+      return;
+    }
+
+    // Pre-Start: read-only Q&A preview, not the scoring panel — the
+    // roster doesn't exist yet (populated by start_quiz()), so a
+    // scoring panel here would just show zero player rows. Purely a
+    // local toggle — no server round-trip needed for a preview.
     if (state.activeCellId === qid) {
-      // Toggle off — dismiss without saving
       state.activeCellId = null;
       renderBoard();
       hideScoringPanel();
@@ -206,14 +228,7 @@
     }
     state.activeCellId = qid;
     renderBoard();
-    if (state.phase === 'live') {
-      showScoringPanel(qid, board, cat, val);
-    } else {
-      // Pre-Start: read-only Q&A preview, not the scoring panel — the
-      // roster doesn't exist yet (populated by start_quiz()), so a
-      // scoring panel here would just show zero player rows.
-      showQuestionPeek(qid, board, cat, val);
-    }
+    showQuestionPeek(qid, board, cat, val);
   }
 
   function showQuestionPeek(qid, board, cat, val) {
@@ -237,52 +252,83 @@
     panel.classList.remove('hidden');
   }
 
-  function showScoringPanel(qid, board, cat, val) {
+  // ----------------------------------------------------------------
+  // Live reveal panel — question always shown, answer host-private
+  // from the moment of reveal, scoring rows once answer_shown
+  // ----------------------------------------------------------------
+  function showRevealPanel(live) {
     const panel = el('scoring-panel');
-    const roster = (state.scoresData && state.scoresData.roster) || [];
 
-    // Existing scores for this cell
-    const existing = {};
-    const grid = state.scoresData && state.scoresData.grid[board];
-    const cellData = grid && grid[cat] && grid[cat][String(val)];
-    if (cellData && cellData.entries) {
-      cellData.entries.forEach(e => { existing[e.player_id] = e.value; });
-    }
+    const mediaHtml = (live.media || [])
+      .map(fn => `<img class="peek-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
+      .join('');
 
-    const rows = roster.map(({ player_id, name }) => {
-      const v = existing[player_id];
-      const inputVal = v !== undefined ? v : '';
-      return `
-        <div class="panel-player-row">
-          <span class="panel-player-name">${esc(name)}</span>
-          <input type="number" class="score-input" data-pid="${player_id}"
-                 value="${inputVal}" placeholder="—" step="any">
-          <button class="btn-quickfill" data-pid="${player_id}" data-val="${val}">+${val}</button>
-          <button class="btn-quickfill" data-pid="${player_id}" data-val="-${val}">-${val}</button>
-        </div>
+    const revealBtnHtml = live.status === 'revealed'
+      ? `<button class="btn-close-question" id="btn-reveal-answer">👁 reveal answer</button>`
+      : '';
+
+    let scoringHtml = '';
+    if (live.status === 'answer_shown') {
+      const roster = (state.scoresData && state.scoresData.roster) || [];
+      const existing = {};
+      const grid = state.scoresData && state.scoresData.grid[live.board];
+      const cellData = grid && grid[live.category] && grid[live.category][String(live.value)];
+      if (cellData && cellData.entries) {
+        cellData.entries.forEach(e => { existing[e.player_id] = e.value; });
+      }
+      const rows = roster.map(({ player_id, name }) => {
+        const v = existing[player_id];
+        const inputVal = v !== undefined ? v : '';
+        return `
+          <div class="panel-player-row">
+            <span class="panel-player-name">${esc(name)}</span>
+            <input type="number" class="score-input" data-pid="${player_id}"
+                   value="${inputVal}" placeholder="—" step="any">
+            <button class="btn-quickfill" data-pid="${player_id}" data-val="${live.value}">+${live.value}</button>
+            <button class="btn-quickfill" data-pid="${player_id}" data-val="-${live.value}">-${live.value}</button>
+          </div>
+        `;
+      }).join('');
+      scoringHtml = `
+        <div class="panel-players" id="panel-players">${rows}</div>
+        <button class="btn-close-question" id="btn-close-question">✓ close question</button>
+        <div class="panel-hint">nothing saves until you close · blank rows are skipped</div>
       `;
-    }).join('');
+    }
 
     panel.innerHTML = `
       <div class="panel-header">
-        <span class="panel-title">${esc(cat)} · ${val}</span>
-        <span class="panel-default">default +${val}</span>
+        <span class="panel-title">${esc(live.category)} · ${live.value}</span>
+        ${live.reviewing ? '<span class="panel-default">reviewing</span>' : ''}
       </div>
-      <div class="panel-players" id="panel-players">${rows}</div>
-      <button class="btn-close-question" id="btn-close-question">✓ close question</button>
-      <div class="panel-hint">nothing saves until you close · blank rows are skipped</div>
+      <div class="peek-question">${esc(live.question || '')}</div>
+      ${mediaHtml}
+      <div class="peek-answer"><strong>Answer:</strong> ${esc(live.answer || '')}</div>
+      ${revealBtnHtml}
+      ${scoringHtml}
+      <button class="btn-cancel-reveal" id="btn-cancel-reveal">✕ cancel</button>
     `;
     panel.classList.remove('hidden');
 
-    // Quick-fill
-    panel.querySelectorAll('.btn-quickfill').forEach(btn => {
-      btn.addEventListener('click', () => {
-        panel.querySelector(`.score-input[data-pid="${btn.dataset.pid}"]`).value = btn.dataset.val;
-      });
-    });
+    if (live.status === 'revealed') {
+      el('btn-reveal-answer').addEventListener('click', () => socket.emit('host:answer_reveal'));
+    }
 
-    // Close question
-    el('btn-close-question').addEventListener('click', () => submitQuestion(qid));
+    if (live.status === 'answer_shown') {
+      panel.querySelectorAll('.btn-quickfill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          panel.querySelector(`.score-input[data-pid="${btn.dataset.pid}"]`).value = btn.dataset.val;
+        });
+      });
+      el('btn-close-question').addEventListener('click', () => submitQuestion(live.question_id));
+    }
+
+    el('btn-cancel-reveal').addEventListener('click', confirmCancelReveal);
+  }
+
+  function confirmCancelReveal() {
+    if (!confirm('Cancel this reveal? Any entered scores will be lost.')) return;
+    socket.emit('host:question_cancel');
   }
 
   function hideScoringPanel() {
@@ -291,9 +337,10 @@
     panel.innerHTML = '';
   }
 
-  // When state:scores arrives while panel is open, add any new roster members
+  // When state:scores arrives while the reveal panel's scoring rows are
+  // open, add any new roster members without wiping already-typed values.
   function updateScoringPanelRoster() {
-    if (!state.activeCellId || !state.scoresData) return;
+    if (!state.liveQuestion || state.liveQuestion.status !== 'answer_shown' || !state.scoresData) return;
     const panel = el('scoring-panel');
     const playersContainer = el('panel-players');
     if (!playersContainer) return;
@@ -302,9 +349,7 @@
     const existing = new Set(
       Array.from(panel.querySelectorAll('.score-input')).map(i => i.dataset.pid)
     );
-
-    const parts = state.activeCellId.split(':');
-    const val = parts[parts.length - 1];
+    const val = state.liveQuestion.value;
 
     roster.forEach(({ player_id, name }) => {
       if (existing.has(player_id)) return;
@@ -337,8 +382,8 @@
       }
     });
     socket.emit('host:question_submit', { question_id: qid, scores });
-    state.activeCellId = null;
-    hideScoringPanel();
+    // Panel closes when the server confirms via state:live_question
+    // (live_question: null) — not optimistically here.
   }
 
   // ----------------------------------------------------------------
@@ -350,6 +395,12 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  function showRevealError(message) {
+    const errEl = el('reveal-error');
+    errEl.textContent = message;
+    errEl.classList.remove('hidden');
   }
 
   // ----------------------------------------------------------------
@@ -370,6 +421,7 @@
 
     state.boards = (data.scores && data.scores.boards) || [];
     state.scoresData = data.scores;
+    state.liveQuestion = data.live_question || null;
 
     if (data.phase === 'live') {
       showLive();
@@ -385,6 +437,7 @@
     // after uploading but before Start showed an empty board.
     updateBoardAreaVisibility();
     if (state.boards.length > 0) renderBoard();
+    if (state.liveQuestion) showRevealPanel(state.liveQuestion);
   });
 
   socket.on('state:players', ({ players }) => {
@@ -413,22 +466,37 @@
     if (state.currentBoardIdx >= state.boards.length) state.currentBoardIdx = 0;
     updateBoardAreaVisibility();
     renderBoard();
-    if (state.activeCellId) updateScoringPanelRoster();
+    updateScoringPanelRoster();
+  });
+
+  socket.on('state:live_question', ({ live_question }) => {
+    el('reveal-error').classList.add('hidden');
+    state.liveQuestion = live_question;
+    renderBoard();
+    if (state.liveQuestion) {
+      showRevealPanel(state.liveQuestion);
+    } else {
+      hideScoringPanel();
+    }
   });
 
   socket.on('state:queue', (data) => {
     renderQueue(data);
   });
 
-  socket.on('error', ({ message }) => {
-    console.error('Server error:', message);
-    // A rejected host:start_quiz (server-side backstop for the client-side
-    // check below) must not leave the Start button stuck disabled with no
-    // feedback — re-enable it and surface the message.
-    el('start-btn').disabled = false;
-    const errEl = el('start-error');
-    errEl.textContent = message;
-    errEl.classList.remove('hidden');
+  socket.on('error', ({ message, context }) => {
+    console.error('Server error:', message, context);
+    if (context === 'start_quiz') {
+      // A rejected host:start_quiz (server-side backstop for the client-side
+      // check below) must not leave the Start button stuck disabled with no
+      // feedback — re-enable it and surface the message.
+      el('start-btn').disabled = false;
+      const errEl = el('start-error');
+      errEl.textContent = message;
+      errEl.classList.remove('hidden');
+    } else if (['question_reveal', 'answer_reveal', 'question_cancel', 'question_submit', 'board_select'].includes(context)) {
+      showRevealError(message);
+    }
   });
 
   // ----------------------------------------------------------------
@@ -523,13 +591,17 @@
     }
   }
 
-  // Board navigation
+  // Board navigation — also notifies the server (host:board_select) so
+  // the presentation view can follow free browsing when nothing's live.
+  // Unreachable while a question is live: the buttons are disabled by
+  // renderBoard()'s navLocked check above.
   el('btn-prev').addEventListener('click', () => {
     if (state.currentBoardIdx > 0) {
       state.currentBoardIdx--;
       state.activeCellId = null;
       hideScoringPanel();
       renderBoard();
+      socket.emit('host:board_select', { board_index: state.currentBoardIdx });
     }
   });
 
@@ -539,6 +611,7 @@
       state.activeCellId = null;
       hideScoringPanel();
       renderBoard();
+      socket.emit('host:board_select', { board_index: state.currentBoardIdx });
     }
   });
 

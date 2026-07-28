@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizMaster — Presentation</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<div class="present-wrap">
+
+  <header class="present-header">
+    <span id="present-board-label" class="present-board-label">Waiting for quiz content…</span>
+  </header>
+
+  <div class="present-layout">
+
+    <!-- Stage: board grid or live question, never both -->
+    <div class="present-stage" id="present-stage">
+      <div class="present-board-slide" id="present-board-slide">
+        <div class="board-grid-wrap">
+          <div class="board-grid" id="present-board-grid"></div>
+        </div>
+      </div>
+
+      <div class="present-question-slide hidden" id="present-question-slide">
+        <span class="reviewing-badge hidden" id="present-reviewing-badge">reviewing</span>
+        <div class="present-question-text" id="present-question-text"></div>
+        <div class="present-question-media" id="present-question-media"></div>
+        <div class="present-answer" id="present-answer"></div>
+      </div>
+    </div>
+
+    <!-- Persistent sidebar: totals + queue, independent of the stage -->
+    <div class="present-sidebar">
+      <div class="card">
+        <div class="totals-title">Totals</div>
+        <table class="totals-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Board</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="present-totals-body"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="queue-header">
+          <span class="queue-title">Buzz queue</span>
+          <span class="queue-gap-label">gap from first</span>
+        </div>
+        <div id="present-queue-locked-badge" class="queue-locked-badge hidden">🔒 frozen</div>
+        <ol class="queue-list" id="present-queue-list"></ol>
+        <div class="queue-empty hidden" id="present-queue-empty">no buzzes yet</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>const JOIN_CODE = "{{ join_code }}"; const HOST_TOKEN = "{{ host_token }}";</script>
+<script src="/static/js/present.js"></script>
+</body>
+</html>

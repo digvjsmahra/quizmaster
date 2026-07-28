@@ -43,6 +43,7 @@ class Game:
         self.scores: dict[str, dict[str, float]] = {}
         self.closed_questions: set[str] = set()
         self.live_question: dict | None = None
+        self.current_board_index: int = 0
         self.media_dir: str | None = None
 
     def load_questions(self, questions: dict[str, list[BundleQuestion]]) -> None:
@@ -128,6 +129,13 @@ class Game:
         self.live_question = None
         self.queue_reset()
 
+    def select_board(self, index: int) -> None:
+        if self.live_question:
+            raise ValueError("Cannot change boards while a question is live.")
+        if not (0 <= index < len(self._boards)):
+            raise ValueError("Unknown board.")
+        self.current_board_index = index
+
     def get_live_question_payload(self) -> dict:
         if not self.live_question:
             return {"live_question": None}
@@ -144,6 +152,53 @@ class Game:
                 "status": self.live_question["status"],
                 "reviewing": self.live_question["reviewing"],
             }
+        }
+
+    def get_presentation_payload(self) -> dict:
+        # Redacted for the shared/screen-shared presentation room: no
+        # question/answer/media per board cell (only the live_question
+        # entry, gated on phase, carries those) — see SPEC V3.md §1.
+        if self.live_question:
+            board_name = self._all_questions[self.live_question["question_id"]].board
+        elif self._boards:
+            board_name = self._boards[self.current_board_index]
+        else:
+            board_name = None
+
+        board_grid: dict[str, dict[str, dict]] = {}
+        totals: list[dict] = []
+        if board_name and board_name in self.questions:
+            for q in self.questions[board_name]:
+                cell = self._cell_state(q.id)
+                board_grid.setdefault(q.category, {})
+                board_grid[q.category][str(q.value)] = {
+                    "value": cell["value"],
+                    "state": cell["state"],
+                    "entries": cell["entries"],
+                }
+            totals = self._board_totals(board_name)
+
+        live = None
+        if self.live_question:
+            q = self._all_questions[self.live_question["question_id"]]
+            status = self.live_question["status"]
+            live = {
+                "question_id": q.id,
+                "question": q.question,
+                "media": q.media,
+                "status": status,
+                "reviewing": self.live_question["reviewing"],
+            }
+            if status == "answer_shown":
+                live["answer"] = q.answer
+
+        return {
+            "board_name": board_name,
+            "board_index": self._boards.index(board_name) if board_name in self._boards else 0,
+            "board_count": len(self._boards),
+            "board": board_grid,
+            "totals": totals,
+            "live_question": live,
         }
 
     # ------------------------------------------------------------------
@@ -165,6 +220,13 @@ class Game:
         return question_id in self._all_questions
 
     def question_submit(self, question_id: str, scores: dict[str, float]) -> None:
+        if not (
+            self.live_question
+            and self.live_question["question_id"] == question_id
+            and self.live_question["status"] == "answer_shown"
+        ):
+            raise ValueError("Question must be revealed and its answer shown before scoring.")
+
         # Clear prior entries for this question
         for pid in self.scores:
             self.scores[pid].pop(question_id, None)
@@ -180,9 +242,7 @@ class Game:
             self.scores[pid][question_id] = float(value)
 
         self.closed_questions.add(question_id)
-
-        if self.live_question and self.live_question["question_id"] == question_id:
-            self.live_question = None
+        self.live_question = None  # always true here — the gate above already confirmed the match
         self.queue_reset()
 
     # ------------------------------------------------------------------
@@ -242,6 +302,22 @@ class Game:
             return {**base, "state": "awarded", "entries": entries}
         return {**base, "state": "passed", "entries": []}
 
+    def _board_totals(self, board: str) -> list[dict]:
+        board_qids = {q.id for q in self.questions.get(board, [])}
+        rows = []
+        for pid in self.roster:
+            player_scores = self.scores.get(pid, {})
+            rows.append(
+                {
+                    "player_id": pid,
+                    "name": self.players[pid].name,
+                    "board_total": sum(v for qid, v in player_scores.items() if qid in board_qids),
+                    "cumulative": sum(player_scores.values()),
+                }
+            )
+        rows.sort(key=lambda r: r["board_total"], reverse=True)
+        return rows
+
     def get_scores_payload(self) -> dict:
         # Grid: board → category → str(value) → cell_state
         grid: dict[str, dict[str, dict[str, dict]]] = {}
@@ -252,26 +328,9 @@ class Game:
                 grid[board][q.category][str(q.value)] = self._cell_state(q.id)
 
         # Per-board totals, sorted by board_total descending
-        per_board_totals: dict[str, list[dict]] = {}
-        for board, questions in self.questions.items():
-            board_qids = {q.id for q in questions}
-            rows = []
-            for pid in self.roster:
-                player_scores = self.scores.get(pid, {})
-                board_total = sum(
-                    v for qid, v in player_scores.items() if qid in board_qids
-                )
-                cumulative = sum(player_scores.values())
-                rows.append(
-                    {
-                        "player_id": pid,
-                        "name": self.players[pid].name,
-                        "board_total": board_total,
-                        "cumulative": cumulative,
-                    }
-                )
-            rows.sort(key=lambda r: r["board_total"], reverse=True)
-            per_board_totals[board] = rows
+        per_board_totals: dict[str, list[dict]] = {
+            board: self._board_totals(board) for board in self.questions
+        }
 
         roster_players = [
             {"player_id": pid, "name": self.players[pid].name} for pid in self.roster

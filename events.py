@@ -56,13 +56,14 @@ def register(socketio, rooms):
             payload = room["game"].get_queue_payload()
             socketio.emit("state:queue", payload, to=f"players_{join_code}")
             socketio.emit("state:queue", payload, to=f"host_{join_code}")
+            socketio.emit("state:queue", payload, to=f"present_{join_code}")
 
     @socketio.on("host:join")
     def on_host_join(data):
         join_code = (data.get("room_id") or "").strip()
         room = rooms.get(join_code)
         if not room:
-            emit("error", {"message": "Room not found."})
+            emit("error", {"message": "Room not found.", "context": "host_join"})
             return
         _sid_room[request.sid] = join_code
         join_room(f"host_{join_code}")
@@ -77,12 +78,13 @@ def register(socketio, rooms):
         try:
             room["game"].start_quiz()
         except ValueError as e:
-            emit("error", {"message": str(e)})
+            emit("error", {"message": str(e), "context": "start_quiz"})
             return
         socketio.emit("state:phase", {"phase": "live"}, to=f"players_{join_code}")
         socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
         socketio.emit("state:phase", {"phase": "live"}, to=f"host_{join_code}")
         emit("state:scores", room["game"].get_scores_payload())
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
 
     @socketio.on("host:roster_add")
     def on_roster_add(data):
@@ -92,15 +94,16 @@ def register(socketio, rooms):
             return
         name = (data.get("name") or "").strip()
         if not name:
-            emit("error", {"message": "Name cannot be empty."})
+            emit("error", {"message": "Name cannot be empty.", "context": "roster_add"})
             return
         try:
             room["game"].roster_add(name)
         except ValueError as e:
-            emit("error", {"message": str(e)})
+            emit("error", {"message": str(e), "context": "roster_add"})
             return
         socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
         emit("state:scores", room["game"].get_scores_payload())
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
 
     @socketio.on("host:queue_freeze")
     def on_queue_freeze():
@@ -112,6 +115,7 @@ def register(socketio, rooms):
         payload = room["game"].get_queue_payload()
         socketio.emit("state:queue", payload, to=f"players_{join_code}")
         socketio.emit("state:queue", payload, to=f"host_{join_code}")
+        socketio.emit("state:queue", payload, to=f"present_{join_code}")
 
     @socketio.on("host:queue_reset")
     def on_queue_reset():
@@ -123,6 +127,7 @@ def register(socketio, rooms):
         payload = room["game"].get_queue_payload()
         socketio.emit("state:queue", payload, to=f"players_{join_code}")
         socketio.emit("state:queue", payload, to=f"host_{join_code}")
+        socketio.emit("state:queue", payload, to=f"present_{join_code}")
 
     @socketio.on("host:question_reveal")
     def on_question_reveal(data):
@@ -134,9 +139,10 @@ def register(socketio, rooms):
         try:
             room["game"].question_reveal(question_id)
         except ValueError as e:
-            emit("error", {"message": str(e)})
+            emit("error", {"message": str(e), "context": "question_reveal"})
             return
         socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
 
     @socketio.on("host:answer_reveal")
     def on_answer_reveal():
@@ -147,9 +153,10 @@ def register(socketio, rooms):
         try:
             room["game"].answer_reveal()
         except ValueError as e:
-            emit("error", {"message": str(e)})
+            emit("error", {"message": str(e), "context": "answer_reveal"})
             return
         socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
 
     @socketio.on("host:question_cancel")
     def on_question_cancel():
@@ -160,12 +167,14 @@ def register(socketio, rooms):
         try:
             room["game"].question_cancel()
         except ValueError as e:
-            emit("error", {"message": str(e)})
+            emit("error", {"message": str(e), "context": "question_cancel"})
             return
         socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
         queue_payload = room["game"].get_queue_payload()
         socketio.emit("state:queue", queue_payload, to=f"players_{join_code}")
         socketio.emit("state:queue", queue_payload, to=f"host_{join_code}")
+        socketio.emit("state:queue", queue_payload, to=f"present_{join_code}")
 
     @socketio.on("host:question_submit")
     def on_question_submit(data):
@@ -177,7 +186,7 @@ def register(socketio, rooms):
         raw_scores = data.get("scores") or {}
 
         if not question_id or not room["game"].question_exists(question_id):
-            emit("error", {"message": "Unknown question."})
+            emit("error", {"message": "Unknown question.", "context": "question_submit"})
             return
 
         scores: dict[str, float] = {}
@@ -187,9 +196,40 @@ def register(socketio, rooms):
             except (TypeError, ValueError):
                 pass
 
-        room["game"].question_submit(question_id, scores)
+        try:
+            room["game"].question_submit(question_id, scores)
+        except ValueError as e:
+            emit("error", {"message": str(e), "context": "question_submit"})
+            return
+
         socketio.emit("state:scores", room["game"].get_scores_payload(), to=f"host_{join_code}")
         socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
         queue_payload = room["game"].get_queue_payload()
         socketio.emit("state:queue", queue_payload, to=f"players_{join_code}")
         socketio.emit("state:queue", queue_payload, to=f"host_{join_code}")
+        socketio.emit("state:queue", queue_payload, to=f"present_{join_code}")
+
+    @socketio.on("host:board_select")
+    def on_board_select(data):
+        join_code = _sid_room.get(request.sid)
+        room = rooms.get(join_code) if join_code else None
+        if not room:
+            return
+        try:
+            room["game"].select_board((data or {}).get("board_index"))
+        except (ValueError, TypeError) as e:
+            emit("error", {"message": str(e), "context": "board_select"})
+            return
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
+
+    @socketio.on("present:join")
+    def on_present_join(data):
+        join_code = (data.get("room_id") or "").strip()
+        room = rooms.get(join_code)
+        if not room:
+            emit("error", {"message": "Room not found.", "context": "present_join"})
+            return
+        join_room(f"present_{join_code}")
+        emit("state:presentation", room["game"].get_presentation_payload())
+        emit("state:queue", room["game"].get_queue_payload())

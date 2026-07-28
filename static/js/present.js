@@ -90,9 +90,7 @@
     el('present-reviewing-badge').classList.toggle('hidden', !live.reviewing);
     el('present-question-text').textContent = live.question || '';
 
-    el('present-question-media').innerHTML = (live.media || [])
-      .map(fn => `<img class="present-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
-      .join('');
+    el('present-question-media').innerHTML = mediaImagesHtml(live.media, 'present-media');
 
     const answerEl = el('present-answer');
     if (live.answer) {

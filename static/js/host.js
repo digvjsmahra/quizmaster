@@ -238,12 +238,10 @@
 
   // Shared question/media/answer content — the piece both callers need.
   function questionContentHtml(question, media, answer) {
-    const mediaHtml = (media || [])
-      .map(fn => `<img class="peek-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
-      .join('');
+    const mediaHtml = mediaImagesHtml(media, 'peek-media');
     return `
       <div class="peek-question">${esc(question || '')}</div>
-      ${mediaHtml}
+      ${mediaHtml ? `<div class="peek-media-row">${mediaHtml}</div>` : ''}
       <div class="peek-answer"><strong>Answer:</strong> ${esc(answer || '')}</div>
     `;
   }

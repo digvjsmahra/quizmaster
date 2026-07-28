@@ -586,7 +586,7 @@ body {
   box-shadow: var(--shadow-card-strong);
   padding: 24px;
   width: 100%;
-  max-width: 480px;
+  max-width: 640px;
   max-height: 100%;
   overflow-y: auto;
   position: relative;
@@ -686,13 +686,24 @@ body {
 
 /* Pre-Start Q&A peek (reuses .board-modal/.panel-header/.panel-title) */
 .peek-question { font-size: 16px; font-weight: 600; margin-bottom: 12px; line-height: 1.4; }
+.peek-media-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
 .peek-media {
+  /* flex: 1 1 0% + min-width: 0 is what actually lets multiple images
+     share the row — a plain flex child won't shrink an <img> below its
+     intrinsic size otherwise, so several images just wrap one-per-row
+     instead of packing side by side. */
+  flex: 1 1 0%;
+  min-width: 0;
   max-width: 100%;
   max-height: 240px;
   object-fit: contain;
   border-radius: var(--radius-md);
-  margin: 0 auto 12px;
-  display: block;
 }
 .peek-answer { font-size: 14px; color: var(--color-text-secondary); padding-top: 12px; border-top: 1px solid var(--color-border-subtle); }
 
@@ -861,7 +872,15 @@ body {
   gap: 8px;
   flex-wrap: wrap;
 }
-.present-media { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--radius-md); }
+.present-media {
+  /* Same flex-shrink fix as .peek-media — see its comment. */
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
 
 .present-answer {
   font-size: 22px;

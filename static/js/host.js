@@ -11,8 +11,8 @@
     boards: [],          // ordered board ids from server
     currentBoardIdx: 0,
     scoresData: null,    // latest scores payload from server
-    activeCellId: null,  // question_id of the currently open pre-Start peek (live phase uses liveQuestion instead)
     liveQuestion: null,  // server-confirmed reveal state (B1's state:live_question), or null
+    modalDismissable: false, // true while the pre-Start peek modal is open (backdrop/✕ close it); false for the live reveal modal (Cancel is the only exit)
   };
 
   // ----------------------------------------------------------------
@@ -130,15 +130,6 @@
           cell.textContent = '~passed~';
         }
 
-        // Live phase: highlight whatever the server confirms is live.
-        // Pre-Start: highlight the locally-toggled peek cell.
-        const isActive = state.phase === 'live'
-          ? (state.liveQuestion && state.liveQuestion.question_id === qid)
-          : (state.activeCellId === qid);
-        if (isActive) {
-          cell.classList.add('cell-scoring');
-        }
-
         cell.addEventListener('click', () => onCellClick(qid, board, cat, val));
         container.appendChild(cell);
       });
@@ -206,50 +197,71 @@
   // ----------------------------------------------------------------
   // Cell click — pre-Start peek vs. live reveal flow
   // ----------------------------------------------------------------
+  // Cells are only ever reachable when no modal is open (the modal
+  // physically covers the board grid — see .board-modal-overlay), so
+  // there's no toggle-off case and no "different question while one is
+  // live" case to special-case here; the server-side guard in
+  // question_reveal remains as defense-in-depth for races/multiple host
+  // tabs.
   function onCellClick(qid, board, cat, val) {
     if (state.phase === 'live') {
-      if (state.liveQuestion && state.liveQuestion.question_id === qid) {
-        confirmCancelReveal();
-      } else {
-        socket.emit('host:question_reveal', { question_id: qid });
-      }
+      socket.emit('host:question_reveal', { question_id: qid });
       return;
     }
-
-    // Pre-Start: read-only Q&A preview, not the scoring panel — the
-    // roster doesn't exist yet (populated by start_quiz()), so a
-    // scoring panel here would just show zero player rows. Purely a
-    // local toggle — no server round-trip needed for a preview.
-    if (state.activeCellId === qid) {
-      state.activeCellId = null;
-      renderBoard();
-      hideScoringPanel();
-      return;
-    }
-    state.activeCellId = qid;
-    renderBoard();
     showQuestionPeek(qid, board, cat, val);
   }
 
+  // ----------------------------------------------------------------
+  // Board modal — shared shell for the pre-Start peek and the live
+  // reveal flow. Covers only .board-area (see its position: relative),
+  // so the sidebar (queue freeze/reset, totals, add-player) stays usable
+  // throughout.
+  // ----------------------------------------------------------------
+  function openBoardModal(html) {
+    const modal = el('board-modal');
+    modal.innerHTML = html;
+    el('board-modal-overlay').classList.remove('hidden');
+    return modal;
+  }
+
+  function closeBoardModal() {
+    el('board-modal-overlay').classList.add('hidden');
+    el('board-modal').innerHTML = '';
+  }
+
+  // Backdrop click only closes the dismissable (peek) case — the live
+  // reveal modal's only exit is the Cancel button, behind its own
+  // confirmation.
+  el('board-modal-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'board-modal-overlay' && state.modalDismissable) closeBoardModal();
+  });
+
+  // Shared question/media/answer content — the piece both callers need.
+  function questionContentHtml(question, media, answer) {
+    const mediaHtml = (media || [])
+      .map(fn => `<img class="peek-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
+      .join('');
+    return `
+      <div class="peek-question">${esc(question || '')}</div>
+      ${mediaHtml}
+      <div class="peek-answer"><strong>Answer:</strong> ${esc(answer || '')}</div>
+    `;
+  }
+
   function showQuestionPeek(qid, board, cat, val) {
-    const panel = el('scoring-panel');
     const grid = state.scoresData && state.scoresData.grid[board];
     const cellData = grid && grid[cat] && grid[cat][String(val)];
     if (!cellData) return;
 
-    const mediaHtml = (cellData.media || [])
-      .map(fn => `<img class="peek-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
-      .join('');
-
-    panel.innerHTML = `
+    state.modalDismissable = true;
+    openBoardModal(`
+      <button class="btn-modal-close" id="btn-close-peek">✕</button>
       <div class="panel-header">
         <span class="panel-title">${esc(cat)} · ${val}</span>
       </div>
-      <div class="peek-question">${esc(cellData.question || '')}</div>
-      ${mediaHtml}
-      <div class="peek-answer"><strong>Answer:</strong> ${esc(cellData.answer || '')}</div>
-    `;
-    panel.classList.remove('hidden');
+      ${questionContentHtml(cellData.question, cellData.media, cellData.answer)}
+    `);
+    el('btn-close-peek').addEventListener('click', closeBoardModal);
   }
 
   // ----------------------------------------------------------------
@@ -257,12 +269,6 @@
   // from the moment of reveal, scoring rows once answer_shown
   // ----------------------------------------------------------------
   function showRevealPanel(live) {
-    const panel = el('scoring-panel');
-
-    const mediaHtml = (live.media || [])
-      .map(fn => `<img class="peek-media" src="/media/${JOIN_CODE}/${HOST_TOKEN}/${encodeURIComponent(fn)}" alt="">`)
-      .join('');
-
     const revealBtnHtml = live.status === 'revealed'
       ? `<button class="btn-close-question" id="btn-reveal-answer">👁 reveal answer</button>`
       : '';
@@ -296,28 +302,26 @@
       `;
     }
 
-    panel.innerHTML = `
+    state.modalDismissable = false;
+    const modal = openBoardModal(`
       <div class="panel-header">
         <span class="panel-title">${esc(live.category)} · ${live.value}</span>
         ${live.reviewing ? '<span class="panel-default">reviewing</span>' : ''}
       </div>
-      <div class="peek-question">${esc(live.question || '')}</div>
-      ${mediaHtml}
-      <div class="peek-answer"><strong>Answer:</strong> ${esc(live.answer || '')}</div>
+      ${questionContentHtml(live.question, live.media, live.answer)}
       ${revealBtnHtml}
       ${scoringHtml}
       <button class="btn-cancel-reveal" id="btn-cancel-reveal">✕ cancel</button>
-    `;
-    panel.classList.remove('hidden');
+    `);
 
     if (live.status === 'revealed') {
       el('btn-reveal-answer').addEventListener('click', () => socket.emit('host:answer_reveal'));
     }
 
     if (live.status === 'answer_shown') {
-      panel.querySelectorAll('.btn-quickfill').forEach(btn => {
+      modal.querySelectorAll('.btn-quickfill').forEach(btn => {
         btn.addEventListener('click', () => {
-          panel.querySelector(`.score-input[data-pid="${btn.dataset.pid}"]`).value = btn.dataset.val;
+          modal.querySelector(`.score-input[data-pid="${btn.dataset.pid}"]`).value = btn.dataset.val;
         });
       });
       el('btn-close-question').addEventListener('click', () => submitQuestion(live.question_id));
@@ -331,23 +335,16 @@
     socket.emit('host:question_cancel');
   }
 
-  function hideScoringPanel() {
-    const panel = el('scoring-panel');
-    panel.classList.add('hidden');
-    panel.innerHTML = '';
-  }
-
   // When state:scores arrives while the reveal panel's scoring rows are
   // open, add any new roster members without wiping already-typed values.
   function updateScoringPanelRoster() {
     if (!state.liveQuestion || state.liveQuestion.status !== 'answer_shown' || !state.scoresData) return;
-    const panel = el('scoring-panel');
     const playersContainer = el('panel-players');
     if (!playersContainer) return;
 
     const roster = state.scoresData.roster || [];
     const existing = new Set(
-      Array.from(panel.querySelectorAll('.score-input')).map(i => i.dataset.pid)
+      Array.from(playersContainer.querySelectorAll('.score-input')).map(i => i.dataset.pid)
     );
     const val = state.liveQuestion.value;
 
@@ -372,9 +369,9 @@
   }
 
   function submitQuestion(qid) {
-    const panel = el('scoring-panel');
+    const modal = el('board-modal');
     const scores = {};
-    panel.querySelectorAll('.score-input').forEach(input => {
+    modal.querySelectorAll('.score-input').forEach(input => {
       const v = input.value.trim();
       if (v !== '') {
         const num = parseFloat(v);
@@ -449,11 +446,10 @@
       // This event fires exactly once, at the moment Start is clicked —
       // not on every reconnect (state:full handles that separately) — so
       // this is the right, and only, place to reset the pre-Start
-      // preview back to a clean slate: Board 1, no leftover peek/scoring
-      // panel from wherever the host had navigated to during preview.
+      // preview back to a clean slate: Board 1, no leftover peek/reveal
+      // modal from wherever the host had navigated to during preview.
       state.currentBoardIdx = 0;
-      state.activeCellId = null;
-      hideScoringPanel();
+      closeBoardModal();
       showLive();
       if (state.scoresData) renderBoard();
     }
@@ -476,7 +472,7 @@
     if (state.liveQuestion) {
       showRevealPanel(state.liveQuestion);
     } else {
-      hideScoringPanel();
+      closeBoardModal();
     }
   });
 
@@ -598,8 +594,7 @@
   el('btn-prev').addEventListener('click', () => {
     if (state.currentBoardIdx > 0) {
       state.currentBoardIdx--;
-      state.activeCellId = null;
-      hideScoringPanel();
+      closeBoardModal();
       renderBoard();
       socket.emit('host:board_select', { board_index: state.currentBoardIdx });
     }
@@ -608,8 +603,7 @@
   el('btn-next').addEventListener('click', () => {
     if (state.currentBoardIdx < state.boards.length - 1) {
       state.currentBoardIdx++;
-      state.activeCellId = null;
-      hideScoringPanel();
+      closeBoardModal();
       renderBoard();
       socket.emit('host:board_select', { board_index: state.currentBoardIdx });
     }

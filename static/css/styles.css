@@ -457,7 +457,7 @@ body {
   align-items: flex-start;
 }
 
-.board-area { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.board-area { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; position: relative; }
 
 /* Board navigation */
 .board-nav {
@@ -554,18 +554,62 @@ body {
   font-style: italic;
 }
 
-.cell-scoring {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 3px var(--color-primary-focus-ring);
+/* Board modal — covers only the board area (see .board-area's
+   position: relative), shared by the pre-Start peek and the live reveal
+   flow. The board is deliberately dimmed/inert behind it — there's no
+   longer a border-highlight equivalent to .cell-scoring on the grid
+   itself; the modal's own header is the "which tile" indicator. */
+.board-modal-overlay {
+  position: absolute;
+  inset: 0;
+  /* .board-area's own height is content-driven (a small board can be
+     quite short) — floor it so the modal always has enough room for a
+     typical reveal panel, regardless of how short the board grid is.
+     A taller board-area (more categories/rows) still governs when it
+     naturally exceeds this floor. 640px comfortably fits the
+     question+image+answer+buttons content measured in practice
+     (~510-530px) plus a few scoring rows; a large roster still falls
+     back to .board-modal's own internal scroll, by design. */
+  min-height: 640px;
+  background: rgba(17, 17, 17, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 5;
+  border-radius: var(--radius-lg);
 }
 
-/* Scoring panel */
-.scoring-panel {
+.board-modal {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-card-strong);
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  overflow-y: auto;
+  position: relative;
 }
+
+.btn-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-modal-close:hover { background: var(--color-border); }
 
 .panel-header {
   display: flex;
@@ -640,9 +684,16 @@ body {
 }
 .btn-cancel-reveal:hover { background: var(--color-border-subtle); }
 
-/* Pre-Start Q&A peek (reuses .scoring-panel/.panel-header/.panel-title) */
+/* Pre-Start Q&A peek (reuses .board-modal/.panel-header/.panel-title) */
 .peek-question { font-size: 16px; font-weight: 600; margin-bottom: 12px; line-height: 1.4; }
-.peek-media { max-width: 100%; border-radius: var(--radius-md); margin-bottom: 12px; display: block; }
+.peek-media {
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  margin: 0 auto 12px;
+  display: block;
+}
 .peek-answer { font-size: 14px; color: var(--color-text-secondary); padding-top: 12px; border-top: 1px solid var(--color-border-subtle); }
 
 /* ------------------------------------------------------------------ */

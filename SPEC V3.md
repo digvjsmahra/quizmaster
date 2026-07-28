@@ -173,9 +173,11 @@ Unplayed ──(host:question_reveal)──► Revealed ──(host:answer_revea
     existing **Awarded/Passed**, unchanged. (A closed question can never
     fall back to Unplayed — consistent with V1/V2, where this never existed
     either.)
-- **Score + close**: scoring moves *inside* the reveal flow — the inline
-  scoring panel (V2 split-value semantics unchanged) lives in the reveal panel
-  on the control center. Submitting scores closes the question atomically →
+- **Score + close**: scoring moves *inside* the reveal flow — the scoring
+  panel (V2 split-value semantics unchanged) lives in the reveal modal on
+  the control center, which covers only the board (not the sidebar — queue
+  freeze/reset, totals, add-player stay usable throughout). Submitting
+  scores closes the question atomically →
   Awarded or Passed, tile grays on both views, presentation returns to the
   board. Works identically whether this is the first close or a reopened
   correction's resubmit — `question_submit` already overwrites atomically.

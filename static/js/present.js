@@ -92,10 +92,20 @@
   // ----------------------------------------------------------------
   function renderQuestionSlide(live) {
     hideAllSlides();
-    el('present-question-slide').classList.remove('hidden');
+    const questionSlide = el('present-question-slide');
+    questionSlide.classList.remove('hidden');
 
-    el('present-question-text').textContent = live.question || '';
+    const questionTextEl = el('present-question-text');
+    questionTextEl.style.fontSize = '';
+    questionSlide.classList.remove('overflowing');
+    questionTextEl.textContent = live.question || '';
     el('present-question-media').innerHTML = mediaImagesHtml(live.question_media, 'present-media');
+
+    // Shrink the question to fit before deciding anything about the answer,
+    // so a long question-only slide (no answer revealed yet) doesn't have
+    // its top silently clipped — same failure mode fitSlideText already
+    // guards against on the answer slide below.
+    fitSlideText(questionSlide, questionTextEl, SLIDE_MIN_FONT_PX, SLIDE_FONT_STEP_PX);
 
     const answerEl = el('present-answer');
     if (!live.answer) {
@@ -112,7 +122,7 @@
     // true content height with no visible flash, and the whole decision
     // resolves before this frame paints.
     answerEl.textContent = live.answer;
-    const slide = el('present-question-slide');
+    const slide = questionSlide;
     const stage = el('present-stage-box');
     const hasOwnMedia = (live.answer_media || []).length > 0;
 
@@ -147,8 +157,8 @@
   // Stage: dedicated answer slide — question and its media do not persist
   // here by design; only reached via renderQuestionSlide's decision above.
   // ----------------------------------------------------------------
-  const ANSWER_SLIDE_MIN_FONT_PX = 20;
-  const ANSWER_SLIDE_FONT_STEP_PX = 4;
+  const SLIDE_MIN_FONT_PX = 20;
+  const SLIDE_FONT_STEP_PX = 4;
   let answerSlideRenderId = 0;
 
   // Resolves once every <img> in container has finished loading (or
@@ -165,30 +175,29 @@
     }));
   }
 
-  // Shrinks present-answer-slide-text until its content fits the stage,
-  // down to a floor — below which it's better to read the whole answer
-  // via scrolling than to render it unreadably small. Reuses the same
-  // "temporarily height: auto, read scrollHeight, restore" measurement
-  // idiom as renderQuestionSlide's inline-vs-full-slide decision above.
-  function fitAnswerSlideContent() {
+  // Shrinks textEl until slideEl's content fits the stage, down to a
+  // floor — below which it's better to read the rest via scrolling than to
+  // render it unreadably small. Shared by the question slide and the
+  // dedicated answer slide (fontEl/slideEl differ; measurement and fallback
+  // are identical). Reuses the "temporarily height: auto, read
+  // scrollHeight, restore" idiom used elsewhere in this file.
+  function fitSlideText(slideEl, textEl, minFontPx, stepPx) {
     const stage = el('present-stage-box');
-    const slide = el('present-answer-slide');
-    const textEl = el('present-answer-slide-text');
 
     const stageStyle = getComputedStyle(stage);
     const availableHeight = stage.clientHeight
       - parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom);
 
     function measure() {
-      slide.style.height = 'auto';
-      const height = slide.scrollHeight;
-      slide.style.height = '';
+      slideEl.style.height = 'auto';
+      const height = slideEl.scrollHeight;
+      slideEl.style.height = '';
       return height;
     }
 
     let fontPx = parseFloat(getComputedStyle(textEl).fontSize);
-    while (measure() > availableHeight && fontPx > ANSWER_SLIDE_MIN_FONT_PX) {
-      fontPx = Math.max(ANSWER_SLIDE_MIN_FONT_PX, fontPx - ANSWER_SLIDE_FONT_STEP_PX);
+    while (measure() > availableHeight && fontPx > minFontPx) {
+      fontPx = Math.max(minFontPx, fontPx - stepPx);
       textEl.style.fontSize = `${fontPx}px`;
     }
 
@@ -197,7 +206,7 @@
     // overflow inside a scrollable box makes the *start* of the content
     // unreachable by scrolling (scrollTop can't go negative), silently
     // cutting off however much overflows above the natural center.
-    slide.classList.toggle('overflowing', measure() > availableHeight);
+    slideEl.classList.toggle('overflowing', measure() > availableHeight);
   }
 
   function renderAnswerSlide(live) {
@@ -217,7 +226,7 @@
     const renderId = ++answerSlideRenderId;
     waitForImages(mediaEl).then(() => {
       if (renderId !== answerSlideRenderId) return;
-      fitAnswerSlideContent();
+      fitSlideText(el('present-answer-slide'), textEl, SLIDE_MIN_FONT_PX, SLIDE_FONT_STEP_PX);
     });
   }
 

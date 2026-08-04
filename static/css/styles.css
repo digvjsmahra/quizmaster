@@ -940,11 +940,12 @@ body {
   flex-wrap: wrap;
 }
 
-/* Set by present.js's fitAnswerSlideContent when content still doesn't
-   fit even at the minimum font size. Centered content that overflows a
-   scrollable box has its start silently cut off — scrollTop can't go
-   negative — so this switches to top-anchored, keeping the whole answer
-   reachable by scrolling. */
+/* Set by present.js's fitSlideText when content still doesn't fit even at
+   the minimum font size (question or answer slide). Centered content that
+   overflows a scrollable box has its start silently cut off — scrollTop
+   can't go negative — so this switches to top-anchored, keeping the whole
+   slide reachable by scrolling. */
+.present-question-slide.overflowing,
 .present-answer-slide.overflowing { justify-content: flex-start; }
 
 .present-sidebar {

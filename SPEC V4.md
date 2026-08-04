@@ -61,6 +61,14 @@ way (§5's phased reveal is unchanged: question first, answer on
   how it's revealed.
 - **Sidebar (totals, buzz queue) is unaffected** — it's independent of the
   stage in both V3 and V4.
+- **The dedicated answer slide auto-shrinks its text to fit** the stage
+  (down to a minimum readable size), rather than requiring the QM to
+  pre-judge answer length. If it still doesn't fit at that minimum, the
+  slide becomes a top-anchored scrollable view instead of centering the
+  overflow — centering a scrollable box's content silently makes whatever
+  overflows *above* the natural center unreachable by scrolling
+  (`scrollTop` can't go negative), so top-anchoring is what keeps the
+  whole answer actually readable.
 - **Host's control-center modal is unaffected in kind, extended in content:**
   the shared pre-Start-peek/live-reveal modal (`SPEC V3.md` §4's "QM sees the
   answer... from the moment of Reveal") now also shows `answer_media` inline,

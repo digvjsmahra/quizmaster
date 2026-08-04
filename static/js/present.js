@@ -147,11 +147,78 @@
   // Stage: dedicated answer slide — question and its media do not persist
   // here by design; only reached via renderQuestionSlide's decision above.
   // ----------------------------------------------------------------
+  const ANSWER_SLIDE_MIN_FONT_PX = 20;
+  const ANSWER_SLIDE_FONT_STEP_PX = 4;
+  let answerSlideRenderId = 0;
+
+  // Resolves once every <img> in container has finished loading (or
+  // errored) — an image's natural size affects layout, so the fit
+  // calculation below must not run before it's known.
+  function waitForImages(container) {
+    const imgs = Array.from(container.querySelectorAll('img'));
+    return Promise.all(imgs.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    }));
+  }
+
+  // Shrinks present-answer-slide-text until its content fits the stage,
+  // down to a floor — below which it's better to read the whole answer
+  // via scrolling than to render it unreadably small. Reuses the same
+  // "temporarily height: auto, read scrollHeight, restore" measurement
+  // idiom as renderQuestionSlide's inline-vs-full-slide decision above.
+  function fitAnswerSlideContent() {
+    const stage = el('present-stage-box');
+    const slide = el('present-answer-slide');
+    const textEl = el('present-answer-slide-text');
+
+    const stageStyle = getComputedStyle(stage);
+    const availableHeight = stage.clientHeight
+      - parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom);
+
+    function measure() {
+      slide.style.height = 'auto';
+      const height = slide.scrollHeight;
+      slide.style.height = '';
+      return height;
+    }
+
+    let fontPx = parseFloat(getComputedStyle(textEl).fontSize);
+    while (measure() > availableHeight && fontPx > ANSWER_SLIDE_MIN_FONT_PX) {
+      fontPx = Math.max(ANSWER_SLIDE_MIN_FONT_PX, fontPx - ANSWER_SLIDE_FONT_STEP_PX);
+      textEl.style.fontSize = `${fontPx}px`;
+    }
+
+    // Still doesn't fit even at the floor: fall back to a scrollable view
+    // anchored at the true top, rather than leaving it centered — centered
+    // overflow inside a scrollable box makes the *start* of the content
+    // unreachable by scrolling (scrollTop can't go negative), silently
+    // cutting off however much overflows above the natural center.
+    slide.classList.toggle('overflowing', measure() > availableHeight);
+  }
+
   function renderAnswerSlide(live) {
     hideAllSlides();
     el('present-answer-slide').classList.remove('hidden');
-    el('present-answer-slide-text').textContent = live.answer || '';
-    el('present-answer-slide-media').innerHTML = mediaImagesHtml(live.answer_media, 'present-media');
+
+    const textEl = el('present-answer-slide-text');
+    const mediaEl = el('present-answer-slide-media');
+    textEl.textContent = live.answer || '';
+    textEl.style.fontSize = '';
+    el('present-answer-slide').classList.remove('overflowing');
+    mediaEl.innerHTML = mediaImagesHtml(live.answer_media, 'present-media');
+
+    // Guard against a slow image load resolving after the host has
+    // already moved on (cancelled, revealed something else) by the time
+    // it finishes — only the most recent render's fit is ever applied.
+    const renderId = ++answerSlideRenderId;
+    waitForImages(mediaEl).then(() => {
+      if (renderId !== answerSlideRenderId) return;
+      fitAnswerSlideContent();
+    });
   }
 
   // ----------------------------------------------------------------

@@ -865,7 +865,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
+  text-align: left;
   gap: 16px;
 }
 

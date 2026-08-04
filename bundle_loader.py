@@ -28,7 +28,8 @@ class BundleQuestion:
     value: int
     question: str
     answer: str
-    media: list[str]
+    question_media: list[str]
+    answer_media: list[str]
 
 
 @dataclass
@@ -92,6 +93,23 @@ def _row_cell(row, header, key):
     if idx is None or idx >= len(row):
         return None
     return row[idx]
+
+
+def _validate_media_filenames(filenames, media_names, referenced_media):
+    """Checks each filename's extension and presence in media_names, adding
+    valid ones to referenced_media. Shared between the `question_media` and
+    `answer_media` columns, which follow identical rules.
+    """
+    errors = []
+    for filename in filenames:
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if ext not in ALLOWED_MEDIA_EXTENSIONS:
+            errors.append(f"unsupported media extension: {filename!r}")
+        elif filename not in media_names:
+            errors.append(f"{filename!r} was not found among the uploaded media files")
+        else:
+            referenced_media.add(filename)
+    return errors
 
 
 def _filter_mac_junk(namelist):
@@ -213,7 +231,8 @@ def parse_bundle(fileobj) -> BundleParseResult:
             category = _cell_to_str(_row_cell(row, header, "category"))
             question = _cell_to_str(_row_cell(row, header, "question"))
             answer = _cell_to_str(_row_cell(row, header, "answer"))
-            media_raw = _cell_to_str(_row_cell(row, header, "media"))
+            question_media_raw = _cell_to_str(_row_cell(row, header, "question_media"))
+            answer_media_raw = _cell_to_str(_row_cell(row, header, "answer_media"))
 
             row_errors = []
 
@@ -231,19 +250,18 @@ def parse_bundle(fileobj) -> BundleParseResult:
             # A blank cell means no media. A non-blank placeholder (e.g. "NA",
             # "-") is treated literally and validated as a filename below, so
             # it fails with a "not found" error rather than silently ignored.
-            media = [m.strip() for m in media_raw.split(",") if m.strip()] if media_raw else []
+            question_media = (
+                [m.strip() for m in question_media_raw.split(",") if m.strip()] if question_media_raw else []
+            )
+            answer_media = (
+                [m.strip() for m in answer_media_raw.split(",") if m.strip()] if answer_media_raw else []
+            )
 
-            if not question and not media:
-                row_errors.append("question or media is required")
+            if not question and not question_media:
+                row_errors.append("question or question_media is required")
 
-            for filename in media:
-                ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-                if ext not in ALLOWED_MEDIA_EXTENSIONS:
-                    row_errors.append(f"unsupported media extension: {filename!r}")
-                elif filename not in media_names:
-                    row_errors.append(f"{filename!r} was not found among the uploaded media files")
-                else:
-                    referenced_media.add(filename)
+            row_errors.extend(_validate_media_filenames(question_media, media_names, referenced_media))
+            row_errors.extend(_validate_media_filenames(answer_media, media_names, referenced_media))
 
             question_key = None
             if board and category and value is not None:
@@ -268,7 +286,8 @@ def parse_bundle(fileobj) -> BundleParseResult:
                     value=value,
                     question=question,
                     answer=answer,
-                    media=media,
+                    question_media=question_media,
+                    answer_media=answer_media,
                 )
             )
 

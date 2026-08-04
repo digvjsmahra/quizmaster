@@ -148,7 +148,8 @@ class Game:
                 "value": q.value,
                 "question": q.question,
                 "answer": q.answer,
-                "media": q.media,
+                "question_media": q.question_media,
+                "answer_media": q.answer_media,
                 "status": self.live_question["status"],
                 "reviewing": self.live_question["reviewing"],
             }
@@ -185,12 +186,13 @@ class Game:
             live = {
                 "question_id": q.id,
                 "question": q.question,
-                "media": q.media,
+                "question_media": q.question_media,
                 "status": status,
                 "reviewing": self.live_question["reviewing"],
             }
             if status == "answer_shown":
                 live["answer"] = q.answer
+                live["answer_media"] = q.answer_media
 
         return {
             "board_name": board_name,
@@ -283,7 +285,13 @@ class Game:
         # question/answer/media are safe here per SPEC V3.md §1's widened
         # invariant, and let the control center show a read-only Q&A peek
         # before Start (SPEC V3.md §2).
-        base = {"value": q.value, "question": q.question, "answer": q.answer, "media": q.media}
+        base = {
+            "value": q.value,
+            "question": q.question,
+            "answer": q.answer,
+            "question_media": q.question_media,
+            "answer_media": q.answer_media,
+        }
 
         if question_id not in self.closed_questions:
             return {**base, "state": "unplayed", "entries": []}

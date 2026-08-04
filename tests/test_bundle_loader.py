@@ -7,7 +7,7 @@ import pytest
 
 from bundle_loader import extract_media, parse_bundle
 
-DEFAULT_COLUMNS = ["board", "category", "value", "question", "answer", "media"]
+DEFAULT_COLUMNS = ["board", "category", "value", "question", "answer", "question_media", "answer_media"]
 
 
 def make_bundle(
@@ -75,7 +75,7 @@ def test_valid_multi_board_bundle():
     assert [q.id for q in result.boards["2"]] == ["2:Movies:10"]
     q = result.boards["1"][0]
     assert q.value == 10 and isinstance(q.value, int)
-    assert q.question == "Q1" and q.answer == "A1" and q.media == []
+    assert q.question == "Q1" and q.answer == "A1" and q.question_media == []
 
 
 def test_works_without_media_column_at_all():
@@ -83,7 +83,7 @@ def test_works_without_media_column_at_all():
     bundle = make_bundle(rows, columns=["board", "category", "value", "question", "answer"])
     result = parse_bundle(bundle)
     assert result.errors == []
-    assert result.boards["1"][0].media == []
+    assert result.boards["1"][0].question_media == []
 
 
 def test_skips_fully_blank_rows():
@@ -155,17 +155,17 @@ def test_rejects_empty_question_without_media():
     rows = [{"board": "1", "category": "History", "value": 10, "question": "", "answer": "A"}]
     result = parse_bundle(make_bundle(rows))
     assert result.boards is None
-    assert any("question or media" in e.message for e in result.errors)
+    assert any("question or question_media" in e.message for e in result.errors)
 
 
 def test_allows_empty_question_with_media():
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(rows, media_files={"pic.jpg": b"fake-image-bytes"})
     result = parse_bundle(bundle)
     assert result.errors == []
-    assert result.boards["1"][0].media == ["pic.jpg"]
+    assert result.boards["1"][0].question_media == ["pic.jpg"]
 
 
 # ------------------------------------------------------------------
@@ -174,7 +174,7 @@ def test_allows_empty_question_with_media():
 
 def test_rejects_unsupported_media_extension():
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "clip.mp4"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "clip.mp4"}
     ]
     bundle = make_bundle(rows, media_files={"clip.mp4": b"fake"})
     result = parse_bundle(bundle)
@@ -184,7 +184,7 @@ def test_rejects_unsupported_media_extension():
 
 def test_rejects_missing_referenced_media_file():
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "missing.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "missing.jpg"}
     ]
     result = parse_bundle(make_bundle(rows))
     assert result.boards is None
@@ -192,7 +192,7 @@ def test_rejects_missing_referenced_media_file():
 
 
 def test_media_placeholder_na_is_treated_literally_not_as_blank():
-    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "NA"}]
+    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "NA"}]
     result = parse_bundle(make_bundle(rows))
     assert result.boards is None
     assert result.errors
@@ -209,11 +209,82 @@ def test_unreferenced_media_file_is_a_warning_not_error():
 
 def test_media_names_reflects_all_files_in_media_folder():
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(rows, media_files={"pic.jpg": b"x", "orphan.png": b"y"})
     result = parse_bundle(bundle)
     assert result.media_names == {"pic.jpg", "orphan.png"}
+
+
+# ------------------------------------------------------------------
+# answer_media validation (independent column, same rules as question_media)
+# ------------------------------------------------------------------
+
+def test_answer_media_is_independent_of_question_media():
+    rows = [
+        {
+            "board": "1", "category": "History", "value": 10,
+            "question": "Q", "answer": "A",
+            "question_media": "q.jpg", "answer_media": "a.jpg",
+        }
+    ]
+    bundle = make_bundle(rows, media_files={"q.jpg": b"q", "a.jpg": b"a"})
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    q = result.boards["1"][0]
+    assert q.question_media == ["q.jpg"]
+    assert q.answer_media == ["a.jpg"]
+
+
+def test_answer_media_defaults_to_empty_list():
+    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
+    result = parse_bundle(make_bundle(rows))
+    assert result.boards["1"][0].answer_media == []
+
+
+def test_answer_media_does_not_satisfy_question_requirement():
+    rows = [
+        {
+            "board": "1", "category": "History", "value": 10,
+            "question": "", "answer": "A", "answer_media": "a.jpg",
+        }
+    ]
+    bundle = make_bundle(rows, media_files={"a.jpg": b"a"})
+    result = parse_bundle(bundle)
+    assert result.boards is None
+    assert any("question or question_media" in e.message for e in result.errors)
+
+
+def test_answer_media_rejects_unsupported_extension():
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "answer_media": "clip.mp4"}
+    ]
+    bundle = make_bundle(rows, media_files={"clip.mp4": b"fake"})
+    result = parse_bundle(bundle)
+    assert result.boards is None
+    assert any("extension" in e.message for e in result.errors)
+
+
+def test_answer_media_rejects_missing_referenced_file():
+    rows = [
+        {
+            "board": "1", "category": "History", "value": 10,
+            "question": "Q", "answer": "A", "answer_media": "missing.jpg",
+        }
+    ]
+    result = parse_bundle(make_bundle(rows))
+    assert result.boards is None
+    assert any("not found" in e.message for e in result.errors)
+
+
+def test_answer_media_counts_toward_referenced_media_for_warnings():
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "answer_media": "a.jpg"}
+    ]
+    bundle = make_bundle(rows, media_files={"a.jpg": b"a"})
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    assert result.warnings == []
 
 
 # ------------------------------------------------------------------
@@ -269,17 +340,17 @@ def test_quiz_xlsx_name_matched_case_insensitively(xlsx_name):
 @pytest.mark.parametrize("media_folder", ["Media", "MEDIA"])
 def test_media_folder_matched_case_insensitively(media_folder):
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(rows, media_files={"pic.jpg": b"x"}, media_folder=media_folder)
     result = parse_bundle(bundle)
     assert result.errors == []
-    assert result.boards["1"][0].media == ["pic.jpg"]
+    assert result.boards["1"][0].question_media == ["pic.jpg"]
 
 
 def test_tolerates_finder_wrapper_folder_and_mac_junk():
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(
         rows, media_files={"pic.jpg": b"x"},
@@ -287,7 +358,7 @@ def test_tolerates_finder_wrapper_folder_and_mac_junk():
     )
     result = parse_bundle(bundle)
     assert result.errors == []
-    assert result.boards["1"][0].media == ["pic.jpg"]
+    assert result.boards["1"][0].question_media == ["pic.jpg"]
 
 
 def test_wrapper_folder_without_media_still_works():
@@ -299,7 +370,7 @@ def test_wrapper_folder_without_media_still_works():
 
 def test_mac_junk_does_not_produce_spurious_warning():
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(
         rows, media_files={"pic.jpg": b"x"},
@@ -326,7 +397,7 @@ def test_only_first_sheet_is_read():
 
 def test_extract_media_writes_referenced_and_unreferenced_files(tmp_path):
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(rows, media_files={"pic.jpg": b"pic-bytes", "orphan.png": b"orphan-bytes"})
 
@@ -338,7 +409,7 @@ def test_extract_media_writes_referenced_and_unreferenced_files(tmp_path):
 
 def test_extract_media_matches_media_folder_case_insensitively(tmp_path):
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(rows, media_files={"pic.jpg": b"pic-bytes"}, media_folder="Media")
 
@@ -358,7 +429,7 @@ def test_extract_media_noop_when_no_media_folder(tmp_path):
 
 def test_extract_media_tolerates_finder_wrapper_folder(tmp_path):
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(
         rows, media_files={"pic.jpg": b"pic-bytes"},
@@ -374,7 +445,7 @@ def test_extract_media_tolerates_finder_wrapper_folder(tmp_path):
 
 def test_extract_media_works_after_parse_bundle_already_consumed_the_stream(tmp_path):
     rows = [
-        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "media": "pic.jpg"}
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(rows, media_files={"pic.jpg": b"pic-bytes"})
 

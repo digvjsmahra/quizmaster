@@ -14,7 +14,7 @@ from bundle_loader import BundleQuestion
 def _q(id, board, category, value):
     return BundleQuestion(
         id=id, board=board, category=category, value=value,
-        question=f"Q for {id}", answer=f"A for {id}", media=[],
+        question=f"Q for {id}", answer=f"A for {id}", question_media=[], answer_media=[],
     )
 
 
@@ -27,7 +27,7 @@ DEFAULT_QUESTIONS = {
 
 
 def _make_bundle_bytes(rows, media_files=None):
-    columns = ["board", "category", "value", "question", "answer", "media"]
+    columns = ["board", "category", "value", "question", "answer", "question_media"]
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.append(columns)
@@ -47,7 +47,8 @@ def _make_bundle_bytes(rows, media_files=None):
 def _assert_no_content_leak(obj):
     if isinstance(obj, dict):
         for k, v in obj.items():
-            assert k not in ("question", "answer", "media"), f"leaked key {k!r} in player payload: {obj}"
+            assert k not in ("question", "answer", "question_media", "answer_media"), \
+                f"leaked key {k!r} in player payload: {obj}"
             _assert_no_content_leak(v)
     elif isinstance(obj, list):
         for item in obj:
@@ -441,7 +442,7 @@ def test_reupload_after_live_returns_409(room):
 def test_media_route_serves_uploaded_file(room):
     join_code, _, host_token = room
     bundle_bytes = _make_bundle_bytes(
-        [{"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1", "media": "pic.jpg"}],
+        [{"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1", "question_media": "pic.jpg"}],
         media_files={"pic.jpg": b"pic-bytes"},
     )
     app.test_client().post(
@@ -463,7 +464,7 @@ def test_media_route_wrong_token_returns_404(room):
 def test_media_route_unknown_filename_returns_404(room):
     join_code, _, host_token = room
     bundle_bytes = _make_bundle_bytes(
-        [{"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1", "media": "pic.jpg"}],
+        [{"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1", "question_media": "pic.jpg"}],
         media_files={"pic.jpg": b"pic-bytes"},
     )
     app.test_client().post(
@@ -779,7 +780,8 @@ def test_presentation_board_never_leaks_question_or_answer(room):
             for cell in category_cells.values():
                 assert "question" not in cell
                 assert "answer" not in cell
-                assert "media" not in cell
+                assert "question_media" not in cell
+                assert "answer_media" not in cell
 
     host.disconnect()
     present.disconnect()
@@ -835,8 +837,8 @@ def test_question_submit_hard_gate_rejection_over_socket(room):
 def test_board_select_broadcasts_to_presentation_room(room):
     join_code, game, _ = room
     boards = {
-        "1": [BundleQuestion(id="1:History:10", board="1", category="History", value=10, question="Q1", answer="A1", media=[])],
-        "2": [BundleQuestion(id="2:Movies:10", board="2", category="Movies", value=10, question="Q2", answer="A2", media=[])],
+        "1": [BundleQuestion(id="1:History:10", board="1", category="History", value=10, question="Q1", answer="A1", question_media=[], answer_media=[])],
+        "2": [BundleQuestion(id="2:Movies:10", board="2", category="Movies", value=10, question="Q2", answer="A2", question_media=[], answer_media=[])],
     }
     game.load_questions(boards)
     game.start_quiz()

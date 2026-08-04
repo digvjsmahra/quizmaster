@@ -237,12 +237,14 @@
   });
 
   // Shared question/media/answer content — the piece both callers need.
-  function questionContentHtml(question, media, answer) {
-    const mediaHtml = mediaImagesHtml(media, 'peek-media');
+  function questionContentHtml(question, questionMedia, answer, answerMedia) {
+    const mediaHtml = mediaImagesHtml(questionMedia, 'peek-media');
+    const answerMediaHtml = mediaImagesHtml(answerMedia, 'peek-media');
     return `
       <div class="peek-question">${esc(question || '')}</div>
       ${mediaHtml ? `<div class="peek-media-row">${mediaHtml}</div>` : ''}
       <div class="peek-answer"><strong>Answer:</strong> ${esc(answer || '')}</div>
+      ${answerMediaHtml ? `<div class="peek-media-row">${answerMediaHtml}</div>` : ''}
     `;
   }
 
@@ -257,7 +259,7 @@
       <div class="panel-header">
         <span class="panel-title">${esc(cat)} · ${val}</span>
       </div>
-      ${questionContentHtml(cellData.question, cellData.media, cellData.answer)}
+      ${questionContentHtml(cellData.question, cellData.question_media, cellData.answer, cellData.answer_media)}
     `);
     el('btn-close-peek').addEventListener('click', closeBoardModal);
   }
@@ -306,7 +308,7 @@
         <span class="panel-title">${esc(live.category)} · ${live.value}</span>
         ${live.reviewing ? '<span class="panel-default">reviewing</span>' : ''}
       </div>
-      ${questionContentHtml(live.question, live.media, live.answer)}
+      ${questionContentHtml(live.question, live.question_media, live.answer, live.answer_media)}
       ${revealBtnHtml}
       ${scoringHtml}
       <button class="btn-cancel-reveal" id="btn-cancel-reveal">✕ cancel</button>

@@ -804,22 +804,46 @@ body {
   min-height: 100vh;
   background: var(--color-bg);
   padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 .present-header { text-align: center; margin-bottom: 16px; }
-.present-board-label { font-size: 18px; font-weight: 700; color: var(--color-text); }
+.present-board-label { font-size: clamp(16px, 2.2vh, 30px); font-weight: 700; color: var(--color-text); }
 
+/* Presentation is always a dedicated full-screen display, so the stage and
+   its sidebar scale to fill the viewport (vh/vw-based) instead of a small
+   fixed cap — the host shouldn't need to zoom the browser to make this
+   readable (zooming also zooms the control center, since browsers persist
+   zoom per-origin, not per-tab). */
 .present-layout {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
-  max-width: 1200px;
+  align-items: stretch;
+  width: 96vw;
+  height: 92vh;
   margin: 0 auto;
 }
 
+/* Outer stage cell: just centers the fixed-ratio box below within whatever
+   space flexbox gives it. Sizing lives entirely on .present-stage-box —
+   letting a flex item be simultaneously width:auto/height:auto *and*
+   aspect-ratio-constrained does not reliably resolve across engines, so
+   the ratio box is a plain (non-flex-item) child instead. */
 .present-stage {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.present-stage-box {
+  position: relative;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
   aspect-ratio: 16 / 9;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
@@ -833,8 +857,8 @@ body {
 .present-board-slide { height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
 .present-board-slide .board-grid-wrap { box-shadow: none; padding: 0; background: transparent; width: 100%; }
 
-.present-question-slide {
-  position: relative;
+.present-question-slide,
+.present-answer-slide {
   height: 100%;
   width: 100%;
   display: flex;
@@ -847,8 +871,8 @@ body {
 
 .reviewing-badge {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 12px;
+  right: 12px;
   font-size: 11px;
   font-weight: 600;
   background: var(--color-warning-bg);
@@ -858,7 +882,7 @@ body {
 }
 
 .present-question-text {
-  font-size: 28px;
+  font-size: clamp(28px, 5vh, 64px);
   font-weight: 700;
   color: var(--color-text);
   max-width: 90%;
@@ -883,7 +907,7 @@ body {
 }
 
 .present-answer {
-  font-size: 22px;
+  font-size: clamp(22px, 4vh, 52px);
   font-weight: 600;
   color: var(--color-success-strong-text);
   max-width: 90%;
@@ -892,12 +916,40 @@ body {
   overflow: hidden;
   transition: opacity .4s ease, max-height .4s ease;
 }
-.present-answer.answer-shown { opacity: 1; max-height: 200px; }
+.present-answer.answer-shown { opacity: 1; max-height: 60vh; }
 
-.present-sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+/* Dedicated answer slide — the question and its media do not persist here
+   (see present.js's renderAnswerSlide): shown full-stage whenever the
+   answer carries its own image, or the answer wouldn't fit inline. */
+.present-answer-slide-text {
+  font-size: clamp(32px, 7vh, 88px);
+  font-weight: 700;
+  color: var(--color-success-strong-text);
+  max-width: 90%;
+}
+
+.present-answer-slide-media {
+  max-width: 85%;
+  max-height: 70%;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.present-sidebar {
+  width: clamp(220px, 18vw, 420px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
 
 @media (max-width: 900px) {
-  .present-layout { flex-direction: column; }
+  .present-layout { flex-direction: column; height: auto; }
+  .present-stage { width: 100%; height: auto; }
+  .present-stage-box { max-height: none; }
   .present-sidebar { width: 100%; }
 }
 

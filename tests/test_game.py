@@ -6,7 +6,7 @@ from game import Game
 def _q(id, board, category, value):
     return BundleQuestion(
         id=id, board=board, category=category, value=value,
-        question=f"Q for {id}", answer=f"A for {id}", media=[],
+        question=f"Q for {id}", answer=f"A for {id}", question_media=[], answer_media=[],
     )
 
 
@@ -534,7 +534,8 @@ def test_get_presentation_payload_board_cells_never_leak_question_answer_media()
         for cell in category_cells.values():
             assert "question" not in cell
             assert "answer" not in cell
-            assert "media" not in cell
+            assert "question_media" not in cell
+            assert "answer_media" not in cell
             assert set(cell.keys()) == {"value", "state", "entries"}
 
 
@@ -543,11 +544,13 @@ def test_get_presentation_payload_live_question_answer_gated_on_status():
     g.question_reveal("1:History:10")
     payload = g.get_presentation_payload()
     assert "answer" not in payload["live_question"]
+    assert "answer_media" not in payload["live_question"]
     assert payload["live_question"]["status"] == "revealed"
 
     g.answer_reveal()
     payload = g.get_presentation_payload()
     assert payload["live_question"]["answer"] == "A for 1:History:10"
+    assert payload["live_question"]["answer_media"] == []
     assert payload["live_question"]["status"] == "answer_shown"
 
 
@@ -566,7 +569,8 @@ def test_get_live_question_payload_shape_when_live():
     assert payload["value"] == 10
     assert payload["question"] == "Q for 1:History:10"
     assert payload["answer"] == "A for 1:History:10"
-    assert payload["media"] == []
+    assert payload["question_media"] == []
+    assert payload["answer_media"] == []
     assert payload["status"] == "revealed"
     assert payload["reviewing"] is False
 
@@ -589,7 +593,32 @@ def test_cell_state_includes_question_answer_media():
     cell = g._cell_state("1:History:10")
     assert cell["question"] == "Q for 1:History:10"
     assert cell["answer"] == "A for 1:History:10"
-    assert cell["media"] == []
+    assert cell["question_media"] == []
+    assert cell["answer_media"] == []
+
+
+def test_answer_media_flows_through_live_and_presentation_payloads():
+    boards = {"1": [BundleQuestion(
+        id="1:History:10", board="1", category="History", value=10,
+        question="Q", answer="A", question_media=["q.jpg"], answer_media=["a.jpg"],
+    )]}
+    g = make_game(boards)
+    g.start_quiz()
+
+    cell = g._cell_state("1:History:10")
+    assert cell["question_media"] == ["q.jpg"]
+    assert cell["answer_media"] == ["a.jpg"]
+
+    g.question_reveal("1:History:10")
+    live = g.get_live_question_payload()["live_question"]
+    assert live["answer_media"] == ["a.jpg"]
+
+    presentation = g.get_presentation_payload()
+    assert "answer_media" not in presentation["live_question"]
+
+    g.answer_reveal()
+    presentation = g.get_presentation_payload()
+    assert presentation["live_question"]["answer_media"] == ["a.jpg"]
 
 
 def test_cell_state_awarded_positive():

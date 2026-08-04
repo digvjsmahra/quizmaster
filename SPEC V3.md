@@ -1,5 +1,8 @@
 # SPEC — V3 Delta (Presentation Platform)
 
+> V4 delta lives in `SPEC V4.md`. Sections below marked `[V4: ...]` describe
+> pre-V4 behavior superseded by that delta.
+
 Extends `SPEC.md`. Everything in V1/V2 stands unless explicitly changed here.
 V3's job: the QM runs an entire quiz from one screen — no PPT, no tab
 switching. Questions are presented from the app via a screen-shared
@@ -90,9 +93,9 @@ supported.
 | `board`    | yes      | Board/round name. Multiple boards per file supported.    |
 | `category` | yes      | Category within the board.                               |
 | `value`    | yes      | Positive integer. +value correct / −value incorrect.     |
-| `question` | see note | Question text. May be empty **only if** `media` is set.  |
+| `question` | see note | Question text. May be empty **only if** `media` is set. `[V4: column renamed to question_media — see SPEC V4.md §1]` |
 | `answer`   | yes      | Answer text (revealed on `answer_reveal`).               |
-| `media`    | no       | Comma-separated filenames relative to `media/` (e.g. `biopics_30a.jpg,biopics_30b.jpg`). One flat `media/` folder for the whole bundle — no per-question subfolders, so QM authoring overhead doesn't grow with image count. A **blank** cell means no media — a non-blank placeholder (e.g. `NA`, `-`) is validated as a literal filename and errors if not found in `media/`. |
+| `media`    | no       | Comma-separated filenames relative to `media/` (e.g. `biopics_30a.jpg,biopics_30b.jpg`). One flat `media/` folder for the whole bundle — no per-question subfolders, so QM authoring overhead doesn't grow with image count. A **blank** cell means no media — a non-blank placeholder (e.g. `NA`, `-`) is validated as a literal filename and errors if not found in `media/`. `[V4: this column is renamed question_media, and gains a sibling answer_media column, same rules — see SPEC V4.md §1]` |
 
 - `(board, category, value)` must be unique → forms `question_id`.
 - Row order in the file defines display order of boards and categories.
@@ -232,9 +235,10 @@ after `answer_reveal`. Player sockets never see it.
   - *Question slide* (something's live): the question (text + image), with
     the answer fading in below it — via a CSS transition inside the same
     box, not a hard cut or a full slide swap — once `answer_reveal` fires.
-    Reopening a closed question (`reviewing`) renders straight into this
-    same layout with question+answer already together, no phasing, marked
-    with a "reviewing" badge.
+    `[V4: superseded — this is now conditional on the answer's own media and
+    whether it fits; see SPEC V4.md §2]` Reopening a closed question
+    (`reviewing`) renders straight into this same layout with question+answer
+    already together, no phasing, marked with a "reviewing" badge.
 
     The board shown is always `live_question`'s board when something's
     live; otherwise it's whatever the QM last navigated to via the control
@@ -269,6 +273,8 @@ board, category, value, question, answer, media, status, reviewing} |
 null }`. Broadcast to the host room only. `answer` is always included once
 `live_question` is set — the QM's private judging aid, visible from the
 moment of reveal regardless of presentation-facing phasing.
+`[V4: media field renamed question_media, and adds answer_media, included
+whenever answer is — see SPEC V4.md §3]`
 
 Presentation-room-only (B2): `state:presentation`, `{ board_name,
 board_index, board_count, board, totals, live_question }`. `board` is a
@@ -277,7 +283,9 @@ redacted grid (`value`/`state`/`entries` per cell — no `question`/`answer`/
 (§5). `live_question` mirrors `state:live_question`'s shape minus `board`/
 `category`/`value`, with `answer` included **only** when
 `status == "answer_shown"` — the presentation room must never receive an
-unrevealed answer. **No `queue` field** — the presentation room also
+unrevealed answer. `[V4: live_question.answer_media follows the same
+answer_shown gate — see SPEC V4.md §3]` **No `queue` field** — the
+presentation room also
 receives the existing `state:queue` broadcast directly (same event, same
 payload, no redaction needed — queue entries never carried question/answer
 content), rather than duplicating queue data inside `state:presentation`.
@@ -293,7 +301,8 @@ Player-facing events are unchanged from V2.
 - Answers move from a separate tab into the `answer` column (single-sheet
   contract).
 - Images move from in-cell embeds to files: export each image from the sheet
-  into `media/`, reference by filename in the `media` column.
+  into `media/`, reference by filename in the `media` column. `[V4: column
+  renamed question_media — see SPEC V4.md §1]`
 - Both are one-time-per-quiz prep costs, paid in exchange for zero context
   switches during the live quiz.
 

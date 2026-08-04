@@ -51,9 +51,9 @@
     <div class="card">
       <div class="card-label">Quiz content</div>
       <div class="upload-hint">
-        Upload a <strong>.zip</strong> containing <code>quiz.xlsx</code> (columns: board, category, value, question, answer, media) and an optional <code>media/</code> folder.
-        Leave the <code>media</code> cell blank for no image — not "NA" or "-". Multiple images for one question: comma-separate the filenames.
-        Filenames must exactly match a file in <code>media/</code>, case-sensitively.
+        Upload a <strong>.zip</strong> containing <code>quiz.xlsx</code> (columns: board, category, value, question, answer, question_media, answer_media) and an optional <code>media/</code> folder.
+        Leave a media cell blank for no image — not "NA" or "-". Multiple images for one cell: comma-separate the filenames.
+        Filenames (in either column) must exactly match a file in <code>media/</code>, case-sensitively.
       </div>
       <input type="file" id="bundle-input" accept=".zip" class="hidden">
       <button id="upload-btn" class="btn-ghost">📁 Upload .zip</button>

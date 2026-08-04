@@ -34,10 +34,16 @@
   }
 
   // ----------------------------------------------------------------
-  // Stage: board slide
+  // Stage slides — board / question / answer are mutually exclusive.
   // ----------------------------------------------------------------
-  function renderBoardSlide() {
+  function hideAllSlides() {
+    el('present-board-slide').classList.add('hidden');
     el('present-question-slide').classList.add('hidden');
+    el('present-answer-slide').classList.add('hidden');
+  }
+
+  function renderBoardSlide() {
+    hideAllSlides();
     el('present-board-slide').classList.remove('hidden');
 
     const grid = state.board || {};
@@ -81,25 +87,71 @@
   }
 
   // ----------------------------------------------------------------
-  // Stage: question slide
+  // Stage: question slide (also decides whether to hand off to the
+  // dedicated answer slide below)
   // ----------------------------------------------------------------
   function renderQuestionSlide(live) {
-    el('present-board-slide').classList.add('hidden');
+    hideAllSlides();
     el('present-question-slide').classList.remove('hidden');
 
-    el('present-reviewing-badge').classList.toggle('hidden', !live.reviewing);
     el('present-question-text').textContent = live.question || '';
-
-    el('present-question-media').innerHTML = mediaImagesHtml(live.media, 'present-media');
+    el('present-question-media').innerHTML = mediaImagesHtml(live.question_media, 'present-media');
 
     const answerEl = el('present-answer');
-    if (live.answer) {
-      answerEl.textContent = live.answer;
-      answerEl.classList.add('answer-shown');
-    } else {
+    if (!live.answer) {
       answerEl.textContent = '';
       answerEl.classList.remove('answer-shown');
+      return;
     }
+
+    // Decide inline fade-in (today's behavior) vs. the dedicated full-stage
+    // answer slide: an answer with its own image always gets the full
+    // slide (there's nowhere to show it alongside the question); otherwise
+    // measure whether the answer would fit here. answerEl is still
+    // collapsed (max-height: 0) at this point, so scrollHeight reads its
+    // true content height with no visible flash, and the whole decision
+    // resolves before this frame paints.
+    answerEl.textContent = live.answer;
+    const slide = el('present-question-slide');
+    const stage = el('present-stage-box');
+    const hasOwnMedia = (live.answer_media || []).length > 0;
+
+    // slide has `height: 100%` in CSS (needed so its own content centers
+    // within the stage) — reading its scrollHeight directly would just
+    // report the stage's full height, not the content's natural size. Drop
+    // to auto height only for this synchronous measurement, then restore.
+    // This captures everything except the answer, since answerEl's own
+    // max-height: 0 still clamps its contribution here to nothing — so its
+    // natural height is measured separately via its own scrollHeight
+    // (which, same as the slide, ignores its *own* clamp) and added back.
+    slide.style.height = 'auto';
+    const questionOnlyHeight = slide.scrollHeight;
+    slide.style.height = '';
+    const contentHeight = questionOnlyHeight + answerEl.scrollHeight;
+
+    const stageStyle = getComputedStyle(stage);
+    const availableHeight = stage.clientHeight
+      - parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom);
+    const wouldOverflow = contentHeight > availableHeight;
+
+    if (hasOwnMedia || wouldOverflow) {
+      answerEl.textContent = '';
+      answerEl.classList.remove('answer-shown');
+      renderAnswerSlide(live);
+    } else {
+      answerEl.classList.add('answer-shown');
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Stage: dedicated answer slide — question and its media do not persist
+  // here by design; only reached via renderQuestionSlide's decision above.
+  // ----------------------------------------------------------------
+  function renderAnswerSlide(live) {
+    hideAllSlides();
+    el('present-answer-slide').classList.remove('hidden');
+    el('present-answer-slide-text').textContent = live.answer || '';
+    el('present-answer-slide-media').innerHTML = mediaImagesHtml(live.answer_media, 'present-media');
   }
 
   // ----------------------------------------------------------------
@@ -159,8 +211,10 @@
     renderTotals(data.totals);
 
     if (state.liveQuestion) {
+      el('present-reviewing-badge').classList.toggle('hidden', !state.liveQuestion.reviewing);
       renderQuestionSlide(state.liveQuestion);
     } else {
+      el('present-reviewing-badge').classList.add('hidden');
       renderBoardSlide();
     }
   });

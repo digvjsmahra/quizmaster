@@ -15,19 +15,29 @@
 
   <div class="present-layout">
 
-    <!-- Stage: board grid or live question, never both -->
+    <!-- Stage: centers a fixed-aspect-ratio box that letterboxes to fit
+         whatever space is available, without fighting flexbox for sizing
+         (see present-stage-box). -->
     <div class="present-stage" id="present-stage">
-      <div class="present-board-slide" id="present-board-slide">
-        <div class="board-grid-wrap">
-          <div class="board-grid" id="present-board-grid"></div>
-        </div>
-      </div>
-
-      <div class="present-question-slide hidden" id="present-question-slide">
+      <div class="present-stage-box" id="present-stage-box">
         <span class="reviewing-badge hidden" id="present-reviewing-badge">reviewing</span>
-        <div class="present-question-text" id="present-question-text"></div>
-        <div class="present-question-media" id="present-question-media"></div>
-        <div class="present-answer" id="present-answer"></div>
+
+        <div class="present-board-slide" id="present-board-slide">
+          <div class="board-grid-wrap">
+            <div class="board-grid" id="present-board-grid"></div>
+          </div>
+        </div>
+
+        <div class="present-question-slide hidden" id="present-question-slide">
+          <div class="present-question-text" id="present-question-text"></div>
+          <div class="present-question-media" id="present-question-media"></div>
+          <div class="present-answer" id="present-answer"></div>
+        </div>
+
+        <div class="present-answer-slide hidden" id="present-answer-slide">
+          <div class="present-answer-slide-text" id="present-answer-slide-text"></div>
+          <div class="present-answer-slide-media" id="present-answer-slide-media"></div>
+        </div>
       </div>
     </div>
 

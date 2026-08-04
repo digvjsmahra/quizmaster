@@ -883,7 +883,7 @@ body {
 
 .present-question-text {
   font-size: clamp(28px, 5vh, 64px);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--color-text);
   max-width: 90%;
   white-space: pre-line;
@@ -909,7 +909,7 @@ body {
 
 .present-answer {
   font-size: clamp(22px, 4vh, 52px);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--color-success-strong-text);
   max-width: 90%;
   opacity: 0;
@@ -925,7 +925,7 @@ body {
    answer carries its own image, or the answer wouldn't fit inline. */
 .present-answer-slide-text {
   font-size: clamp(32px, 7vh, 88px);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--color-success-strong-text);
   max-width: 90%;
   white-space: pre-line;

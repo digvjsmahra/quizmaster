@@ -360,6 +360,14 @@ html.qb-resuming #view-join { display: none; }
 }
 .phase-badge.lobby { background: var(--color-border-subtle); color: var(--color-text-muted); }
 .phase-badge.live  { background: var(--color-success-strong-bg); color: var(--color-success-strong-text); }
+.phase-badge.offline { background: var(--color-warning-bg); color: var(--color-warning-text); }
+
+/* Set by host.js while the socket is mid-reconnect — blocks every board/
+   sidebar/lobby control at once rather than instrumenting each handler,
+   so no action can race the host:join handshake that re-establishes this
+   connection's identity server-side (see host.js's disconnect listener). */
+.host-wrap.reconnecting #view-lobby,
+.host-wrap.reconnecting #view-live { pointer-events: none; opacity: .5; }
 
 /* ------------------------------------------------------------------ */
 /* Lobby view                                                           */
@@ -416,8 +424,22 @@ html.qb-resuming #view-join { display: none; }
   grid-template-columns: 1fr 1fr;
   gap: 6px 16px;
 }
-.player-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--color-text-secondary); }
-.player-item::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-muted); flex-shrink: 0; }
+.player-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--color-text-secondary); justify-content: space-between; }
+.player-item-name { display: flex; align-items: center; gap: 6px; }
+.player-item-name::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-muted); flex-shrink: 0; }
+
+.btn-remove-player {
+  background: none;
+  border: none;
+  color: var(--color-text-faint);
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.btn-remove-player:hover { color: var(--color-danger); background: var(--color-border-subtle); }
 
 .upload-hint {
   font-size: 12px;

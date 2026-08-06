@@ -1,5 +1,5 @@
 from flask import request
-from flask_socketio import emit, join_room
+from flask_socketio import disconnect, emit, join_room
 
 _sid_player: dict[str, str] = {}  # sid → player_id
 _sid_room: dict[str, str] = {}    # sid → join_code
@@ -131,6 +131,27 @@ def register(socketio, rooms):
         socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
         emit("state:scores", room["game"].get_scores_payload())
         socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
+
+    @socketio.on("host:player_remove")
+    def on_player_remove(data):
+        join_code = _sid_room.get(request.sid)
+        room = rooms.get(join_code) if join_code else None
+        if not room:
+            return
+        player_id = (data or {}).get("player_id")
+        try:
+            room["game"].remove_player(player_id)
+        except ValueError as e:
+            emit("error", {"message": str(e), "context": "player_remove"})
+            return
+
+        removed_sid = next((sid for sid, pid in _sid_player.items() if pid == player_id), None)
+        if removed_sid:
+            socketio.emit("player:removed", {}, to=removed_sid)
+            disconnect(sid=removed_sid)
+
+        socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
+        socketio.emit("state:players", {"players": room["game"].get_lobby_players()}, to=f"host_{join_code}")
 
     @socketio.on("host:queue_freeze")
     def on_queue_freeze():

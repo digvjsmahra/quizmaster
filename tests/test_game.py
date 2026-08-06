@@ -165,6 +165,32 @@ def test_player_rejoin_preserves_in_flight_queue_position():
 
 
 # ------------------------------------------------------------------
+# remove_player
+# ------------------------------------------------------------------
+
+def test_remove_player_deletes_lobby_entry():
+    g = make_game()
+    pid, _ = g.player_join("Ankur")
+    g.remove_player(pid)
+    assert pid not in g.players
+
+
+def test_remove_player_rejects_unknown_id():
+    g = make_game()
+    with pytest.raises(ValueError):
+        g.remove_player("not-a-real-id")
+
+
+def test_remove_player_rejected_after_start():
+    g = make_game()
+    pid, _ = g.player_join("Ankur")
+    g.start_quiz()
+    with pytest.raises(ValueError):
+        g.remove_player(pid)
+    assert pid in g.players
+
+
+# ------------------------------------------------------------------
 # start_quiz
 # ------------------------------------------------------------------
 

@@ -73,9 +73,18 @@
   // ----------------------------------------------------------------
   function renderLobbyPlayers(players) {
     const grid = el('lobby-players');
-    grid.innerHTML = players.map(p =>
-      `<div class="player-item">${esc(p.name)}</div>`
-    ).join('');
+    grid.innerHTML = players.map(p => `
+      <div class="player-item">
+        <span class="player-item-name">${esc(p.name)}</span>
+        <button class="btn-remove-player" data-pid="${p.player_id}" title="Remove ${esc(p.name)}">✕</button>
+      </div>
+    `).join('');
+    grid.querySelectorAll('.btn-remove-player').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!confirm(`Remove ${btn.title.slice('Remove '.length)} from the lobby?`)) return;
+        socket.emit('host:player_remove', { player_id: btn.dataset.pid });
+      });
+    });
     el('lobby-count').textContent = players.length;
   }
 
@@ -407,7 +416,22 @@
     socket.emit('host:join', { room_id: JOIN_CODE });
   });
 
+  // Same race as the player buzzer (see player.js): socket.io flushes any
+  // emit buffered during a disconnect before this file's own 'connect'
+  // handler gets to re-send host:join, so a buffered host action can reach
+  // the server before it's re-registered this connection — every handler
+  // in events.py already no-ops safely on that, but silently, with no
+  // feedback. Gate the whole interactive area instead of each button
+  // individually; cleared in state:full once the reconnect actually lands.
+  socket.on('disconnect', () => {
+    document.querySelector('.host-wrap').classList.add('reconnecting');
+    el('reconnect-badge').classList.remove('hidden');
+  });
+
   socket.on('state:full', (data) => {
+    document.querySelector('.host-wrap').classList.remove('reconnecting');
+    el('reconnect-badge').classList.add('hidden');
+
     // Header subtitle
     el('header-subtitle').textContent =
       `sharing /play/${data.join_code} · host this page`;

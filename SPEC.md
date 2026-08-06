@@ -4,11 +4,11 @@ A real-time, Jeopardy-style buzzer for a quiz hosted over Zoom. The host screen-
 
 This is the source of truth for V1. `CLAUDE.md` covers how to build it.
 
-> V3 delta lives in `SPEC V3.md`; V4 in `SPEC V4.md`; V5 in `SPEC V5.md`.
-> Sections below marked `[V3: ...]`/`[V4: ...]`/`[V5: ...]` describe
-> earlier behavior that a later delta changes. See CLAUDE.md's "Spec
-> precedence" section for how to resolve conflicts between this file and
-> newer delta files.
+> V3 delta lives in `SPEC V3.md`; V4 in `SPEC V4.md`; V5 in `SPEC V5.md`;
+> V6 in `SPEC V6.md`. Sections below marked `[V3: ...]`/`[V4: ...]`/
+> `[V5: ...]`/`[V6: ...]` describe earlier behavior that a later delta
+> changes. See CLAUDE.md's "Spec precedence" section for how to resolve
+> conflicts between this file and newer delta files.
 
 ---
 
@@ -55,6 +55,10 @@ Scoring is **host-driven, split-value**: for each question the host enters per-p
 ### In scope for V5
 
 - **Persistent player identity**: a rejoin token lets a device silently resume its same buzz identity across reconnects, superseding V1's "no reconnection identity matching." See `SPEC V5.md` for the full contract.
+
+### In scope for V6
+
+- **Lobby player removal**: the host can remove a duplicate/mistyped lobby entry before Start, kicking that player's live connection with a plain-language message. See `SPEC V6.md` for the full contract.
 
 ### Out of scope for V1
 - Auth of any kind. `/host/<secret>` is obscurity only.
@@ -160,6 +164,7 @@ Awarded applies to any closed question with entries, including negative-only (e.
 | `host:join` | host | `{}` | Register host socket; receive full game state. |
 | `host:start_quiz` | host | `{}` | `lobby → live`; snapshot roster from current players; open buzzing. |
 | `host:roster_add` | host | `{ name }` | Add a player to the roster after Start. |
+| `host:player_remove` | host | `{ player_id }` | `[V6: new — see SPEC V6.md]` Remove a lobby entry before Start; rejected once live. |
 | `host:queue_freeze` | host | `{}` | Set `queue_locked = true`. |
 | `host:queue_reset` | host | `{}` | Clear queue; set `queue_locked = false`. |
 | `host:question_submit` | host | `{ question_id, scores: { player_id: value, … } }` | Save all award values and mark question closed. Empty `scores` → Passed. Re-submitting overwrites the previous entry. This is the only scoring event; there is no per-cell save. |
@@ -174,6 +179,7 @@ Awarded applies to any closed question with entries, including negative-only (e.
 | `state:players` | players | `{ players: [{player_id, name}] }` — all connected non-virtual players; broadcast on join and disconnect |
 | `player:accepted` | one player | `{ player_id, phase }` `[V5: + rejoin_token — see SPEC V5.md §2]` |
 | `player:rejected` | one player | `{ reason }` |
+| `player:removed` | one player | `{}` `[V6: new — see SPEC V6.md]` Sent just before the server force-disconnects a removed lobby player. |
 | `error` | any | `{ message }` |
 
 `state:scores` is host-only. `grid` is grouped by board. `board_totals` and `cumulative_totals` are both included so the host UI can render two columns without a second request.

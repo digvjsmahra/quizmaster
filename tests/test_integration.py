@@ -381,6 +381,82 @@ def test_player_rejoin_survives_stale_disconnect_from_old_connection(room):
 
 
 # ------------------------------------------------------------------
+# host:player_remove — lobby-only cleanup of duplicate/mistaken joins
+# ------------------------------------------------------------------
+
+def test_host_player_remove_kicks_and_broadcasts(room):
+    join_code, game, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    accepted = next(e for e in p1.get_received() if e["name"] == "player:accepted")
+    pid = accepted["args"][0]["player_id"]
+    host.get_received()  # clear the join broadcast
+
+    host.emit("host:player_remove", {"player_id": pid})
+
+    # p1 is disconnected by the handler as part of the kick, so the test
+    # client's own is_connected() guard blocks get_received() afterward —
+    # read the still-queued packets directly to confirm player:removed
+    # was sent before the disconnect closed the channel.
+    assert any(pkt["name"] == "player:removed" for pkt in p1.queue)
+    assert not p1.is_connected()
+    assert pid not in game.players
+
+    host_events = host.get_received()
+    players_event = next(e for e in host_events if e["name"] == "state:players")
+    assert players_event["args"][0]["players"] == []
+
+    host.disconnect()
+
+
+def test_host_player_remove_rejected_after_start(room):
+    join_code, game, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    accepted = next(e for e in p1.get_received() if e["name"] == "player:accepted")
+    pid = accepted["args"][0]["player_id"]
+
+    host.emit("host:start_quiz")
+    host.get_received()
+
+    host.emit("host:player_remove", {"player_id": pid})
+    host_events = host.get_received()
+    error_event = next((e for e in host_events if e["name"] == "error"), None)
+    assert error_event is not None
+    assert error_event["args"][0]["context"] == "player_remove"
+    assert pid in game.players
+
+    host.disconnect()
+    p1.disconnect()
+
+
+def test_host_player_remove_unknown_id_emits_error(room):
+    join_code, _, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:player_remove", {"player_id": "bogus"})
+    host_events = host.get_received()
+    error_event = next((e for e in host_events if e["name"] == "error"), None)
+    assert error_event is not None
+    assert error_event["args"][0]["context"] == "player_remove"
+
+    host.disconnect()
+
+
+# ------------------------------------------------------------------
 # A2: upload route, per-room storage, upload gate
 # ------------------------------------------------------------------
 

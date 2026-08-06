@@ -71,6 +71,13 @@ class Game:
         )
         return player_id, self.phase
 
+    def remove_player(self, player_id: str) -> None:
+        if self.phase != "lobby":
+            raise ValueError("Cannot remove a player after the quiz has started.")
+        if player_id not in self.players:
+            raise ValueError("Unknown player.")
+        del self.players[player_id]
+
     def player_rejoin(self, token: str) -> tuple[str, str] | None:
         if not token:
             return None

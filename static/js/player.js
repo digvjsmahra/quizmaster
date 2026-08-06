@@ -113,12 +113,47 @@
     playerId = player_id;
     currentPhase = phase;
     if (rejoin_token) saveRejoinInfo(rejoin_token, pendingName);
+    document.getElementById('reconnecting-label').classList.add('hidden');
     if (phase === 'lobby') {
       showView('waiting');
     } else {
       document.getElementById('buzz-btn').disabled = false;
       showView('buzzer');
     }
+  });
+
+  // A dropped connection leaves the buzzer visually untouched otherwise —
+  // nothing stops a tap from racing the reconnect. socket.io buffers any
+  // emit made while disconnected and flushes it the instant the transport
+  // reconnects, *before* the 'connect' handler above gets to re-send
+  // player:rejoin — so a buffered player:buzz can reach the server before
+  // it has re-registered this connection's identity, and gets silently
+  // dropped. Disabling the button here means a tap during that window
+  // never fires a click at all, so nothing gets queued to race in the
+  // first place. Cleared in player:accepted once the reconnect's handshake
+  // actually completes.
+  socket.on('disconnect', () => {
+    if (currentPhase !== 'live') return;
+    document.getElementById('buzz-btn').disabled = true;
+    document.getElementById('frozen-label').classList.add('hidden');
+    document.getElementById('reconnecting-label').classList.remove('hidden');
+  });
+
+  socket.on('player:removed', () => {
+    // Host removed this player from the lobby (e.g. a typo'd duplicate) —
+    // drop the saved identity and land on a normal, working join form
+    // rather than a dead-end, so they can immediately rejoin correctly.
+    clearRejoinInfo();
+    document.documentElement.classList.remove('qb-resuming');
+    playerId = null;
+    const nameInput = document.getElementById('name-input');
+    nameInput.value = '';
+    nameInput.disabled = false;
+    document.getElementById('join-btn').disabled = false;
+    const err = document.getElementById('join-error');
+    err.textContent = 'You were removed from the room by the host. Enter your name to rejoin.';
+    err.classList.remove('hidden');
+    showView('join');
   });
 
   socket.on('player:rejected', ({ reason }) => {

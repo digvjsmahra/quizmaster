@@ -241,6 +241,15 @@ class Game:
         self.roster.append(player_id)
         return player_id
 
+    def remove_from_roster(self, player_id: str) -> None:
+        if self.phase != "live":
+            raise ValueError("No roster to remove from before Start.")
+        if player_id not in self.roster:
+            raise ValueError("Unknown roster member.")
+        self.roster.remove(player_id)
+        self.scores.pop(player_id, None)
+        self.players.pop(player_id, None)
+
     def question_exists(self, question_id: str) -> bool:
         return question_id in self._all_questions
 

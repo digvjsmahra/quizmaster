@@ -457,6 +457,95 @@ def test_host_player_remove_unknown_id_emits_error(room):
 
 
 # ------------------------------------------------------------------
+# host:roster_remove — post-Start roster cleanup, discards scores
+# ------------------------------------------------------------------
+
+def test_host_roster_remove_discards_scores_and_broadcasts_to_all_hosts(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    host1 = socketio.test_client(app)
+    host1.emit("host:join", {"room_id": join_code})
+    host1.get_received()
+
+    host2 = socketio.test_client(app)
+    host2.emit("host:join", {"room_id": join_code})
+    host2.get_received()
+
+    pid = game.roster_add("Ankur")
+    host1.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host1.get_received()
+    host2.get_received()
+    host1.emit("host:answer_reveal")
+    host1.get_received()
+    host2.get_received()
+    host1.emit("host:question_submit", {"question_id": "1:History:10", "scores": {pid: 10}})
+    host1.get_received()
+    host2.get_received()
+    assert game.scores[pid]["1:History:10"] == 10
+
+    host1.emit("host:roster_remove", {"player_id": pid})
+
+    for client in (host1, host2):
+        events_received = client.get_received()
+        scores_event = next((e for e in events_received if e["name"] == "state:scores"), None)
+        assert scores_event is not None, "both host tabs should see the removal"
+        assert pid not in [r["player_id"] for r in scores_event["args"][0]["roster"]]
+
+    assert pid not in game.roster
+    assert pid not in game.scores
+
+    host1.disconnect()
+    host2.disconnect()
+
+
+def test_host_roster_remove_kicks_still_connected_player(room):
+    join_code, game, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    accepted = next(e for e in p1.get_received() if e["name"] == "player:accepted")
+    pid = accepted["args"][0]["player_id"]
+    host.get_received()
+
+    game.start_quiz()
+    host.emit("host:roster_remove", {"player_id": pid})
+
+    # Same test-client limitation as V6's kick test — get_received() refuses
+    # once the client is marked disconnected, so inspect the raw queue.
+    assert any(pkt["name"] == "player:removed" for pkt in p1.queue)
+    assert not p1.is_connected()
+    assert pid not in game.players
+
+    host.disconnect()
+
+
+def test_host_roster_remove_rejected_before_start(room):
+    join_code, game, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    virtual_pid = game.roster_add("HostAdded")
+    # roster_add itself doesn't gate on phase, so this is reachable pre-Start
+    # even though the "+ add" UI control only appears live — the server-side
+    # guard on roster_remove is what actually matters here.
+    host.emit("host:roster_remove", {"player_id": virtual_pid})
+    host_events = host.get_received()
+    error_event = next((e for e in host_events if e["name"] == "error"), None)
+    assert error_event is not None
+    assert error_event["args"][0]["context"] == "roster_remove"
+    assert virtual_pid in game.roster
+
+    host.disconnect()
+
+
+# ------------------------------------------------------------------
 # A2: upload route, per-room storage, upload gate
 # ------------------------------------------------------------------
 

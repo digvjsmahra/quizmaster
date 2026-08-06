@@ -132,6 +132,28 @@ def register(socketio, rooms):
         emit("state:scores", room["game"].get_scores_payload())
         socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
 
+    @socketio.on("host:roster_remove")
+    def on_roster_remove(data):
+        join_code = _sid_room.get(request.sid)
+        room = rooms.get(join_code) if join_code else None
+        if not room:
+            return
+        player_id = (data or {}).get("player_id")
+        try:
+            room["game"].remove_from_roster(player_id)
+        except ValueError as e:
+            emit("error", {"message": str(e), "context": "roster_remove"})
+            return
+
+        removed_sid = next((sid for sid, pid in _sid_player.items() if pid == player_id), None)
+        if removed_sid:
+            socketio.emit("player:removed", {}, to=removed_sid)
+            disconnect(sid=removed_sid)
+
+        socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
+        socketio.emit("state:scores", room["game"].get_scores_payload(), to=f"host_{join_code}")
+        socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
+
     @socketio.on("host:player_remove")
     def on_player_remove(data):
         join_code = _sid_room.get(request.sid)

@@ -191,6 +191,65 @@ def test_remove_player_rejected_after_start():
 
 
 # ------------------------------------------------------------------
+# remove_from_roster
+# ------------------------------------------------------------------
+
+def test_remove_from_roster_deletes_real_player_and_discards_scores():
+    g = make_game()
+    pid, _ = g.player_join("Ankur")
+    g.start_quiz()
+    g.question_reveal("1:History:10")
+    g.answer_reveal()
+    g.question_submit("1:History:10", {pid: 10})
+    assert g.scores[pid]["1:History:10"] == 10
+
+    g.remove_from_roster(pid)
+
+    assert pid not in g.roster
+    assert pid not in g.scores
+    assert pid not in g.players
+
+
+def test_remove_from_roster_deletes_virtual_entry():
+    g = make_game()
+    g.player_join("Ankur")
+    g.start_quiz()
+    virtual_pid = g.roster_add("HostAdded")
+    g.remove_from_roster(virtual_pid)
+    assert virtual_pid not in g.roster
+    assert virtual_pid not in g.players
+
+
+def test_remove_from_roster_rejected_before_start():
+    g = make_game()
+    pid, _ = g.player_join("Ankur")
+    with pytest.raises(ValueError):
+        g.remove_from_roster(pid)
+
+
+def test_remove_from_roster_rejects_unknown_id():
+    g = make_game()
+    g.player_join("Ankur")
+    g.start_quiz()
+    with pytest.raises(ValueError):
+        g.remove_from_roster("not-a-real-id")
+
+
+def test_remove_from_roster_drops_player_from_subsequent_queue():
+    g = make_game()
+    pid1, _ = g.player_join("Ankur")
+    pid2, _ = g.player_join("Dev")
+    g.start_quiz()
+    g.player_buzz(pid1)
+    g.player_buzz(pid2)
+
+    g.remove_from_roster(pid1)
+
+    queue = g.get_queue_payload()["queue"]
+    assert [e["player_id"] for e in queue] == [pid2]
+
+
+# ------------------------------------------------------------------
 # start_quiz
 # ------------------------------------------------------------------
 

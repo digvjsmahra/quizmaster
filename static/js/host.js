@@ -166,11 +166,25 @@
     const tbody = el('totals-body');
     tbody.innerHTML = rows.map(r => `
       <tr>
-        <td>${esc(r.name)}</td>
+        <td>
+          <span class="totals-name">${esc(r.name)}</span>
+          <button class="btn-remove-player" data-pid="${r.player_id}" title="Remove ${esc(r.name)}">✕</button>
+        </td>
         <td>${fmt(r.board_total)}</td>
         <td>${fmt(r.cumulative)}</td>
       </tr>
     `).join('');
+    tbody.querySelectorAll('.btn-remove-player').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const row = rows.find(r => r.player_id === btn.dataset.pid);
+        const hasScore = row.cumulative !== 0 || row.board_total !== 0;
+        const msg = hasScore
+          ? `${row.name} has recorded scores (${fmt(row.cumulative)} total). Removing them permanently deletes those scores. Continue?`
+          : `Remove ${row.name} from the roster?`;
+        if (!confirm(msg)) return;
+        socket.emit('host:roster_remove', { player_id: btn.dataset.pid });
+      });
+    });
   }
 
   // ----------------------------------------------------------------

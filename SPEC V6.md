@@ -14,10 +14,15 @@ someone has no scoring data to reconcile.
 
 ## 1. Scope: lobby phase only
 
-Removal is only possible while `phase == "lobby"`. There is no roster or
-score removal — once Start snapshots the roster, this delta does not
-apply, and the existing "no undo/redo, re-click and re-submit" correction
-mechanism (`SPEC.md` §10) remains the only way to fix scoring mistakes.
+**`[V7: narrowed — see SPEC V7.md]`** Removal here is only possible while
+`phase == "lobby"`; `host:player_remove` stays a plain delete with
+nothing to reconcile. Post-Start roster/score removal — a real scenario
+V6 didn't anticipate — is now covered separately by
+`host:roster_remove` (`SPEC V7.md`), not by extending this event. Before
+V7, there was no roster or score removal at all once Start snapshotted
+the roster; the existing "no undo/redo, re-click and re-submit"
+correction mechanism (`SPEC.md` §10) remains the only way to fix a
+*score value* either way.
 Host-added (`virtual=True`) entries aren't reachable by this either, since
 they only exist post-Start in practice (the "+ add" control is live-phase
 only per `SPEC.md`'s host flow).

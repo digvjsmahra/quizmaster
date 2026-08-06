@@ -977,6 +977,41 @@ def test_present_join_bootstraps_state_presentation_and_queue(room):
     present.disconnect()
 
 
+def test_negative_only_flag_propagates_to_scores_and_presentation(room):
+    join_code, game, _ = room
+    game.start_quiz()
+    pid = game.roster_add("Ankur")
+
+    present = socketio.test_client(app)
+    present.emit("present:join", {"room_id": join_code})
+    present.get_received()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.get_received()
+    present.get_received()
+    host.emit("host:answer_reveal")
+    host.get_received()
+    present.get_received()
+    host.emit("host:question_submit", {"question_id": "1:History:10", "scores": {pid: -10}})
+    host_events = host.get_received()
+    present_events = present.get_received()
+
+    scores_event = next(e for e in host_events if e["name"] == "state:scores")
+    cell = scores_event["args"][0]["grid"]["1"]["History"]["10"]
+    assert cell["negative_only"] is True
+
+    presentation_event = next(e for e in present_events if e["name"] == "state:presentation")
+    board_cell = presentation_event["args"][0]["board"]["History"]["10"]
+    assert board_cell["negative_only"] is True
+
+    host.disconnect()
+    present.disconnect()
+
+
 def test_presentation_board_never_leaks_question_or_answer(room):
     # Redaction regression, mirrors test_player_payloads_never_leak_question_or_answer
     # but scoped to state:presentation's "board" field — live_question

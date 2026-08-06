@@ -39,6 +39,8 @@
   --color-success-strong-bg: #d1fae5;
   --color-success-strong-text: #059669;
   --color-danger: #dc2626;
+  --color-danger-bg: #fee2e2;
+  --color-danger-border: #fca5a5;
   --color-warning-bg: #fef3c7;
   --color-warning-text: #92400e;
   --color-info-bg: #dbeafe;
@@ -572,6 +574,14 @@ html.qb-resuming #view-join { display: none; }
   background: var(--color-success-bg);
   border-color: var(--color-success-border);
   color: var(--color-success-text);
+}
+
+/* At least one genuine negative entry and no positive one — nobody got
+   this. An all-zero cell stays .cell-awarded (0 is NA, not a miss). */
+.cell-awarded-negative {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger);
 }
 
 .cell-passed {

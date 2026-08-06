@@ -130,7 +130,7 @@
           cell.classList.add('cell-unplayed');
           cell.textContent = val;
         } else if (cellData.state === 'awarded') {
-          cell.classList.add('cell-awarded');
+          cell.classList.add(cellData.negative_only ? 'cell-awarded-negative' : 'cell-awarded');
           cell.innerHTML = cellData.entries
             .map(e => `${esc(e.name)} ${e.value >= 0 ? '+' : ''}${fmt(e.value)}`)
             .join('<br>');

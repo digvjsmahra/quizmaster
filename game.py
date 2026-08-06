@@ -199,6 +199,7 @@ class Game:
                     "value": cell["value"],
                     "state": cell["state"],
                     "entries": cell["entries"],
+                    "negative_only": cell.get("negative_only", False),
                 }
             totals = self._board_totals(board_name)
 
@@ -339,7 +340,13 @@ class Game:
         ]
 
         if entries:
-            return {**base, "state": "awarded", "entries": entries}
+            # Red only when nobody got it: a genuine negative (penalty) entry
+            # exists and no positive entry does. An explicit 0 counts as
+            # neither positive nor negative (SPEC V8.md) — a cell that's all
+            # zeros stays green/neutral rather than reading as a miss.
+            values = [e["value"] for e in entries]
+            negative_only = any(v < 0 for v in values) and not any(v > 0 for v in values)
+            return {**base, "state": "awarded", "entries": entries, "negative_only": negative_only}
         return {**base, "state": "passed", "entries": []}
 
     def _board_totals(self, board: str) -> list[dict]:

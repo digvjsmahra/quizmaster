@@ -5,11 +5,11 @@ A real-time, Jeopardy-style buzzer for a quiz hosted over Zoom. The host screen-
 This is the source of truth for V1. `CLAUDE.md` covers how to build it.
 
 > V3 delta lives in `SPEC V3.md`; V4 in `SPEC V4.md`; V5 in `SPEC V5.md`;
-> V6 in `SPEC V6.md`; V7 in `SPEC V7.md`. Sections below marked
-> `[V3: ...]`/`[V4: ...]`/`[V5: ...]`/`[V6: ...]`/`[V7: ...]` describe
-> earlier behavior that a later delta changes. See CLAUDE.md's "Spec
-> precedence" section for how to resolve conflicts between this file and
-> newer delta files.
+> V6 in `SPEC V6.md`; V7 in `SPEC V7.md`; V8 in `SPEC V8.md`. Sections
+> below marked `[V3: ...]`/`[V4: ...]`/`[V5: ...]`/`[V6: ...]`/
+> `[V7: ...]`/`[V8: ...]` describe earlier behavior that a later delta
+> changes. See CLAUDE.md's "Spec precedence" section for how to resolve
+> conflicts between this file and newer delta files.
 
 ---
 
@@ -64,6 +64,10 @@ Scoring is **host-driven, split-value**: for each question the host enters per-p
 ### In scope for V7
 
 - **Post-Start roster removal**: the host can remove a roster member (real or host-added) after Start, discarding their scores and kicking a still-connected player — for cases V6 couldn't cover, like a mistake that only froze into the roster at Start. See `SPEC V7.md` for the full contract.
+
+### In scope for V8
+
+- **Awarded cell color split**: green if any entry is positive, red if a negative entry exists and none is positive — a faster-to-read board, no change to scoring or the three-state model. See `SPEC V8.md` for the full contract.
 
 ### Out of scope for V1
 - Auth of any kind. `/host/<secret>` is obscurity only.
@@ -140,7 +144,7 @@ from a CSV to an uploaded bundle — see SPEC V3.md §3.]`
 | State | Condition | Display |
 |-------|-----------|---------|
 | **Unplayed** | Not in `closed_questions` | Face value (clickable) |
-| **Awarded** | In `closed_questions`, at least one score entry | Player name(s) + amount(s) |
+| **Awarded** | In `closed_questions`, at least one score entry | Player name(s) + amount(s) `[V8: green/red color split — see SPEC V8.md]` |
 | **Passed** | In `closed_questions`, zero score entries | "~passed~" (grey) |
 
 Awarded applies to any closed question with entries, including negative-only (e.g. "Dev −50"). Passed is strictly zero attempts — a wrong answer is still an entry.
@@ -247,7 +251,7 @@ Late joiners (after Start) skip waiting and land directly on the buzzer. They re
 - **Split-value scoring.** Host enters per-player amounts; server stores verbatim. `±value` buttons are editable quick-fills, not fixed events.
 - **No undo/redo.** Re-clicking a cell and re-submitting is sufficient.
 - **`host:question_submit` is atomic.** Saves all scores + closes the question in one event. Blank rows are skipped (no entry created). All rows blank = Passed; at least one row with a value = Awarded. Re-submitting overwrites.
-- **Cell states: Unplayed / Awarded / Passed.** Passed = zero entries only. Negative-only entries = Awarded. All three states render in a single color per state (no sub-variants within Awarded).
+- **Cell states: Unplayed / Awarded / Passed.** Passed = zero entries only. Negative-only entries = Awarded. `[V8: superseded — see SPEC V8.md]` Awarded now has a green/red color split (green if any entry is positive, red if a negative entry exists and none is positive); Unplayed and Passed still render a single color each.
 - **Active cell: blue border** while the scoring panel is open.
 - **Totals: Board + Total columns, always visible, sorted by board score descending.**
 - **Board navigation: `[← Prev]` `[Next →]` above the board.** Always available; starts on board 1.

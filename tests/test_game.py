@@ -690,7 +690,7 @@ def test_get_presentation_payload_board_cells_never_leak_question_answer_media()
             assert "answer" not in cell
             assert "question_media" not in cell
             assert "answer_media" not in cell
-            assert set(cell.keys()) == {"value", "state", "entries"}
+            assert set(cell.keys()) == {"value", "state", "entries", "negative_only"}
 
 
 def test_get_presentation_payload_live_question_answer_gated_on_status():
@@ -788,6 +788,36 @@ def test_cell_state_awarded_negative_only():
     _score(g, "1:History:10", {pid1: -10.0})
     cell = g._cell_state("1:History:10")
     assert cell["state"] == "awarded"
+
+
+def test_cell_state_negative_only_flag_all_positive():
+    g, pid1, _ = _started_game()
+    _score(g, "1:History:10", {pid1: 10.0})
+    assert g._cell_state("1:History:10")["negative_only"] is False
+
+
+def test_cell_state_negative_only_flag_mixed_positive_and_negative():
+    g, pid1, pid2 = _started_game()
+    _score(g, "1:History:10", {pid1: 10.0, pid2: -5.0})
+    assert g._cell_state("1:History:10")["negative_only"] is False
+
+
+def test_cell_state_negative_only_flag_all_negative():
+    g, pid1, _ = _started_game()
+    _score(g, "1:History:10", {pid1: -10.0})
+    assert g._cell_state("1:History:10")["negative_only"] is True
+
+
+def test_cell_state_negative_only_flag_negative_and_zero():
+    g, pid1, pid2 = _started_game()
+    _score(g, "1:History:10", {pid1: -10.0, pid2: 0})
+    assert g._cell_state("1:History:10")["negative_only"] is True
+
+
+def test_cell_state_negative_only_flag_all_zero_is_not_negative():
+    g, pid1, pid2 = _started_game()
+    _score(g, "1:History:10", {pid1: 0, pid2: 0})
+    assert g._cell_state("1:History:10")["negative_only"] is False
 
 
 def test_cell_state_passed():

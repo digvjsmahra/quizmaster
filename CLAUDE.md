@@ -8,7 +8,7 @@ A real-time quiz buzzer. The host creates a room from the landing page and gets 
 
 ## Spec precedence
 
-`SPEC.md` is the V1 baseline; each major version's changes live in its own `SPEC V<N>.md` delta file. Current chain: `SPEC.md` → `SPEC V3.md` → `SPEC V4.md` → `SPEC V5.md` → `SPEC V6.md` → `SPEC V7.md`.
+`SPEC.md` is the V1 baseline; each major version's changes live in its own `SPEC V<N>.md` delta file. Current chain: `SPEC.md` → `SPEC V3.md` → `SPEC V4.md` → `SPEC V5.md` → `SPEC V6.md` → `SPEC V7.md` → `SPEC V8.md`.
 
 - Where a `SPEC.md` (or older delta) section carries an explicit `[Superseded by V<N> — see ...]` / `[V3: ...]` / `[V4: ...]` pointer, the newer file is authoritative for that section — follow it without asking.
 - Where a section *conflicts* with a newer file but carries **no** pointer, do not silently assume either file is right. Some apparent conflicts are actually deliberate, coexisting distinctions rather than contradictions to resolve — e.g. the buzz-identity vs. roster separation: a real player joining via URL/code reflects immediately on the player-facing buzzer/queue (`virtual=False`), but the control-center roster only reflects the Start-time snapshot or host-added (`virtual=True`) entries. Read superficially, "player joins" vs. "roster doesn't update" looks like a contradiction; it's actually two intentionally separate tracks (see "Two player identity types" below). Flag the apparent conflict to the user and ask which reading is intended before acting on it — never resolve it unilaterally by assuming the newer file just wins.
@@ -88,7 +88,7 @@ pytest
 
 ## Testing
 
-Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals, `player_rejoin` (valid token resumes the same identity, unknown/virtual token rejected, roster/scores/queue untouched), `remove_player` (deletes a lobby entry, rejected once live, rejected for an unknown id), `remove_from_roster` (deletes a real or virtual roster member and discards their scores, rejected before Start, rejected for an unknown id).
+Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals, `player_rejoin` (valid token resumes the same identity, unknown/virtual token rejected, roster/scores/queue untouched), `remove_player` (deletes a lobby entry, rejected once live, rejected for an unknown id), `remove_from_roster` (deletes a real or virtual roster member and discards their scores, rejected before Start, rejected for an unknown id), `_cell_state`'s `negative_only` flag (green/red truth table: all-positive, mixed, all-negative, negative+zero, all-zero).
 
 Unit-test `bundle_loader.py` independently of `game.py`: valid parse, every structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows, unsupported/missing media), xlsx cell-type normalization, and `extract_media`.
 

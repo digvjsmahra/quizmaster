@@ -313,6 +313,74 @@ def test_late_joiner_receives_current_queue(room):
 
 
 # ------------------------------------------------------------------
+# player:rejoin — durable identity across reconnects
+# ------------------------------------------------------------------
+
+def test_player_rejoin_restores_same_identity_and_queue_state(room):
+    join_code, game, _ = room
+    game.start_quiz()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    accepted = next(e for e in p1.get_received() if e["name"] == "player:accepted")
+    original_pid = accepted["args"][0]["player_id"]
+    token = accepted["args"][0]["rejoin_token"]
+    assert token
+
+    p1.emit("player:buzz")
+    p1.get_received()
+    p1.disconnect()
+
+    p1_new = socketio.test_client(app)
+    p1_new.emit("player:rejoin", {"room_id": join_code, "token": token})
+    events_received = p1_new.get_received()
+
+    accepted2 = next(e for e in events_received if e["name"] == "player:accepted")
+    assert accepted2["args"][0]["player_id"] == original_pid
+    assert accepted2["args"][0]["phase"] == "live"
+
+    queue_event = next(e for e in events_received if e["name"] == "state:queue")
+    assert queue_event["args"][0]["queue"][0]["player_id"] == original_pid
+
+    p1_new.disconnect()
+
+
+def test_player_rejoin_rejects_unknown_token(room):
+    join_code, _, _ = room
+    client = socketio.test_client(app)
+    client.emit("player:rejoin", {"room_id": join_code, "token": "bogus"})
+    events_received = client.get_received()
+    assert any(e["name"] == "player:rejected" for e in events_received)
+    client.disconnect()
+
+
+def test_player_rejoin_survives_stale_disconnect_from_old_connection(room):
+    # Regression test for the race this feature introduces: the original
+    # connection's disconnect can arrive *after* the player has already
+    # rejoined on a new sid. It must not clobber connected=True.
+    join_code, game, _ = room
+    game.start_quiz()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    accepted = next(e for e in p1.get_received() if e["name"] == "player:accepted")
+    pid = accepted["args"][0]["player_id"]
+    token = accepted["args"][0]["rejoin_token"]
+
+    # Rejoin on a second connection *before* the first one's disconnect fires.
+    p1_new = socketio.test_client(app)
+    p1_new.emit("player:rejoin", {"room_id": join_code, "token": token})
+    p1_new.get_received()
+    assert game.players[pid].connected is True
+
+    # The stale original connection's disconnect finally arrives.
+    p1.disconnect()
+
+    assert game.players[pid].connected is True
+    p1_new.disconnect()
+
+
+# ------------------------------------------------------------------
 # A2: upload route, per-room storage, upload gate
 # ------------------------------------------------------------------
 

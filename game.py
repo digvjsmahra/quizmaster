@@ -1,7 +1,7 @@
 import secrets
 import string
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from bundle_loader import BundleQuestion
@@ -19,6 +19,12 @@ class Player:
     connected: bool
     joined_at: float
     virtual: bool = False  # True for host-added scorecard entries; never buzzes, never shown to players
+    # Long-lived, non-rotating — lets a real player's browser silently resume
+    # this same identity after any reconnect (reload, screen-lock, etc.) for
+    # as long as the room exists. Virtual entries get one too (harmless,
+    # simpler than conditionally generating it in two constructors) but
+    # never hand it to a client since they have no socket.
+    rejoin_token: str = field(default_factory=lambda: secrets.token_urlsafe(24))
 
 
 @dataclass
@@ -64,6 +70,16 @@ class Game:
             id=player_id, name=name, connected=True, joined_at=time.monotonic()
         )
         return player_id, self.phase
+
+    def player_rejoin(self, token: str) -> tuple[str, str] | None:
+        if not token:
+            return None
+        for pid, p in self.players.items():
+            if p.virtual or p.rejoin_token != token:
+                continue
+            p.connected = True
+            return pid, self.phase
+        return None
 
     def start_quiz(self) -> list[str]:
         if self.phase == "live":

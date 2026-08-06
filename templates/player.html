@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuizMaster</title>
   <link rel="stylesheet" href="/static/css/styles.css">
+  <script>
+    const JOIN_CODE = "{{ code }}";
+    // Anti-flash: if this device already has a saved identity for this
+    // room, hide the join form before it ever paints — player.js will
+    // reveal it again if the rejoin attempt turns out to fail.
+    try {
+      if (localStorage.getItem('qb_rejoin_' + JOIN_CODE)) {
+        document.documentElement.classList.add('qb-resuming');
+      }
+    } catch (e) { /* private mode, quota, etc. */ }
+  </script>
 </head>
 <body>
 <div class="player-wrap">
@@ -52,7 +63,6 @@
   </div>
 </div>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script>const JOIN_CODE = "{{ code }}";</script>
 <script src="/static/js/player.js"></script>
 </body>
 </html>

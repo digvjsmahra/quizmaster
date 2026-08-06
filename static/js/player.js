@@ -7,6 +7,26 @@
   let currentPhase = null;
   let activePlayers = [];  // [{player_id, name}] — all connected players
   let currentQueue = [];   // [{player_id, name, delta_ms}]
+  let pendingName = null;  // name used for the in-flight join/rejoin, saved on accept
+  let rejoinAttempted = false;
+
+  // ---- Rejoin persistence — lets any reconnect (reload, screen-lock,
+  // tab-switch) silently resume this device's identity instead of forcing
+  // the player through name-entry again. See templates/player.html's inline
+  // head script for the matching anti-flash check. ----
+  function storageKey() { return `qb_rejoin_${JOIN_CODE}`; }
+  function saveRejoinInfo(token, name) {
+    try { localStorage.setItem(storageKey(), JSON.stringify({ token, name })); } catch (e) { /* private mode, quota, etc. */ }
+  }
+  function loadRejoinInfo() {
+    try {
+      const raw = localStorage.getItem(storageKey());
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearRejoinInfo() {
+    try { localStorage.removeItem(storageKey()); } catch (e) { /* ignore */ }
+  }
 
   const views = {
     join: document.getElementById('view-join'),
@@ -62,11 +82,21 @@
     }
   }
 
-  // ---- Auto-join from URL param ----
+  // ---- Rejoin (saved identity) → URL param auto-join → manual name entry ----
 
   socket.on('connect', () => {
+    const saved = loadRejoinInfo();
+    if (saved && saved.token) {
+      rejoinAttempted = true;
+      pendingName = saved.name;
+      socket.emit('player:rejoin', { room_id: JOIN_CODE, token: saved.token });
+      return;
+    }
+    rejoinAttempted = false;
+
     const urlName = new URLSearchParams(window.location.search).get('name');
     if (urlName) {
+      pendingName = urlName;
       const nameInput = document.getElementById('name-input');
       nameInput.value = urlName;
       nameInput.disabled = true;
@@ -79,9 +109,10 @@
 
   // ---- Socket events ----
 
-  socket.on('player:accepted', ({ player_id, phase }) => {
+  socket.on('player:accepted', ({ player_id, phase, rejoin_token }) => {
     playerId = player_id;
     currentPhase = phase;
+    if (rejoin_token) saveRejoinInfo(rejoin_token, pendingName);
     if (phase === 'lobby') {
       showView('waiting');
     } else {
@@ -91,6 +122,14 @@
   });
 
   socket.on('player:rejected', ({ reason }) => {
+    if (rejoinAttempted) {
+      // A saved identity turned out to be invalid (expired, wrong room,
+      // different device) — drop back to a normal, working join instead
+      // of leaving the player stuck on the pre-hidden join view.
+      clearRejoinInfo();
+      document.documentElement.classList.remove('qb-resuming');
+      rejoinAttempted = false;
+    }
     const nameInput = document.getElementById('name-input');
     nameInput.disabled = false;
     document.getElementById('join-btn').disabled = false;
@@ -131,6 +170,8 @@
   document.getElementById('join-btn').addEventListener('click', () => {
     const name = document.getElementById('name-input').value.trim();
     if (!name) return;
+    pendingName = name;
+    rejoinAttempted = false;
     document.getElementById('join-error').classList.add('hidden');
     document.getElementById('join-btn').disabled = true;
     socket.emit('player:join', { name, room_id: JOIN_CODE });

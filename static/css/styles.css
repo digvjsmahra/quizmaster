@@ -71,6 +71,11 @@ body {
 
 .hidden { display: none !important; }
 
+/* Set synchronously by player.html's inline head script — hides the join
+   form before first paint when a saved rejoin identity exists, so a
+   reloading player never sees a flash of the name-entry screen. */
+html.qb-resuming #view-join { display: none; }
+
 /* ------------------------------------------------------------------ */
 /* Player page                                                          */
 /* ------------------------------------------------------------------ */

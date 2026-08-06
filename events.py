@@ -12,7 +12,10 @@ def register(socketio, rooms):
         pid = _sid_player.pop(request.sid, None)
         if join_code and pid:
             room = rooms.get(join_code)
-            if room and pid in room["game"].players:
+            # A player can already be back on a new sid (rejoin after this
+            # connection went stale but before its disconnect was detected)
+            # — don't clobber the freshly-restored connected=True.
+            if room and pid in room["game"].players and pid not in _sid_player.values():
                 room["game"].players[pid].connected = False
                 socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
 
@@ -36,7 +39,31 @@ def register(socketio, rooms):
         _sid_player[request.sid] = player_id
         _sid_room[request.sid] = join_code
         join_room(f"players_{join_code}")
-        emit("player:accepted", {"player_id": player_id, "phase": phase})
+        rejoin_token = room["game"].players[player_id].rejoin_token
+        emit("player:accepted", {"player_id": player_id, "phase": phase, "rejoin_token": rejoin_token})
+        if phase == "live":
+            emit("state:queue", room["game"].get_queue_payload())
+        socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
+        socketio.emit("state:players", {"players": room["game"].get_lobby_players()}, to=f"host_{join_code}")
+
+    @socketio.on("player:rejoin")
+    def on_player_rejoin(data):
+        join_code = (data.get("room_id") or "").strip()
+        room = rooms.get(join_code)
+        if not room:
+            emit("player:rejected", {"reason": "Room not found."})
+            return
+        token = (data.get("token") or "").strip()
+        result = room["game"].player_rejoin(token)
+        if not result:
+            emit("player:rejected", {"reason": "Session expired. Please rejoin."})
+            return
+        player_id, phase = result
+
+        _sid_player[request.sid] = player_id
+        _sid_room[request.sid] = join_code
+        join_room(f"players_{join_code}")
+        emit("player:accepted", {"player_id": player_id, "phase": phase, "rejoin_token": token})
         if phase == "live":
             emit("state:queue", room["game"].get_queue_payload())
         socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")

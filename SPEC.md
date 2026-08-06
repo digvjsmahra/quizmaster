@@ -4,9 +4,11 @@ A real-time, Jeopardy-style buzzer for a quiz hosted over Zoom. The host screen-
 
 This is the source of truth for V1. `CLAUDE.md` covers how to build it.
 
-> V3 delta lives in `SPEC V3.md`. Sections below marked `[V3: ...]` describe
-> V1/V2 behavior that V3 changes. See CLAUDE.md's "Spec precedence" section
-> for how to resolve conflicts between this file and newer delta files.
+> V3 delta lives in `SPEC V3.md`; V4 in `SPEC V4.md`; V5 in `SPEC V5.md`.
+> Sections below marked `[V3: ...]`/`[V4: ...]`/`[V5: ...]` describe
+> earlier behavior that a later delta changes. See CLAUDE.md's "Spec
+> precedence" section for how to resolve conflicts between this file and
+> newer delta files.
 
 ---
 
@@ -50,11 +52,15 @@ Scoring is **host-driven, split-value**: for each question the host enters per-p
 
 - **Presentation platform**: upload-gated quiz content (question/answer/media, no longer a bare CSV), a reveal → answer-reveal → cancel/score-close state machine, and a read-only `/present/<...>` view for screen-sharing. See `SPEC V3.md` for the full contract — this is a pointer, not a summary of the detail.
 
+### In scope for V5
+
+- **Persistent player identity**: a rejoin token lets a device silently resume its same buzz identity across reconnects, superseding V1's "no reconnection identity matching." See `SPEC V5.md` for the full contract.
+
 ### Out of scope for V1
 - Auth of any kind. `/host/<secret>` is obscurity only.
 - Persistence or database.
 - Multiple concurrent games.
-- Reconnection identity matching.
+- Reconnection identity matching. `[V5: superseded — see SPEC V5.md §1]`
 - In-app quiz authoring.
 - Pushing questions, answers, or scores to players; any audience-facing board.
 - Undo/redo (re-clicking a cell and re-submitting is the correction mechanism).
@@ -118,7 +124,7 @@ from a CSV to an uploaded bundle — see SPEC V3.md §3.]`
 
 **Host-added entry** (`virtual=True`) — created by the host via "Add player" after Start. Scorecard row only; no socket, never shown on player phones. Allows the host to add late joiners to the scorecard independently of their buzz identity.
 
-A player who reconnects under a different name becomes a new buzz identity; the host bridges them to their roster row when scoring. Duplicate names are allowed — the host is trusted to manage this consciously.
+`[V5: narrowed — see SPEC V5.md §1/§3]` On the same device, a reconnect now silently resumes the same buzz identity via a rejoin token — no new identity, no host bridging needed. A player joining from a device with no valid token (a different device, or a cleared browser) still becomes a new buzz identity as described below; the host bridges them to their roster row when scoring. Duplicate names are allowed — the host is trusted to manage this consciously.
 
 ### Cell states
 
@@ -148,7 +154,8 @@ Awarded applies to any closed question with entries, including negative-only (e.
 
 | event | sender | payload | effect |
 |-------|--------|---------|--------|
-| `player:join` | player | `{ name }` | Register buzz identity; ack with `player_id` + `phase`, or reject (empty name). |
+| `player:join` | player | `{ name }` | Register buzz identity; ack with `player_id` + `phase`, or reject (empty name). `[V5: ack extended with rejoin_token — see SPEC V5.md §2]` |
+| `player:rejoin` | player | `{ token }` | `[V5: new — see SPEC V5.md §2]` Resume an existing buzz identity by rejoin token; same ack/reject shape as `player:join`. |
 | `player:buzz` | player | `{}` | If live, queue open, not already queued: append by arrival time. |
 | `host:join` | host | `{}` | Register host socket; receive full game state. |
 | `host:start_quiz` | host | `{}` | `lobby → live`; snapshot roster from current players; open buzzing. |
@@ -165,7 +172,7 @@ Awarded applies to any closed question with entries, including negative-only (e.
 | `state:queue` | all | `{ queue: [{player_id, name, delta_ms}], locked }` — `delta_ms` is ms since first buzz (first entry = 0) |
 | `state:scores` | host | `{ grid, board_totals, cumulative_totals, closed }` |
 | `state:players` | players | `{ players: [{player_id, name}] }` — all connected non-virtual players; broadcast on join and disconnect |
-| `player:accepted` | one player | `{ player_id, phase }` |
+| `player:accepted` | one player | `{ player_id, phase }` `[V5: + rejoin_token — see SPEC V5.md §2]` |
 | `player:rejected` | one player | `{ reason }` |
 | `error` | any | `{ message }` |
 
@@ -207,7 +214,7 @@ Late joiners (after Start) skip waiting and land directly on the buzzer. They re
 
 ### Reconnection
 
-No reconnection logic. A dropped player reopens the link, enters any name, and is a fresh buzz identity. Their roster entry and scores are unchanged on the server. The host bridges the queue name to the correct roster row when scoring. Players are asked to reuse a consistent name to make this easy, but the system neither enforces nor relies on it.
+`[V5: superseded — see SPEC V5.md]` A dropped player's browser silently resumes their exact same buzz identity (via a rejoin token, no re-entry) as long as it's the same device and the room still exists. A device with no valid token — first-time join, a different device, or cleared storage — falls back to the original V1 behavior described below: reopen the link, enter any name, get a fresh buzz identity. Their roster entry and scores are unchanged on the server either way. The host bridges the queue name to the correct roster row when scoring a fresh identity. Players are asked to reuse a consistent name to make this easy, but the system neither enforces nor relies on it.
 
 ## 9. Non-functional requirements
 
@@ -233,7 +240,7 @@ No reconnection logic. A dropped player reopens the link, enters any name, and i
 - **Totals: Board + Total columns, always visible, sorted by board score descending.**
 - **Board navigation: `[← Prev]` `[Next →]` above the board.** Always available; starts on board 1.
 - **Lobby → live gate.** Roster snapshotted at Start; host can add players afterward.
-- **No reconnection matching.** Buzz identities disposable; roster entries durable; host bridges.
+- **No reconnection matching.** `[V5: narrowed — see SPEC V5.md]` Buzz identities disposable; roster entries durable; host bridges — unless a rejoin token resumes the same device's identity, per V5.
 - **Scoring panel always reflects the live roster.** Players added post-Start via "Add player" appear in every scoring panel opened after that point, including re-opened closed cells. Late-added players show `—` on questions closed before they were added; the host can re-open and score those cells retroactively.
 - **`host:roster_add { name }` creates a standalone roster entry.** The server assigns a new player_id; no link to any buzz identity. Host bridges the mapping mentally.
 - **CSV: `board, category, value` only.** Produced offline. App never sees question text or answers. `[V3: superseded — see SPEC V3.md §3]`
@@ -261,5 +268,5 @@ No reconnection logic. A dropped player reopens the link, enters any name, and i
 - Player/audience live scorecard.
 - Host authentication beyond `/host/<secret>` obscurity.
 - Persistence and multiple concurrent games.
-- Reconnection robustness (name-matched rebind).
+- ~~Reconnection robustness (name-matched rebind).~~ → Specified as V5.0, see `SPEC V5.md` — built as a durable rejoin token instead of name-matching (stronger: survives duplicate/changed names, no ambiguity to resolve).
 - Player presence indicators.

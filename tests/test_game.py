@@ -96,6 +96,75 @@ def test_player_join_returns_live_phase_after_start():
 
 
 # ------------------------------------------------------------------
+# player_rejoin
+# ------------------------------------------------------------------
+
+def test_player_rejoin_restores_same_identity():
+    g = make_game()
+    pid, _ = g.player_join("Ankur")
+    token = g.players[pid].rejoin_token
+    g.players[pid].connected = False
+
+    result = g.player_rejoin(token)
+
+    assert result == (pid, g.phase)
+    assert g.players[pid].connected is True
+
+
+def test_player_rejoin_rejects_unknown_token():
+    g = make_game()
+    g.player_join("Ankur")
+    assert g.player_rejoin("not-a-real-token") is None
+
+
+def test_player_rejoin_rejects_empty_token():
+    g = make_game()
+    assert g.player_rejoin("") is None
+
+
+def test_player_rejoin_rejects_virtual_entry_token():
+    g = make_game()
+    g.player_join("Ankur")
+    g.start_quiz()
+    virtual_pid = g.roster_add("HostAdded")
+    token = g.players[virtual_pid].rejoin_token
+    assert g.player_rejoin(token) is None
+
+
+def test_player_rejoin_does_not_touch_roster_scores_or_queue():
+    g = make_game()
+    pid1, _ = g.player_join("Ankur")
+    pid2, _ = g.player_join("Dev")
+    g.start_quiz()
+    g.player_buzz(pid1)
+    roster_before = list(g.roster)
+    queue_before = g.get_queue_payload()
+
+    token = g.players[pid2].rejoin_token
+    g.player_rejoin(token)
+
+    assert g.roster == roster_before
+    assert g.get_queue_payload() == queue_before
+    assert g.scores == {}
+
+
+def test_player_rejoin_preserves_in_flight_queue_position():
+    g = make_game()
+    pid1, _ = g.player_join("Ankur")
+    pid2, _ = g.player_join("Dev")
+    g.start_quiz()
+    g.player_buzz(pid1)
+    g.player_buzz(pid2)
+
+    token = g.players[pid1].rejoin_token
+    g.players[pid1].connected = False  # simulate the drop
+    g.player_rejoin(token)
+
+    queue = g.get_queue_payload()["queue"]
+    assert [e["player_id"] for e in queue] == [pid1, pid2]
+
+
+# ------------------------------------------------------------------
 # start_quiz
 # ------------------------------------------------------------------
 

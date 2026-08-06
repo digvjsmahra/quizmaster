@@ -909,7 +909,11 @@ html.qb-resuming #view-join { display: none; }
 }
 
 .present-question-text {
-  font-size: clamp(28px, 5vh, 64px);
+  /* Lower ceiling than a raw vh-scale would give — a short question
+     reading at 64px dominated the whole stage regardless of how little
+     text there was. fitSlideText (present.js) still shrinks further for
+     anything long enough to overflow even at this smaller cap. */
+  font-size: clamp(24px, 4vh, 44px);
   font-weight: 500;
   color: var(--color-text);
   max-width: 90%;

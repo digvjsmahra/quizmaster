@@ -124,7 +124,7 @@ class Game:
         self.queue_locked = False
 
     # ------------------------------------------------------------------
-    # Reveal / answer / cancel (SPEC V3.md §4)
+    # Reveal / answer / cancel (SPEC.md §7)
     # ------------------------------------------------------------------
 
     def question_reveal(self, question_id: str) -> None:
@@ -181,7 +181,7 @@ class Game:
     def get_presentation_payload(self) -> dict:
         # Redacted for the shared/screen-shared presentation room: no
         # question/answer/media per board cell (only the live_question
-        # entry, gated on phase, carries those) — see SPEC V3.md §1.
+        # entry, gated on phase, carries those) — see SPEC.md §4.
         if self.live_question:
             board_name = self._all_questions[self.live_question["question_id"]].board
         elif self._boards:
@@ -315,9 +315,9 @@ class Game:
     def _cell_state(self, question_id: str) -> dict:
         q = self._all_questions[question_id]
         # Host-only payload (state:scores never reaches a player socket) —
-        # question/answer/media are safe here per SPEC V3.md §1's widened
-        # invariant, and let the control center show a read-only Q&A peek
-        # before Start (SPEC V3.md §2).
+        # question/answer/media are safe here per SPEC.md §4's content
+        # boundary, and let the control center show a read-only Q&A peek
+        # before Start (SPEC.md §10).
         base = {
             "value": q.value,
             "question": q.question,
@@ -342,7 +342,7 @@ class Game:
         if entries:
             # Red only when nobody got it: a genuine negative (penalty) entry
             # exists and no positive entry does. An explicit 0 counts as
-            # neither positive nor negative (SPEC V8.md) — a cell that's all
+            # neither positive nor negative (SPEC.md §5) — a cell that's all
             # zeros stays green/neutral rather than reading as a miss.
             values = [e["value"] for e in entries]
             negative_only = any(v < 0 for v in values) and not any(v > 0 for v in values)

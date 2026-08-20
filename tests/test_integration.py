@@ -928,7 +928,7 @@ def test_player_never_receives_state_live_question(room):
 
 
 def test_player_payloads_never_leak_question_or_answer(room):
-    # Safety regression: golden rule 4 / SPEC V3.md §1 now carries real
+    # Safety regression: golden rule 4 / SPEC.md §4 now carries real
     # teeth since state:scores' cell payloads include question/answer/media.
     join_code, _, _ = room
 

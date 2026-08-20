@@ -1,8 +1,8 @@
-"""Parses and validates a V3 quiz bundle: a .zip containing quiz.xlsx (+ optional media/).
+"""Parses and validates a quiz bundle: a .zip containing quiz.xlsx (+ optional media/).
 
-See SPEC V3.md §3 for the file format contract this enforces. parse_bundle()
+See SPEC.md §6 for the file format contract this enforces. parse_bundle()
 is pure/side-effect-free (no filesystem writes); extract_media() is the one
-function here that writes to disk, used by A2's upload route to persist a
+function here that writes to disk, used by the upload route to persist a
 room's media into its own temp dir. Both tolerate the zip shape produced by
 macOS Finder's "Compress" on a folder (contents nested one level under a
 wrapper folder, plus __MACOSX/ and .DS_Store junk) — see

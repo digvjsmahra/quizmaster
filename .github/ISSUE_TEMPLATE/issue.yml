@@ -1,0 +1,34 @@
+name: New issue
+description: Report a bug or propose a change to Quizmaster
+labels: []
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What's the problem, or what do you want to change? Include repro steps for a bug.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - "bug"
+        - "enhancement"
+        - "documentation"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      description: Rough effort estimate, used to sequence solo/intermittent work.
+      options:
+        - "size:S — ~1 session"
+        - "size:M — ~2-3 sessions"
+        - "size:L — multi-session, own spec delta"
+    validations:
+      required: true

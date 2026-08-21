@@ -456,6 +456,29 @@ html.qb-resuming #view-join { display: none; }
   font-size: 11px;
 }
 
+.sample-bundle {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.sample-bundle-blurb {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.folder-tree {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.folder-tree-indent { padding-left: 16px; }
+.folder-tree-indent2 { padding-left: 32px; }
+
 #upload-btn { width: 100%; margin-bottom: 4px; }
 
 .btn-start {

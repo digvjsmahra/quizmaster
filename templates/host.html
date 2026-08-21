@@ -51,26 +51,31 @@
 
     <div class="card">
       <div class="card-label">Quiz content</div>
-      <div class="upload-hint">
-        Upload a <strong>.zip</strong> containing <code>quiz.xlsx</code> (columns: board, category, value, question, answer, question_media, answer_media) and an optional <code>media/</code> folder.
-        Leave a media cell blank for no image — not "NA" or "-". Multiple images for one cell: comma-separate the filenames.
-        Filenames (in either column) must exactly match a file in <code>media/</code>, case-sensitively.
-      </div>
+      <div class="upload-hint">New here? The example below shows the format in action.</div>
 
-      <div class="sample-bundle">
-        <p class="sample-bundle-blurb">New here? Grab a working example to see the format in action — unzip it, edit it in Excel/Sheets, re-zip, upload.</p>
-        <div class="folder-tree">
-          <div>starter-quiz-bundle.zip</div>
-          <div class="folder-tree-indent">├── quiz.xlsx</div>
-          <div class="folder-tree-indent">└── media/</div>
-          <div class="folder-tree-indent2">├── movie_poster.png</div>
-          <div class="folder-tree-indent2">├── poster_a.png</div>
-          <div class="folder-tree-indent2">├── poster_b.png</div>
-          <div class="folder-tree-indent2">├── mystery_silhouette.png</div>
-          <div class="folder-tree-indent2">└── answer_photo.png</div>
-        </div>
-        <a href="/static/sample/starter-quiz-bundle.zip" download class="btn-ghost">⬇ Download sample bundle</a>
-      </div>
+      <ul class="file-tree" aria-hidden="true">
+        <li>📦 starter-quiz-bundle.zip
+          <ul>
+            <li>📄 quiz.xlsx</li>
+            <li>📁 media/
+              <ul>
+                <li>🖼 movie_poster.png</li>
+                <li>🖼 poster_a.png</li>
+                <li class="file-tree-more">+ 3 more</li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link">⬇ Download sample bundle</a>
+
+      <ul class="bundle-rules">
+        <li>Upload a single <code>.zip</code> file.</li>
+        <li>Questions live in one sheet named <code>quiz.xlsx</code> — columns: <code>board</code>, <code>category</code>, <code>value</code>, <code>question</code>, <code>answer</code>, <code>question_media</code>, <code>answer_media</code>.</li>
+        <li>Images are the only supported media for now — place them in a <code>media/</code> folder next to <code>quiz.xlsx</code>.</li>
+        <li>Filenames in <code>question_media</code>/<code>answer_media</code> must exactly match a file in <code>media/</code>, extension included — case-sensitive.</li>
+        <li>Leave a media cell blank for no image — not "NA" or "-". Multiple images for one cell: comma-separate the filenames.</li>
+      </ul>
 
       <input type="file" id="bundle-input" accept=".zip" class="hidden">
       <button id="upload-btn" class="btn-ghost">📁 Upload .zip</button>

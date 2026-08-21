@@ -22,34 +22,34 @@ OUTPUT_PATH = os.path.join(REPO_ROOT, "static", "sample", "starter-quiz-bundle.z
 COLUMNS = ["board", "category", "value", "question", "answer", "question_media", "answer_media"]
 
 ROWS = [
-    {"board": "Warm-Up", "category": "Capitals", "value": 10,
+    {"board": "Board 1", "category": "Capitals", "value": 10,
      "question": "What is the capital of France?", "answer": "Paris"},
-    {"board": "Warm-Up", "category": "Capitals", "value": 20,
+    {"board": "Board 1", "category": "Capitals", "value": 20,
      "question": "What is the capital of Japan?", "answer": "Tokyo"},
 
-    {"board": "Warm-Up", "category": "Movies", "value": 10,
+    {"board": "Board 1", "category": "Movies", "value": 10,
      "question": "Name this movie from its poster", "answer": "Inception",
      "question_media": "movie_poster.png"},
-    {"board": "Warm-Up", "category": "Movies", "value": 20,
+    {"board": "Board 1", "category": "Movies", "value": 20,
      "question": "Which two posters are from the same director's films?",
      "answer": "Christopher Nolan",
      "question_media": "poster_a.png,poster_b.png"},
-    {"board": "Warm-Up", "category": "Movies", "value": 30,
+    {"board": "Board 1", "category": "Movies", "value": 30,
      "question": "", "answer": "Leonardo DiCaprio",
      "question_media": "mystery_silhouette.png", "answer_media": "answer_photo.png"},
 
-    {"board": "Round 2", "category": "Science", "value": 10,
+    {"board": "Board 2", "category": "Science", "value": 10,
      "question": "What planet is known as the Red Planet?", "answer": "Mars"},
-    {"board": "Round 2", "category": "Science", "value": 20,
+    {"board": "Board 2", "category": "Science", "value": 20,
      "question": "What gas do plants absorb from the atmosphere?", "answer": "Carbon dioxide"},
-    {"board": "Round 2", "category": "Science", "value": 30,
+    {"board": "Board 2", "category": "Science", "value": 30,
      "question": "What is the chemical symbol for gold?", "answer": "Au"},
 
-    {"board": "Round 2", "category": "History", "value": 10,
+    {"board": "Board 2", "category": "History", "value": 10,
      "question": "In what year did the Berlin Wall fall?", "answer": "1989"},
-    {"board": "Round 2", "category": "History", "value": 20,
+    {"board": "Board 2", "category": "History", "value": 20,
      "question": "Who was the first President of the United States?", "answer": "George Washington"},
-    {"board": "Round 2", "category": "History", "value": 30,
+    {"board": "Board 2", "category": "History", "value": 30,
      "question": "Which ancient wonder stood in Alexandria?", "answer": "The Lighthouse of Alexandria"},
 ]
 

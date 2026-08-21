@@ -14,5 +14,5 @@ def test_sample_bundle_parses_cleanly():
 
     assert result.errors == []
     assert result.warnings == []
-    assert list(result.boards.keys()) == ["Warm-Up", "Round 2"]
+    assert list(result.boards.keys()) == ["Board 1", "Board 2"]
     assert sum(len(qs) for qs in result.boards.values()) == 11

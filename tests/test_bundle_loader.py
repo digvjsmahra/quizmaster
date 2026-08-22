@@ -179,7 +179,16 @@ def test_rejects_unsupported_media_extension():
     bundle = make_bundle(rows, media_files={"clip.mp4": b"fake"})
     result = parse_bundle(bundle)
     assert result.boards is None
-    assert any("extension" in e.message for e in result.errors)
+    assert any("unsupported format" in e.message for e in result.errors)
+
+
+def test_media_filename_without_extension_is_actionable():
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "poster"}
+    ]
+    result = parse_bundle(make_bundle(rows, media_files={"poster": b"x"}))
+    assert result.boards is None
+    assert any("no file extension" in e.message for e in result.errors)
 
 
 def test_rejects_missing_referenced_media_file():
@@ -262,7 +271,7 @@ def test_answer_media_rejects_unsupported_extension():
     bundle = make_bundle(rows, media_files={"clip.mp4": b"fake"})
     result = parse_bundle(bundle)
     assert result.boards is None
-    assert any("extension" in e.message for e in result.errors)
+    assert any("unsupported format" in e.message for e in result.errors)
 
 
 def test_answer_media_rejects_missing_referenced_file():
@@ -312,12 +321,12 @@ def test_rejects_non_zip_input():
     assert result.errors[0].row is None
 
 
-def test_rejects_bundle_missing_quiz_xlsx():
+def test_rejects_bundle_missing_xlsx():
     rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
     bundle = make_bundle(rows, include_xlsx=False)
     result = parse_bundle(bundle)
     assert result.boards is None
-    assert any("quiz.xlsx" in e.message and e.row is None for e in result.errors)
+    assert any(".xlsx" in e.message and e.row is None for e in result.errors)
 
 
 def test_rejects_missing_required_header_column():
@@ -328,6 +337,34 @@ def test_rejects_missing_required_header_column():
     assert any("answer" in e.message and e.row is None for e in result.errors)
 
 
+def test_near_miss_column_header_silently_corrected():
+    # "question media" (space instead of underscore) is close enough that
+    # it's silently treated as question_media — no error, no mention of it.
+    columns = ["board", "category", "value", "question", "answer", "question media"]
+    rows = [{
+        "board": "1", "category": "History", "value": 10,
+        "question": "Q", "answer": "A", "question media": "pic.jpg",
+    }]
+    bundle = make_bundle(rows, columns=columns, media_files={"pic.jpg": b"x"})
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    assert result.boards["1"][0].question_media == ["pic.jpg"]
+
+
+def test_semantic_column_mismatch_lists_columns_found_without_guessing():
+    # "points" has no character-level similarity to "value" — no silent
+    # correction is attempted; the QM sees what was actually found instead.
+    columns = ["board", "category", "points", "question", "answer"]
+    rows = [{"board": "1", "category": "History", "points": 10, "question": "Q", "answer": "A"}]
+    bundle = make_bundle(rows, columns=columns)
+    result = parse_bundle(bundle)
+    assert result.boards is None
+    message = next(e.message for e in result.errors)
+    assert "value" in message
+    assert "did you mean" not in message.lower()
+    assert "points" in message  # listed among "columns found in your file"
+
+
 @pytest.mark.parametrize("xlsx_name", ["Quiz.xlsx", "QUIZ.XLSX", "quiz.XLSX"])
 def test_quiz_xlsx_name_matched_case_insensitively(xlsx_name):
     rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
@@ -335,6 +372,33 @@ def test_quiz_xlsx_name_matched_case_insensitively(xlsx_name):
     result = parse_bundle(bundle)
     assert result.errors == []
     assert result.boards["1"][0].id == "1:History:10"
+
+
+def test_accepts_any_single_xlsx_filename():
+    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
+    bundle = make_bundle(rows, xlsx_name="My Trivia Night.xlsx")
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    assert result.boards["1"][0].id == "1:History:10"
+
+
+def test_rejects_multiple_xlsx_files():
+    rows = [{"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A"}]
+    bundle = make_bundle(rows, xlsx_name="quiz.xlsx")
+    # Add a second .xlsx entry directly, since make_bundle only writes one.
+    buf = io.BytesIO(bundle.getvalue())
+    out = io.BytesIO()
+    with zipfile.ZipFile(buf) as src, zipfile.ZipFile(out, "w") as dst:
+        for name in src.namelist():
+            dst.writestr(name, src.read(name))
+        dst.writestr("quiz (copy).xlsx", src.read("quiz.xlsx"))
+    out.seek(0)
+    result = parse_bundle(out)
+    assert result.boards is None
+    assert any(
+        "multiple Excel files" in e.message and "quiz.xlsx" in e.message and "quiz (copy).xlsx" in e.message
+        for e in result.errors
+    )
 
 
 @pytest.mark.parametrize("media_folder", ["Media", "MEDIA"])

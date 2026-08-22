@@ -71,15 +71,22 @@
 
       <ul class="bundle-rules">
         <li>Upload a single <code>.zip</code> file.</li>
-        <li>Questions live in one sheet named <code>quiz.xlsx</code> — columns: <code>board</code>, <code>category</code>, <code>value</code>, <code>question</code>, <code>answer</code>, <code>question_media</code>, <code>answer_media</code>.</li>
-        <li>Images are the only supported media for now — place them in a <code>media/</code> folder next to <code>quiz.xlsx</code>.</li>
-        <li>Filenames in <code>question_media</code>/<code>answer_media</code> must exactly match a file in <code>media/</code>, extension included — case-sensitive.</li>
+        <li>Questions live in one sheet, in a single <code>.xlsx</code> file (any filename) — columns: <code>board</code>, <code>category</code>, <code>value</code>, <code>question</code>, <code>answer</code>, <code>question_media</code>, <code>answer_media</code>.</li>
+        <li>Images are the only supported media for now — place them in a <code>media/</code> folder next to the <code>.xlsx</code> file, with the extension included in the filename (e.g. <code>poster.png</code>, not <code>poster</code>).</li>
+        <li>Filenames in <code>question_media</code>/<code>answer_media</code> must exactly match a file in <code>media/</code> — case-sensitive.</li>
         <li>Leave a media cell blank for no image — not "NA" or "-". Multiple images for one cell: comma-separate the filenames.</li>
       </ul>
 
       <input type="file" id="bundle-input" accept=".zip" class="hidden">
       <button id="upload-btn" class="btn-ghost">📁 Upload .zip</button>
-      <p class="error-msg hidden" id="upload-error"></p>
+      <div class="upload-alert upload-alert-error hidden" id="upload-errors">
+        <p class="upload-alert-title" id="upload-errors-title"></p>
+        <ul class="upload-alert-list" id="upload-errors-list"></ul>
+      </div>
+      <div class="upload-alert upload-alert-warning hidden" id="upload-warnings">
+        <p class="upload-alert-title" id="upload-warnings-title"></p>
+        <ul class="upload-alert-list" id="upload-warnings-list"></ul>
+      </div>
       <p class="status-msg hidden" id="upload-success"></p>
     </div>
 

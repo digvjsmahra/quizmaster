@@ -1,4 +1,4 @@
-"""Parses and validates a quiz bundle: a .zip containing quiz.xlsx (+ optional media/).
+"""Parses and validates a quiz bundle: a .zip containing a single .xlsx file (+ optional media/).
 
 See SPEC.md §6 for the file format contract this enforces. parse_bundle()
 is pure/side-effect-free (no filesystem writes); extract_media() is the one
@@ -9,6 +9,7 @@ wrapper folder, plus __MACOSX/ and .DS_Store junk) — see
 _resolve_bundle_entries().
 """
 
+import difflib
 import os
 import zipfile
 from dataclasses import dataclass
@@ -17,7 +18,16 @@ from io import BytesIO
 import openpyxl
 
 REQUIRED_COLUMNS = {"board", "category", "value", "question", "answer"}
+OPTIONAL_COLUMNS = {"question_media", "answer_media"}
+ALL_COLUMNS = REQUIRED_COLUMNS | OPTIONAL_COLUMNS
 ALLOWED_MEDIA_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+# How close a header cell must be to a recognized column name (via
+# difflib's similarity ratio) before it's silently treated as that column
+# — high enough to only catch spacing/underscore/case/minor-typo variants
+# (e.g. "question media" -> "question_media"), not semantic swaps like
+# "points" vs "value", which get surfaced to the QM instead of guessed at.
+HEADER_MATCH_CUTOFF = 0.75
 
 
 @dataclass
@@ -102,11 +112,23 @@ def _validate_media_filenames(filenames, media_names, referenced_media):
     """
     errors = []
     for filename in filenames:
-        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if "." not in filename:
+            errors.append(
+                f"{filename!r} has no file extension — save it as e.g. {filename}.png "
+                "and make sure the sheet references that exact name"
+            )
+            continue
+        ext = filename.rsplit(".", 1)[-1].lower()
         if ext not in ALLOWED_MEDIA_EXTENSIONS:
-            errors.append(f"unsupported media extension: {filename!r}")
+            errors.append(
+                f"{filename!r} uses an unsupported format ({ext}) — supported: "
+                + ", ".join(sorted(ALLOWED_MEDIA_EXTENSIONS))
+            )
         elif filename not in media_names:
-            errors.append(f"{filename!r} was not found among the uploaded media files")
+            errors.append(
+                f"{filename!r} was not found in media/ — check the filename matches "
+                "exactly, including capitalization"
+            )
         else:
             referenced_media.add(filename)
     return errors
@@ -127,8 +149,8 @@ def _filter_mac_junk(namelist):
 
 
 def _resolve_bundle_entries(namelist):
-    """Maps each real zip entry to the effective path used to match
-    quiz.xlsx / media/, unwrapping a single top-level wrapper folder if
+    """Maps each real zip entry to the effective path used to match the
+    .xlsx file / media/, unwrapping a single top-level wrapper folder if
     every entry lives under one.
 
     Finder's "Compress" on a folder (rather than on its contents) nests
@@ -138,9 +160,10 @@ def _resolve_bundle_entries(namelist):
     produces.
 
     Returns a list of (effective_name, original_name) tuples. A bundle
-    that's already flat (quiz.xlsx and media/ as zip-root siblings) has more
-    than one top-level path segment, so the unwrap condition below naturally
-    doesn't fire and effective_name == original_name for every entry.
+    that's already flat (the .xlsx file and media/ as zip-root siblings) has
+    more than one top-level path segment, so the unwrap condition below
+    naturally doesn't fire and effective_name == original_name for every
+    entry.
     """
     names = _filter_mac_junk(namelist)
     if not names:
@@ -164,22 +187,34 @@ def parse_bundle(fileobj) -> BundleParseResult:
     with zf:
         entries = _resolve_bundle_entries(zf.namelist())
 
-        # "quiz.xlsx" and the "media/" folder are names the app itself
-        # dictates (unlike individual media filenames, which are the
-        # host's own identifiers and must match exactly) — matched
-        # case-insensitively so "Quiz.xlsx" or "Media/" don't produce a
-        # confusing "missing" error over something that's just a casing
-        # difference.
-        quiz_entry = next((orig for eff, orig in entries if eff.lower() == "quiz.xlsx"), None)
-        if quiz_entry is None:
-            return BundleParseResult(None, [ValidationError(None, "bundle is missing quiz.xlsx")], [], set())
+        # The workbook's filename isn't dictated by the app — any single
+        # .xlsx file in the bundle is accepted, whatever it's named (a QM
+        # exporting from Google Sheets gets a file named after the sheet's
+        # title, not "quiz.xlsx"). The "media/" folder name is still fixed,
+        # matched case-insensitively below.
+        xlsx_entries = [(eff, orig) for eff, orig in entries if eff.lower().endswith(".xlsx")]
+        if not xlsx_entries:
+            return BundleParseResult(None, [ValidationError(None, "bundle is missing an Excel file (.xlsx)")], [], set())
+        if len(xlsx_entries) > 1:
+            names = ", ".join(eff.rsplit("/", 1)[-1] for eff, orig in xlsx_entries)
+            return BundleParseResult(
+                None,
+                [ValidationError(
+                    None,
+                    f"found multiple Excel files ({names}) — keep only one .xlsx file in the bundle",
+                )],
+                [],
+                set(),
+            )
+        quiz_eff, quiz_entry = xlsx_entries[0]
+        quiz_name = quiz_eff.rsplit("/", 1)[-1]
 
         try:
             workbook = openpyxl.load_workbook(BytesIO(zf.read(quiz_entry)), data_only=True, read_only=True)
         except Exception:
             # openpyxl can raise a range of exception types for malformed
             # xlsx content — all of them mean "reject this upload".
-            return BundleParseResult(None, [ValidationError(None, "quiz.xlsx is not a valid Excel file")], [], set())
+            return BundleParseResult(None, [ValidationError(None, f"{quiz_name} is not a valid Excel file")], [], set())
 
         media_names = {
             eff.rsplit("/", 1)[-1]
@@ -193,30 +228,38 @@ def parse_bundle(fileobj) -> BundleParseResult:
             header_row = next(rows_iter)
         except StopIteration:
             return BundleParseResult(
-                None, [ValidationError(None, "quiz.xlsx has no header row")], [], media_names
+                None, [ValidationError(None, f"{quiz_name} has no header row")], [], media_names
             )
 
         header = {}
+        found_labels = []
         for idx, cell in enumerate(header_row):
             if cell is None:
                 continue
-            key = str(cell).strip().lower()
-            if key:
-                header[key] = idx
+            raw = str(cell).strip()
+            if not raw:
+                continue
+            found_labels.append(raw)
+            key = raw.lower()
+            if key not in ALL_COLUMNS:
+                # Confidence maps to friction: a close spelling/spacing match
+                # (e.g. "question media" -> "question_media") is silently
+                # treated as that column — there's no real ambiguity about
+                # intent. Anything looser (e.g. "points" vs "value", which
+                # share no characters for any similarity match to catch) is
+                # left alone and surfaced via missing_columns/found_labels
+                # below instead of guessed at.
+                match = difflib.get_close_matches(key, ALL_COLUMNS, n=1, cutoff=HEADER_MATCH_CUTOFF)
+                if match:
+                    key = match[0]
+            header[key] = idx
 
         missing_columns = REQUIRED_COLUMNS - set(header.keys())
         if missing_columns:
-            return BundleParseResult(
-                None,
-                [
-                    ValidationError(
-                        None,
-                        f"quiz.xlsx is missing required column(s): {', '.join(sorted(missing_columns))}",
-                    )
-                ],
-                [],
-                media_names,
-            )
+            message = f"{quiz_name} is missing required column(s): {', '.join(sorted(missing_columns))}."
+            if found_labels:
+                message += f" Columns found in your file: {', '.join(found_labels)}."
+            return BundleParseResult(None, [ValidationError(None, message)], [], media_names)
 
         errors: list[ValidationError] = []
         boards: dict[str, list[BundleQuestion]] = {}

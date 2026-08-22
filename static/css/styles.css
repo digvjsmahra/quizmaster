@@ -42,6 +42,7 @@
   --color-danger-bg: #fee2e2;
   --color-danger-border: #fca5a5;
   --color-warning-bg: #fef3c7;
+  --color-warning-border: #fde68a;
   --color-warning-text: #92400e;
   --color-info-bg: #dbeafe;
   --color-info-text: #1d4ed8;
@@ -502,6 +503,23 @@ html.qb-resuming #view-join { display: none; }
 }
 
 #upload-btn { width: 100%; margin-bottom: 4px; }
+
+.upload-alert { border-radius: var(--radius-md); padding: 10px 12px; margin: 8px 0; font-size: 12px; }
+.upload-alert-error { background: var(--color-danger-bg); border: 1px solid var(--color-danger-border); }
+.upload-alert-warning { background: var(--color-warning-bg); border: 1px solid var(--color-warning-border); }
+.upload-alert-title { font-weight: 600; margin: 0 0 6px; }
+.upload-alert-error .upload-alert-title { color: var(--color-danger); }
+.upload-alert-warning .upload-alert-title { color: var(--color-warning-text); }
+.upload-alert-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.upload-alert-list li { line-height: 1.6; color: var(--color-text-secondary); }
 
 .btn-start {
   width: 100%;

@@ -126,7 +126,7 @@ Awarded applies to any closed question with entries, including negative-only. Pa
 
 ```
 bundle.zip
-  quiz.xlsx        # exactly one sheet is read (the first)
+  quiz.xlsx        # any single .xlsx file — name is not fixed (see below); exactly one sheet is read (the first)
   media/           # optional; image files referenced by the sheet
     biopics_30a.jpg
     iconic_10.png
@@ -135,7 +135,9 @@ bundle.zip
 
 The parser also accepts this same content nested one level under a single wrapper folder — the shape produced by zipping a *folder* (rather than its contents) via macOS Finder's "Compress" command, the most natural non-technical workflow. Finder also drops a `__MACOSX/` sidecar tree of AppleDouble files and stray `.DS_Store` entries alongside the real content; both are ignored wherever they appear. Deeper nesting than one wrapper folder is not supported.
 
-**`quiz.xlsx` — long format, one row per question.** Header row required:
+**The workbook's filename is not fixed.** Any single `.xlsx` file in the bundle is accepted, whatever it's named — a QM exporting from Google Sheets gets a file named after the sheet's title (e.g. `My Trivia Night.xlsx`), not `quiz.xlsx`, and requiring an exact name added friction for no real benefit. Zero `.xlsx` files in the bundle is an error; two or more is also always an error (listing the filenames found) — no attempt is made to guess intent by preferring one literally named `quiz.xlsx` among several, since that's more surprising than just asking the QM to keep one. The `media/` folder name *is* still fixed (matched case-insensitively).
+
+**`quiz.xlsx` — long format, one row per question.** Header row required (column names below; a header cell that's a close spelling/spacing variant of a required name — e.g. `question media` instead of `question_media` — is silently treated as that column, no error; anything looser, like `points` typed instead of `value`, is not guessed at and is instead surfaced as a missing-column error alongside the column names actually found, so the QM can spot the mismatch themselves):
 
 | column | required | notes |
 |--------|----------|-------|
@@ -153,11 +155,12 @@ The parser also accepts this same content nested one level under a single wrappe
 
 **Validation (fail loudly, at upload time, in the browser):**
 - The whole file is validated in a single pass — every row's errors are collected and reported together, not just the first bad row.
-- Structural errors reported per row with row number and reason: missing required field, non-numeric value, duplicate `question_id`, empty question+media pair, unknown media extension.
+- Structural errors reported per row with row number and reason: missing required field, non-numeric value, duplicate `question_id`, empty question+media pair, unsupported/missing media extension.
 - Every filename in `question_media`/`answer_media` (split on comma, trimmed) must exist in `media/` → error if missing.
 - Files in `media/` referenced by no row → warning (not an error).
-- Error messages avoid internal vocabulary (no raw `question_id`, no internal folder-path references) so a non-technical QM can act on them directly.
-- Nothing is half-loaded: any error rejects the whole upload; the QM fixes and re-uploads. Warnings alone don't block.
+- Error messages avoid internal vocabulary (no raw `question_id`, no internal folder-path references) and are actionable, not just descriptive — e.g. a media filename with no extension names a concrete fix (`'poster' has no file extension — save it as e.g. poster.png`), and a missing required column lists the columns actually found in the file so a semantic mismatch (`points` typed instead of `value`) is visible even when it can't be silently auto-corrected.
+- Nothing is half-loaded: any error rejects the whole upload; the QM fixes and re-uploads. Warnings alone don't block — the control center says so explicitly, since it's not obvious from a plain warning message that it's safe to proceed.
+- The control center visually separates errors (blocking) from warnings (non-blocking) as two distinct boxes rather than one undifferentiated list, so "must fix" vs. "can proceed anyway" doesn't require reading closely. A long list scrolls within its own bounded box rather than growing the page indefinitely.
 
 **Dependency note:** `openpyxl` — XLSX is the QM's native authoring output (Google Sheets → Download as .xlsx) and avoids CSV's Unicode/quoting fragility with non-Latin text. XLSX only — no CSV parser, no Google Sheets integration.
 

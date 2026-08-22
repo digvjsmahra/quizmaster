@@ -577,16 +577,45 @@
     if (el('bundle-input').files.length) uploadBundle();
   });
 
+  // Renders `items` (through formatFn, XSS-escaped) as <li>s inside listEl.
+  // No truncation — .upload-alert-list's CSS scroll-caps the box instead of
+  // a click-to-expand step, so this just renders everything.
+  function renderAlertList(listEl, items, formatFn) {
+    listEl.innerHTML = items.map(item => `<li>${esc(formatFn(item))}</li>`).join('');
+  }
+
+  // Shown on both success and failure — this is what fixes warnings being
+  // dropped on a failed upload: one code path, not a per-branch special case.
+  function renderWarnings(warnings) {
+    const box = el('upload-warnings');
+    if (!warnings || !warnings.length) {
+      box.classList.add('hidden');
+      return;
+    }
+    el('upload-warnings-title').textContent =
+      `${warnings.length} warning${warnings.length === 1 ? '' : 's'} — you can still start your quiz, but review these first`;
+    renderAlertList(el('upload-warnings-list'), warnings, w => w);
+    box.classList.remove('hidden');
+  }
+
+  function renderErrors(errors) {
+    const box = el('upload-errors');
+    el('upload-errors-title').textContent =
+      `${errors.length} problem${errors.length === 1 ? '' : 's'} found`;
+    renderAlertList(el('upload-errors-list'), errors, e => (e.row ? `Row ${e.row}: ` : '') + e.message);
+    box.classList.remove('hidden');
+  }
+
   async function uploadBundle() {
     const fileInput = el('bundle-input');
     const file = fileInput.files[0];
     const btn = el('upload-btn');
-    const errEl = el('upload-error');
     const successEl = el('upload-success');
 
     btn.disabled = true;
     btn.textContent = 'Uploading…';
-    errEl.classList.add('hidden');
+    el('upload-errors').classList.add('hidden');
+    el('upload-warnings').classList.add('hidden');
     successEl.classList.add('hidden');
 
     const formData = new FormData();
@@ -600,24 +629,19 @@
       const body = await res.json();
 
       if (res.ok) {
-        const warningNote = (body.warnings && body.warnings.length)
-          ? ` — ${body.warnings.length} warning(s): ${body.warnings.join('; ')}`
-          : '';
-        successEl.textContent = `${file.name} loaded.${warningNote}`;
+        successEl.textContent = `${file.name} loaded.`;
         successEl.classList.remove('hidden');
+        renderWarnings(body.warnings);
         // Board itself renders via the server's state:scores broadcast —
         // this handler only owns the upload card's own feedback.
       } else {
-        errEl.innerHTML = `<strong>${esc(file.name)}</strong> couldn't be loaded:<br>` + body.errors
-          .map(e => `${e.row ? `Row ${e.row}: ` : ''}${esc(e.message)}`)
-          .join('<br>');
-        errEl.classList.remove('hidden');
+        renderErrors(body.errors);
+        renderWarnings(body.warnings);
         // A failed (re-)upload must not disturb an already-loaded board —
         // nothing here touches state.boards/renderBoard().
       }
     } catch {
-      errEl.textContent = 'Unable to reach the server. Please try again.';
-      errEl.classList.remove('hidden');
+      renderErrors([{ row: null, message: 'Unable to reach the server. Please try again.' }]);
     } finally {
       btn.disabled = false;
       btn.textContent = uploadBtnLabel;

@@ -579,10 +579,17 @@
 
   // Renders `items` (through formatFn, XSS-escaped) as <li>s inside listEl.
   // No truncation — .upload-alert-list's CSS scroll-caps the box instead of
-  // a click-to-expand step, so this just renders everything.
+  // a click-to-expand step, so this just renders everything. Errors block
+  // the upload outright, so there's nothing to hide; warnings use
+  // renderWarnings below instead, which does truncate.
   function renderAlertList(listEl, items, formatFn) {
     listEl.innerHTML = items.map(item => `<li>${esc(formatFn(item))}</li>`).join('');
   }
+
+  // Warnings are optional reading (the QM can start the quiz regardless),
+  // so only the first few show by default with a "+N more" reveal — unlike
+  // errors, which must all be visible since they block the upload.
+  const WARNING_PREVIEW_COUNT = 5;
 
   // Shown on both success and failure — this is what fixes warnings being
   // dropped on a failed upload: one code path, not a per-branch special case.
@@ -594,7 +601,28 @@
     }
     el('upload-warnings-title').textContent =
       `${warnings.length} warning${warnings.length === 1 ? '' : 's'} — you can still start your quiz, but review these first`;
-    renderAlertList(el('upload-warnings-list'), warnings, w => w);
+
+    const listEl = el('upload-warnings-list');
+    const visible = warnings.slice(0, WARNING_PREVIEW_COUNT);
+    const rest = warnings.slice(WARNING_PREVIEW_COUNT);
+    renderAlertList(listEl, visible, w => w);
+    if (rest.length) {
+      const moreLi = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'upload-more-btn';
+      btn.textContent = `+ ${rest.length} more`;
+      btn.addEventListener('click', () => {
+        rest.forEach(w => {
+          const li = document.createElement('li');
+          li.textContent = w; // not innerHTML — no escaping needed
+          listEl.insertBefore(li, moreLi);
+        });
+        moreLi.remove();
+      });
+      moreLi.appendChild(btn);
+      listEl.appendChild(moreLi);
+    }
     box.classList.remove('hidden');
   }
 

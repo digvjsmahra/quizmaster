@@ -346,7 +346,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
             )
 
         warnings = [
-            f"media file {filename!r} is not referenced by any row"
+            f"media file {filename!r} is not referenced by any question in the quiz"
             for filename in sorted(media_names - referenced_media)
         ]
 

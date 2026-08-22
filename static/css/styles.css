@@ -520,6 +520,17 @@ html.qb-resuming #view-join { display: none; }
   scrollbar-gutter: stable;
 }
 .upload-alert-list li { line-height: 1.6; color: var(--color-text-secondary); }
+.upload-more-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  color: var(--color-warning-text);
+}
 
 .btn-start {
   width: 100%;

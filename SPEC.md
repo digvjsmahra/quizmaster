@@ -154,7 +154,7 @@ The parser also accepts this same content nested one level under a single wrappe
 - Media is **images only** (png / jpg / jpeg / gif / webp). Any other extension is a validation error.
 
 **Validation (fail loudly, at upload time, in the browser):**
-- The whole file is validated in a single pass — every row's errors are collected and reported together, not just the first bad row.
+- The whole file is validated in a single pass — every row's errors are collected and reported together, not just the first bad row. This holds even when a required column is entirely missing: that's reported once as a bundle-level error, but row-level checks that don't depend on it (media filenames, duplicate detection) still run, so a QM sees everything wrong in one upload rather than fixing issues one category at a time across repeated attempts.
 - Structural errors reported per row with row number and reason: missing required field, non-numeric value, duplicate `question_id`, empty question+media pair, unsupported/missing media extension.
 - Every filename in `question_media`/`answer_media` (split on comma, trimmed) must exist in `media/` → error if missing.
 - Files in `media/` referenced by no row → warning (not an error).

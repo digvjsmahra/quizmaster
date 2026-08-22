@@ -337,6 +337,24 @@ def test_rejects_missing_required_header_column():
     assert any("answer" in e.message and e.row is None for e in result.errors)
 
 
+def test_missing_column_still_surfaces_row_level_issues_in_same_pass():
+    # A required column is missing AND a row has an unrelated media
+    # problem — both should come back together, not just the first.
+    columns = ["board", "category", "question", "answer", "question_media"]
+    rows = [
+        {"board": "1", "category": "Cap", "question": "Q", "answer": "A", "question_media": "poster"},
+    ]
+    bundle = make_bundle(rows, columns=columns, media_files={"poster": b"x"})
+    result = parse_bundle(bundle)
+    assert result.boards is None
+    messages = [e.message for e in result.errors]
+    assert any("missing required column(s): value" in m for m in messages)
+    assert any("no file extension" in m for m in messages)
+    # No flood of a "board is required"/"value is required" per-row
+    # message repeating what the bundle-level message already said.
+    assert not any("value is required" in m for m in messages)
+
+
 def test_near_miss_column_header_silently_corrected():
     # "question media" (space instead of underscore) is close enough that
     # it's silently treated as question_media — no error, no mention of it.

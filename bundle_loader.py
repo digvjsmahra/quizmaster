@@ -254,14 +254,22 @@ def parse_bundle(fileobj) -> BundleParseResult:
                     key = match[0]
             header[key] = idx
 
+        # A missing required column no longer stops validation here — it's
+        # reported once as a bundle-level error below, but the row loop
+        # still runs so any other issues (media filenames, duplicates) in
+        # the same file surface in this same pass instead of requiring a
+        # separate re-upload to discover them one category at a time. Each
+        # globally-missing column's per-row "X is required" check is
+        # skipped, since repeating that N times would be pure noise once
+        # it's already been said once at the bundle level.
         missing_columns = REQUIRED_COLUMNS - set(header.keys())
+        errors: list[ValidationError] = []
         if missing_columns:
             message = f"{quiz_name} is missing required column(s): {', '.join(sorted(missing_columns))}."
             if found_labels:
                 message += f" Columns found in your file: {', '.join(found_labels)}."
-            return BundleParseResult(None, [ValidationError(None, message)], [], media_names)
+            errors.append(ValidationError(None, message))
 
-        errors: list[ValidationError] = []
         boards: dict[str, list[BundleQuestion]] = {}
         seen_ids: set[tuple[str, str, int]] = set()
         referenced_media: set[str] = set()
@@ -279,16 +287,19 @@ def parse_bundle(fileobj) -> BundleParseResult:
 
             row_errors = []
 
-            if not board:
+            if "board" not in missing_columns and not board:
                 row_errors.append("board is required")
-            if not category:
+            if "category" not in missing_columns and not category:
                 row_errors.append("category is required")
-            if not answer:
+            if "answer" not in missing_columns and not answer:
                 row_errors.append("answer is required")
 
-            value, value_error = _parse_value(_row_cell(row, header, "value"))
-            if value_error:
-                row_errors.append(value_error)
+            if "value" in missing_columns:
+                value = None
+            else:
+                value, value_error = _parse_value(_row_cell(row, header, "value"))
+                if value_error:
+                    row_errors.append(value_error)
 
             # A blank cell means no media. A non-blank placeholder (e.g. "NA",
             # "-") is treated literally and validated as a filename below, so

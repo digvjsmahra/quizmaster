@@ -1,6 +1,7 @@
 import os
 import secrets
 import tempfile
+import time
 
 import eventlet
 
@@ -26,6 +27,18 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = secrets.token_hex(16)
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25 MB — bundles carry images
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+
+# One version per process boot, appended to static asset URLs as ?v=... so a
+# new deploy immediately busts browser/CDN caches instead of waiting out
+# their max-age — a stale-cached JS file paired with a freshly-deployed HTML
+# template that changed together (different element IDs, etc.) fails in
+# confusing ways otherwise.
+ASSET_VERSION = str(int(time.time()))
+
+
+@app.context_processor
+def inject_asset_version():
+    return {"asset_version": ASSET_VERSION}
 
 
 @app.route("/")

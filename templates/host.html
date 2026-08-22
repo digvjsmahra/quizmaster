@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QM Control Center</title>
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_version }}">
 </head>
 <body>
 <div class="host-wrap">
@@ -181,7 +181,7 @@
 </div>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>const JOIN_CODE = "{{ join_code }}"; const HOST_TOKEN = "{{ host_token }}";</script>
-<script src="/static/js/media.js"></script>
-<script src="/static/js/host.js"></script>
+<script src="/static/js/media.js?v={{ asset_version }}"></script>
+<script src="/static/js/host.js?v={{ asset_version }}"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QuizMaster</title>
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_version }}">
   <script>
     const JOIN_CODE = "{{ code }}";
     // Anti-flash: if this device already has a saved identity for this
@@ -64,6 +64,6 @@
   </div>
 </div>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script src="/static/js/player.js"></script>
+<script src="/static/js/player.js?v={{ asset_version }}"></script>
 </body>
 </html>

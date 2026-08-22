@@ -29,14 +29,18 @@ ROWS = [
 
     {"board": "Board 1", "category": "Movies", "value": 10,
      "question": "Name this movie from its poster", "answer": "Inception",
+     # The one deliberate exception: this reference keeps its extension
+     # (the actual file, movie_poster below, doesn't have one) to show
+     # that still works too — every other media reference below drops
+     # the extension entirely, which is the common case.
      "question_media": "movie_poster.png"},
     {"board": "Board 1", "category": "Movies", "value": 20,
      "question": "Which two posters are from the same director's films?",
      "answer": "Christopher Nolan",
-     "question_media": "poster_a.png,poster_b.png"},
+     "question_media": "poster_a,poster_b"},
     {"board": "Board 1", "category": "Movies", "value": 30,
      "question": "", "answer": "Leonardo DiCaprio",
-     "question_media": "mystery_silhouette.png", "answer_media": "answer_photo.png"},
+     "question_media": "mystery_silhouette", "answer_media": "answer_photo"},
 
     {"board": "Board 2", "category": "Science", "value": 10,
      "question": "What planet is known as the Red Planet?", "answer": "Mars"},
@@ -53,17 +57,18 @@ ROWS = [
      "question": "Which ancient wonder stood in Alexandria?", "answer": "The Lighthouse of Alexandria"},
 ]
 
-# filename -> (width, height, RGB). "movie_poster" is deliberately saved
-# without an extension, while the sheet still references "movie_poster.png"
-# (see ROWS above) — media is matched by base filename only (see SPEC.md
-# §6), so this mismatch is expected to work and doubles as a live example
-# of that in the downloadable sample.
+# filename -> (width, height, RGB). All saved without an extension — media
+# is matched by base filename only (see SPEC.md §6), and this is the common
+# case (a QM's OS often hides extensions from them anyway). The sheet still
+# references "movie_poster.png" *with* an extension (see ROWS above) as the
+# one deliberate exception, showing that a claimed extension in the cell
+# doesn't need to match the real file either.
 MEDIA = {
     "movie_poster": (300, 200, (99, 102, 241)),
-    "poster_a.png": (300, 200, (16, 185, 129)),
-    "poster_b.png": (300, 200, (245, 158, 11)),
-    "mystery_silhouette.png": (300, 200, (55, 65, 81)),
-    "answer_photo.png": (300, 200, (220, 38, 38)),
+    "poster_a": (300, 200, (16, 185, 129)),
+    "poster_b": (300, 200, (245, 158, 11)),
+    "mystery_silhouette": (300, 200, (55, 65, 81)),
+    "answer_photo": (300, 200, (220, 38, 38)),
 }
 
 

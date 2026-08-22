@@ -20,7 +20,16 @@ import openpyxl
 REQUIRED_COLUMNS = {"board", "category", "value", "question", "answer"}
 OPTIONAL_COLUMNS = {"question_media", "answer_media"}
 ALL_COLUMNS = REQUIRED_COLUMNS | OPTIONAL_COLUMNS
-ALLOWED_MEDIA_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+# Media MIME types by sniffed format — shared with app.py's /media route,
+# which needs the same mapping to serve an extension-less stored file with
+# the right Content-Type.
+MEDIA_MIME_TYPES = {
+    "png": "image/png",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "webp": "image/webp",
+}
 
 # How close a header cell must be to a recognized column name (via
 # difflib's similarity ratio) before it's silently treated as that column
@@ -105,33 +114,60 @@ def _row_cell(row, header, key):
     return row[idx]
 
 
-def _validate_media_filenames(filenames, media_names, referenced_media):
-    """Checks each filename's extension and presence in media_names, adding
-    valid ones to referenced_media. Shared between the `question_media` and
-    `answer_media` columns, which follow identical rules.
+def sniff_image_format(data: bytes) -> str | None:
+    """Detects the real image format from file content (magic bytes), never
+    from a claimed filename extension — see SPEC.md §6. Returns one of
+    MEDIA_MIME_TYPES' keys, or None if the bytes don't match a supported
+    image format.
+    """
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def _strip_ext(name: str) -> str:
+    return name.rsplit(".", 1)[0] if "." in name else name
+
+
+def _resolve_media_refs(filenames, resolved_media, collisions, referenced_bases):
+    """Resolves each raw cell filename (e.g. 'poster' or 'poster.png' —
+    extension irrelevant on either side) to media/'s actual filename by base
+    name only, using resolved_media's already-sniffed format to validate it.
+    Adds matched base names to referenced_bases (for the unreferenced-media
+    warning) and returns (resolved_filenames, errors) — resolved_filenames
+    is only meaningful when errors is empty. Shared between the
+    `question_media` and `answer_media` columns, which follow identical rules.
     """
     errors = []
+    resolved = []
     for filename in filenames:
-        if "." not in filename:
+        base = _strip_ext(filename)
+        if base in collisions:
             errors.append(
-                f"{filename!r} has no file extension — save it as e.g. {filename}.png "
-                "and make sure the sheet references that exact name"
+                f"{filename!r} matches more than one file in media/ — rename "
+                "one of them so the reference is unambiguous"
             )
             continue
-        ext = filename.rsplit(".", 1)[-1].lower()
-        if ext not in ALLOWED_MEDIA_EXTENSIONS:
+        entry = resolved_media.get(base)
+        if entry is None:
+            errors.append(f"{filename!r} was not found in media/")
+            continue
+        basename, fmt = entry
+        if fmt is None:
             errors.append(
-                f"{filename!r} uses an unsupported format ({ext}) — supported: "
-                + ", ".join(sorted(ALLOWED_MEDIA_EXTENSIONS))
+                f"{basename!r} (referenced as {filename!r}) isn't a supported "
+                "image format — supported: " + ", ".join(sorted(MEDIA_MIME_TYPES))
             )
-        elif filename not in media_names:
-            errors.append(
-                f"{filename!r} was not found in media/ — check the filename matches "
-                "exactly, including capitalization"
-            )
-        else:
-            referenced_media.add(filename)
-    return errors
+            continue
+        referenced_bases.add(base)
+        resolved.append(basename)
+    return resolved, errors
 
 
 def _filter_mac_junk(namelist):
@@ -216,20 +252,50 @@ def parse_bundle(fileobj) -> BundleParseResult:
             # xlsx content — all of them mean "reject this upload".
             return BundleParseResult(None, [ValidationError(None, f"{quiz_name} is not a valid Excel file")], [], set())
 
-        media_names = {
-            eff.rsplit("/", 1)[-1]
+        media_entries = [
+            (eff.rsplit("/", 1)[-1], orig)
             for eff, orig in entries
             if eff.lower().startswith("media/") and not eff.endswith("/")
-        }
+        ]
+        media_names = {basename for basename, orig in media_entries}
+
+        # Media is matched by base filename only — the claimed extension (if
+        # any) on either the sheet's cell value or the actual file is never
+        # trusted; the real format is sniffed from content instead (see
+        # sniff_image_format). Stripping extensions can make two on-disk
+        # files collide (e.g. poster.png and poster.jpg both resolve to
+        # "poster") — reported once here, added to errors without stopping
+        # the rest of validation, same non-blocking pattern as the
+        # missing-column check below.
+        by_base: dict[str, list[str]] = {}
+        for basename, orig in media_entries:
+            by_base.setdefault(_strip_ext(basename), []).append(basename)
+
+        errors: list[ValidationError] = []
+        collisions = {base for base, names in by_base.items() if len(names) > 1}
+        for base in sorted(collisions):
+            names = ", ".join(sorted(by_base[base]))
+            errors.append(ValidationError(
+                None, f"found multiple media files matching {base!r} ({names}) — keep only one"
+            ))
+
+        orig_by_basename = {basename: orig for basename, orig in media_entries}
+        resolved_media: dict[str, tuple[str, str | None]] = {}
+        for base, names in by_base.items():
+            if base in collisions:
+                continue
+            basename = names[0]
+            with zf.open(orig_by_basename[basename]) as f:
+                header_bytes = f.read(16)
+            resolved_media[base] = (basename, sniff_image_format(header_bytes))
 
         sheet = workbook.worksheets[0]
         rows_iter = sheet.iter_rows(values_only=True)
         try:
             header_row = next(rows_iter)
         except StopIteration:
-            return BundleParseResult(
-                None, [ValidationError(None, f"{quiz_name} has no header row")], [], media_names
-            )
+            errors.append(ValidationError(None, f"{quiz_name} has no header row"))
+            return BundleParseResult(None, errors, [], media_names)
 
         header = {}
         found_labels = []
@@ -263,7 +329,6 @@ def parse_bundle(fileobj) -> BundleParseResult:
         # skipped, since repeating that N times would be pure noise once
         # it's already been said once at the bundle level.
         missing_columns = REQUIRED_COLUMNS - set(header.keys())
-        errors: list[ValidationError] = []
         if missing_columns:
             message = f"{quiz_name} is missing required column(s): {', '.join(sorted(missing_columns))}."
             if found_labels:
@@ -272,7 +337,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
 
         boards: dict[str, list[BundleQuestion]] = {}
         seen_ids: set[tuple[str, str, int]] = set()
-        referenced_media: set[str] = set()
+        referenced_bases: set[str] = set()
 
         for row_idx, row in enumerate(rows_iter, start=2):
             if row is None or all(c is None for c in row):
@@ -314,8 +379,14 @@ def parse_bundle(fileobj) -> BundleParseResult:
             if not question and not question_media:
                 row_errors.append("question or question_media is required")
 
-            row_errors.extend(_validate_media_filenames(question_media, media_names, referenced_media))
-            row_errors.extend(_validate_media_filenames(answer_media, media_names, referenced_media))
+            question_media_resolved, qm_errors = _resolve_media_refs(
+                question_media, resolved_media, collisions, referenced_bases
+            )
+            answer_media_resolved, am_errors = _resolve_media_refs(
+                answer_media, resolved_media, collisions, referenced_bases
+            )
+            row_errors.extend(qm_errors)
+            row_errors.extend(am_errors)
 
             question_key = None
             if board and category and value is not None:
@@ -340,14 +411,15 @@ def parse_bundle(fileobj) -> BundleParseResult:
                     value=value,
                     question=question,
                     answer=answer,
-                    question_media=question_media,
-                    answer_media=answer_media,
+                    question_media=question_media_resolved,
+                    answer_media=answer_media_resolved,
                 )
             )
 
         warnings = [
-            f"media file {filename!r} is not referenced by any question in the quiz"
-            for filename in sorted(media_names - referenced_media)
+            f"media file {basename!r} is not referenced by any question in the quiz"
+            for base, (basename, fmt) in sorted(resolved_media.items())
+            if base not in referenced_bases
         ]
 
         return BundleParseResult(

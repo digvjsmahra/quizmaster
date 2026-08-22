@@ -18,6 +18,8 @@ def _q(id, board, category, value):
     )
 
 
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
+
 DEFAULT_QUESTIONS = {
     "1": [
         _q("1:History:10", "1", "History", 10),
@@ -676,7 +678,7 @@ def test_media_route_serves_uploaded_file(room):
     join_code, _, host_token = room
     bundle_bytes = _make_bundle_bytes(
         [{"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1", "question_media": "pic.jpg"}],
-        media_files={"pic.jpg": b"pic-bytes"},
+        media_files={"pic.jpg": PNG_BYTES},
     )
     app.test_client().post(
         f"/host/{join_code}/{host_token}/upload",
@@ -685,7 +687,27 @@ def test_media_route_serves_uploaded_file(room):
     )
     res = app.test_client().get(f"/media/{join_code}/{host_token}/pic.jpg")
     assert res.status_code == 200
-    assert res.data == b"pic-bytes"
+    assert res.data == PNG_BYTES
+    assert res.content_type == "image/png"
+
+
+def test_media_route_serves_extension_less_file_with_sniffed_content_type(room):
+    # bundle_loader matches media by base name only — a file can end up
+    # stored on disk with no extension at all if that's how it arrived.
+    join_code, _, host_token = room
+    bundle_bytes = _make_bundle_bytes(
+        [{"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1", "question_media": "poster.png"}],
+        media_files={"poster": PNG_BYTES},  # sheet says .png, actual file has no extension
+    )
+    app.test_client().post(
+        f"/host/{join_code}/{host_token}/upload",
+        data={"bundle": (io.BytesIO(bundle_bytes), "bundle.zip")},
+        content_type="multipart/form-data",
+    )
+    res = app.test_client().get(f"/media/{join_code}/{host_token}/poster")
+    assert res.status_code == 200
+    assert res.data == PNG_BYTES
+    assert res.content_type == "image/png"
 
 
 def test_media_route_wrong_token_returns_404(room):
@@ -698,7 +720,7 @@ def test_media_route_unknown_filename_returns_404(room):
     join_code, _, host_token = room
     bundle_bytes = _make_bundle_bytes(
         [{"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1", "question_media": "pic.jpg"}],
-        media_files={"pic.jpg": b"pic-bytes"},
+        media_files={"pic.jpg": PNG_BYTES},
     )
     app.test_client().post(
         f"/host/{join_code}/{host_token}/upload",

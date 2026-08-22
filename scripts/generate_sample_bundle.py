@@ -53,9 +53,13 @@ ROWS = [
      "question": "Which ancient wonder stood in Alexandria?", "answer": "The Lighthouse of Alexandria"},
 ]
 
-# filename -> (width, height, RGB)
+# filename -> (width, height, RGB). "movie_poster" is deliberately saved
+# without an extension, while the sheet still references "movie_poster.png"
+# (see ROWS above) — media is matched by base filename only (see SPEC.md
+# §6), so this mismatch is expected to work and doubles as a live example
+# of that in the downloadable sample.
 MEDIA = {
-    "movie_poster.png": (300, 200, (99, 102, 241)),
+    "movie_poster": (300, 200, (99, 102, 241)),
     "poster_a.png": (300, 200, (16, 185, 129)),
     "poster_b.png": (300, 200, (245, 158, 11)),
     "mystery_silhouette.png": (300, 200, (55, 65, 81)),

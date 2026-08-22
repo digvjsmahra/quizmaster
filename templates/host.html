@@ -59,7 +59,7 @@
             <li>📄 <code>quiz.xlsx</code></li>
             <li>📁 <code>media/</code>
               <ul>
-                <li>🖼 <code>movie_poster.png</code></li>
+                <li>🖼 <code>movie_poster</code></li>
                 <li>🖼 <code>poster_a.png</code></li>
                 <li class="file-tree-more">+ 3 more</li>
               </ul>
@@ -72,8 +72,8 @@
       <ul class="bundle-rules">
         <li>Upload a single <code>.zip</code> file.</li>
         <li>Questions live in one sheet, in a single <code>.xlsx</code> file (any filename) — columns: <code>board</code>, <code>category</code>, <code>value</code>, <code>question</code>, <code>answer</code>, <code>question_media</code>, <code>answer_media</code>.</li>
-        <li>Images are the only supported media for now — place them in a <code>media/</code> folder next to the <code>.xlsx</code> file, with the extension included in the filename (e.g. <code>poster.png</code>, not <code>poster</code>).</li>
-        <li>Filenames in <code>question_media</code>/<code>answer_media</code> must exactly match a file in <code>media/</code> — case-sensitive.</li>
+        <li>Images are the only supported media for now — place them in a <code>media/</code> folder next to the <code>.xlsx</code> file. The extension doesn't matter and doesn't need to match — <code>poster</code> and <code>poster.png</code> both work.</li>
+        <li>Filenames in <code>question_media</code>/<code>answer_media</code> just need to match a file in <code>media/</code> by name (extension ignored) — case-sensitive on the name itself.</li>
         <li>Leave a media cell blank for no image — not "NA" or "-". Multiple images for one cell: comma-separate the filenames.</li>
       </ul>
 

@@ -9,6 +9,12 @@ from bundle_loader import extract_media, parse_bundle
 
 DEFAULT_COLUMNS = ["board", "category", "value", "question", "answer", "question_media", "answer_media"]
 
+# Minimal magic-byte-prefixed fixtures for content-sniffing tests — just
+# enough for sniff_image_format() to recognize them, not full valid images
+# (parse_bundle never decodes media, only serves raw bytes to the browser).
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
+JPEG_BYTES = b"\xff\xd8\xff" + b"\x00" * 8
+
 
 def make_bundle(
     rows, *, media_files=None, columns=None, include_xlsx=True, extra_sheets=None,
@@ -162,7 +168,7 @@ def test_allows_empty_question_with_media():
     rows = [
         {"board": "1", "category": "History", "value": 10, "question": "", "answer": "A", "question_media": "pic.jpg"}
     ]
-    bundle = make_bundle(rows, media_files={"pic.jpg": b"fake-image-bytes"})
+    bundle = make_bundle(rows, media_files={"pic.jpg": PNG_BYTES})
     result = parse_bundle(bundle)
     assert result.errors == []
     assert result.boards["1"][0].question_media == ["pic.jpg"]
@@ -172,23 +178,48 @@ def test_allows_empty_question_with_media():
 # media validation
 # ------------------------------------------------------------------
 
-def test_rejects_unsupported_media_extension():
+def test_rejects_non_image_content_at_matched_filename():
     rows = [
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "clip.mp4"}
     ]
-    bundle = make_bundle(rows, media_files={"clip.mp4": b"fake"})
+    bundle = make_bundle(rows, media_files={"clip.mp4": b"not an image"})
     result = parse_bundle(bundle)
     assert result.boards is None
-    assert any("unsupported format" in e.message for e in result.errors)
+    assert any("isn't a supported image format" in e.message for e in result.errors)
 
 
-def test_media_filename_without_extension_is_actionable():
+@pytest.mark.parametrize(
+    "cell_ref, actual_filename",
+    [
+        ("poster.png", "poster"),      # cell has extension, file doesn't
+        ("poster", "poster.png"),      # cell has no extension, file does
+        ("poster", "poster"),          # neither has one
+        ("poster.png", "poster.jpg"),  # claimed extension disagrees with the real (sniffed) format — still fine
+    ],
+)
+def test_media_matches_by_base_name_ignoring_extension(cell_ref, actual_filename):
+    rows = [
+        {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": cell_ref}
+    ]
+    bundle = make_bundle(rows, media_files={actual_filename: JPEG_BYTES if actual_filename.endswith(".jpg") else PNG_BYTES})
+    result = parse_bundle(bundle)
+    assert result.errors == []
+    assert result.boards["1"][0].question_media == [actual_filename]
+
+
+def test_rejects_media_base_name_collision():
     rows = [
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "poster"}
     ]
-    result = parse_bundle(make_bundle(rows, media_files={"poster": b"x"}))
+    bundle = make_bundle(rows, media_files={"poster.png": PNG_BYTES, "poster.jpg": JPEG_BYTES})
+    result = parse_bundle(bundle)
     assert result.boards is None
-    assert any("no file extension" in e.message for e in result.errors)
+    assert any(
+        "multiple media files matching" in e.message and "poster.png" in e.message
+        and "poster.jpg" in e.message and e.row is None
+        for e in result.errors
+    )
+    assert any("matches more than one file" in e.message and e.row == 2 for e in result.errors)
 
 
 def test_rejects_missing_referenced_media_file():
@@ -237,7 +268,7 @@ def test_answer_media_is_independent_of_question_media():
             "question_media": "q.jpg", "answer_media": "a.jpg",
         }
     ]
-    bundle = make_bundle(rows, media_files={"q.jpg": b"q", "a.jpg": b"a"})
+    bundle = make_bundle(rows, media_files={"q.jpg": JPEG_BYTES, "a.jpg": JPEG_BYTES})
     result = parse_bundle(bundle)
     assert result.errors == []
     q = result.boards["1"][0]
@@ -258,20 +289,20 @@ def test_answer_media_does_not_satisfy_question_requirement():
             "question": "", "answer": "A", "answer_media": "a.jpg",
         }
     ]
-    bundle = make_bundle(rows, media_files={"a.jpg": b"a"})
+    bundle = make_bundle(rows, media_files={"a.jpg": JPEG_BYTES})
     result = parse_bundle(bundle)
     assert result.boards is None
     assert any("question or question_media" in e.message for e in result.errors)
 
 
-def test_answer_media_rejects_unsupported_extension():
+def test_answer_media_rejects_non_image_content():
     rows = [
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "answer_media": "clip.mp4"}
     ]
-    bundle = make_bundle(rows, media_files={"clip.mp4": b"fake"})
+    bundle = make_bundle(rows, media_files={"clip.mp4": b"not an image"})
     result = parse_bundle(bundle)
     assert result.boards is None
-    assert any("unsupported format" in e.message for e in result.errors)
+    assert any("isn't a supported image format" in e.message for e in result.errors)
 
 
 def test_answer_media_rejects_missing_referenced_file():
@@ -290,7 +321,7 @@ def test_answer_media_counts_toward_referenced_media_for_warnings():
     rows = [
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "answer_media": "a.jpg"}
     ]
-    bundle = make_bundle(rows, media_files={"a.jpg": b"a"})
+    bundle = make_bundle(rows, media_files={"a.jpg": JPEG_BYTES})
     result = parse_bundle(bundle)
     assert result.errors == []
     assert result.warnings == []
@@ -342,14 +373,14 @@ def test_missing_column_still_surfaces_row_level_issues_in_same_pass():
     # problem — both should come back together, not just the first.
     columns = ["board", "category", "question", "answer", "question_media"]
     rows = [
-        {"board": "1", "category": "Cap", "question": "Q", "answer": "A", "question_media": "poster"},
+        {"board": "1", "category": "Cap", "question": "Q", "answer": "A", "question_media": "poster.png"},
     ]
-    bundle = make_bundle(rows, columns=columns, media_files={"poster": b"x"})
+    bundle = make_bundle(rows, columns=columns)  # no media/ folder at all -> "not found"
     result = parse_bundle(bundle)
     assert result.boards is None
     messages = [e.message for e in result.errors]
     assert any("missing required column(s): value" in m for m in messages)
-    assert any("no file extension" in m for m in messages)
+    assert any("not found" in m for m in messages)
     # No flood of a "board is required"/"value is required" per-row
     # message repeating what the bundle-level message already said.
     assert not any("value is required" in m for m in messages)
@@ -363,7 +394,7 @@ def test_near_miss_column_header_silently_corrected():
         "board": "1", "category": "History", "value": 10,
         "question": "Q", "answer": "A", "question media": "pic.jpg",
     }]
-    bundle = make_bundle(rows, columns=columns, media_files={"pic.jpg": b"x"})
+    bundle = make_bundle(rows, columns=columns, media_files={"pic.jpg": PNG_BYTES})
     result = parse_bundle(bundle)
     assert result.errors == []
     assert result.boards["1"][0].question_media == ["pic.jpg"]
@@ -424,7 +455,7 @@ def test_media_folder_matched_case_insensitively(media_folder):
     rows = [
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
-    bundle = make_bundle(rows, media_files={"pic.jpg": b"x"}, media_folder=media_folder)
+    bundle = make_bundle(rows, media_files={"pic.jpg": PNG_BYTES}, media_folder=media_folder)
     result = parse_bundle(bundle)
     assert result.errors == []
     assert result.boards["1"][0].question_media == ["pic.jpg"]
@@ -435,7 +466,7 @@ def test_tolerates_finder_wrapper_folder_and_mac_junk():
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(
-        rows, media_files={"pic.jpg": b"x"},
+        rows, media_files={"pic.jpg": PNG_BYTES},
         wrapper_folder="QuizMaster 3000", include_mac_junk=True,
     )
     result = parse_bundle(bundle)
@@ -455,7 +486,7 @@ def test_mac_junk_does_not_produce_spurious_warning():
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
     bundle = make_bundle(
-        rows, media_files={"pic.jpg": b"x"},
+        rows, media_files={"pic.jpg": PNG_BYTES},
         wrapper_folder="Quiz", include_mac_junk=True,
     )
     result = parse_bundle(bundle)
@@ -529,7 +560,7 @@ def test_extract_media_works_after_parse_bundle_already_consumed_the_stream(tmp_
     rows = [
         {"board": "1", "category": "History", "value": 10, "question": "Q", "answer": "A", "question_media": "pic.jpg"}
     ]
-    bundle = make_bundle(rows, media_files={"pic.jpg": b"pic-bytes"})
+    bundle = make_bundle(rows, media_files={"pic.jpg": PNG_BYTES})
 
     result = parse_bundle(bundle)
     assert result.errors == []
@@ -538,4 +569,4 @@ def test_extract_media_works_after_parse_bundle_already_consumed_the_stream(tmp_
     # extract_media must seek(0) itself, not assume the caller does.
     extract_media(bundle, str(tmp_path))
 
-    assert (tmp_path / "pic.jpg").read_bytes() == b"pic-bytes"
+    assert (tmp_path / "pic.jpg").read_bytes() == PNG_BYTES

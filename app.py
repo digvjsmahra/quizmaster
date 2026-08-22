@@ -7,9 +7,10 @@ import eventlet
 
 eventlet.monkey_patch()
 
-from flask import Flask, render_template, abort, redirect, request, send_from_directory  # noqa: E402
+from flask import Flask, render_template, abort, redirect, request, send_file  # noqa: E402
 from flask_socketio import SocketIO  # noqa: E402
-from bundle_loader import extract_media, parse_bundle  # noqa: E402
+from werkzeug.utils import safe_join  # noqa: E402
+from bundle_loader import MEDIA_MIME_TYPES, extract_media, parse_bundle, sniff_image_format  # noqa: E402
 from game import Game  # noqa: E402
 
 # ------------------------------------------------------------------
@@ -108,7 +109,19 @@ def media_file(join_code, host_token, filename):
         abort(404)
     if not room["game"].media_dir:
         abort(404)
-    return send_from_directory(room["game"].media_dir, filename)
+    # A resolved filename can be extension-less on disk (bundle_loader.py
+    # matches media by base name only), so Flask's usual extension-based
+    # Content-Type guessing doesn't apply — the real format is sniffed from
+    # content instead, same as at upload time. safe_join (not a raw
+    # os.path.join) preserves the path-traversal protection
+    # send_from_directory would otherwise have given us for free.
+    path = safe_join(room["game"].media_dir, filename)
+    if not path or not os.path.isfile(path):
+        abort(404)
+    with open(path, "rb") as f:
+        header = f.read(16)
+    mimetype = MEDIA_MIME_TYPES.get(sniff_image_format(header), "application/octet-stream")
+    return send_file(path, mimetype=mimetype)
 
 
 @app.route("/rooms/<join_code>/validate")

@@ -131,6 +131,7 @@ html.qb-resuming #view-join { display: none; }
 .error-msg { color: var(--color-danger); font-size: 13px; margin-top: 8px; margin-bottom: 8px; }
 
 .status-msg { color: var(--color-text-muted); font-size: 15px; line-height: 1.5; }
+.status-msg-success { color: var(--color-success-text); font-weight: 600; }
 
 /* OTP boxes — input variant (create + player pages) */
 .otp-label, .field-label {

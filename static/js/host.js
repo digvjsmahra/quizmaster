@@ -657,7 +657,7 @@
       const body = await res.json();
 
       if (res.ok) {
-        successEl.textContent = `${file.name} loaded.`;
+        successEl.textContent = `✓ ${file.name} loaded.`;
         successEl.classList.remove('hidden');
         renderWarnings(body.warnings);
         // Board itself renders via the server's state:scores broadcast —

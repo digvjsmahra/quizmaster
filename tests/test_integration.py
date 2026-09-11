@@ -1190,3 +1190,15 @@ def test_vendored_socketio_client_is_served(room):
     res = app.test_client().get("/static/js/socket.io.min.js")
     assert res.status_code == 200
     assert b"Socket.IO v4.7.5" in res.get_data()
+
+
+def test_entry_scripts_set_the_readiness_flag_the_guard_checks(room):
+    join_code, _, host_token = room
+    client = app.test_client()
+    for path in (f"/play/{join_code}",
+                 f"/host/{join_code}/{host_token}",
+                 f"/present/{join_code}/{host_token}"):
+        assert "window.qbReady" in client.get(path).get_data(as_text=True), path
+    for script in ("player.js", "host.js", "present.js"):
+        body = client.get(f"/static/js/{script}").get_data(as_text=True)
+        assert "window.qbReady = true;" in body, script

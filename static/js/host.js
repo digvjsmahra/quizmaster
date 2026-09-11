@@ -720,4 +720,8 @@
     if (e.key === 'Enter') el('btn-add-player').click();
   });
 
+
+  // Last statement: the template's guard reads this to tell a fully
+  // executed script from one that never loaded or died partway.
+  window.qbReady = true;
 }());

@@ -18,7 +18,7 @@ Where a `SPEC.md` section appears to conflict with another, do not silently assu
 
 1. **Single worker.** State is in-process and unshared. Run as exactly one worker (`gunicorn -k eventlet -w 1`). Never add Redis or a message queue.
 2. **In-memory only.** No database, no ORM, no durable on-disk persistence. Quiz content comes from a per-room uploaded bundle (SPEC.md §6), held in memory plus an ephemeral temp-dir for media, wiped on restart.
-3. **No build step.** Vanilla JS + server-rendered HTML. Socket.IO client from CDN. No npm, bundlers, or transpilers.
+3. **No build step.** Vanilla JS + server-rendered HTML. The Socket.IO client is vendored into `static/js/` and served same-origin — never from a CDN (SPEC.md §12). No npm, bundlers, or transpilers.
 4. **Never leak questions or scores to players.** Player-bound emits carry only join state and queue position. Any question, answer, or score in a player payload is a bug. (The boundary also covers routes and media, not just payloads — see SPEC.md §4.)
 5. **Host enters scores; server stores verbatim.** Awards may be decimal or negative. The server never computes scores from the uploaded quiz content — `value` is used only for tile labels and `±value` quick-fill defaults. Scoring is always against roster entries, never from the queue.
 6. **No undo/redo.** The always-open scorecard grid is the correction mechanism — the host re-clicks a cell and re-submits. (`question_cancel` is a pre-score reveal-undo, not a scoring undo — distinct from this rule. See SPEC.md §7. This rule still governs scoring corrections.)
@@ -28,7 +28,7 @@ Where a `SPEC.md` section appears to conflict with another, do not silently assu
 
 ## Tech stack
 
-Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn, openpyxl. Vanilla JS + HTML; Socket.IO client via CDN. Quiz content from a per-room uploaded xlsx/zip bundle; in-memory Python objects for state.
+Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn, openpyxl. Vanilla JS + HTML; Socket.IO client vendored and served same-origin. Quiz content from a per-room uploaded xlsx/zip bundle; in-memory Python objects for state.
 
 ## Project layout
 
@@ -43,6 +43,7 @@ templates/
   host.html       # control center: board scorecard + shared board-covering modal (peek + reveal) + queue + totals
   present.html    # read-only presentation view (SPEC.md §8) — stage + sidebar, no interaction
 static/
+  js/socket.io.min.js  # vendored Socket.IO 4.7.5 client (see "Vendored Socket.IO client" below)
   js/create.js    # OTP input logic, code validation, redirect
   js/player.js    # rejoin_token persisted to localStorage; connect handler prefers silent rejoin over name entry (SPEC.md §10)
   js/media.js     # shared between host.js/present.js: mediaImagesHtml() — the one identical sliver of question rendering
@@ -51,6 +52,16 @@ static/
   css/styles.css  # :root token block (colors/radii/shadows) + all page styles
 requirements.txt
 ```
+
+## Vendored Socket.IO client
+
+`static/js/socket.io.min.js` is a committed copy of the official 4.7.5 build (`https://cdn.socket.io/4.7.5/socket.io.min.js`, MIT). Never re-point a template at a CDN — see SPEC.md §12 for why.
+
+**When to bump it:** only when there's a reason — a published advisory against `socket.io-client`, or a client bug you actually hit. Not on a schedule. The CDN URL it replaced was hard-pinned to 4.7.5 as well, so vendoring introduced no new version drift; the file is a static client speaking a frozen protocol.
+
+**What must stay in sync:** the wire protocol, not the package version. Client 4.x speaks Socket.IO protocol v5 / Engine.IO protocol v4, which every `python-socketio` 5.x serves — so any 4.x client works against any 5.x server. Only a client 5.x or a `python-socketio` 6.x could break that pairing, and as of 2026-09-11 neither exists (npm `latest` is 4.8.3). If `python-socketio` ever goes 6.x, check its protocol support before upgrading the server, and bump the client in the same change. Related: the server side of that pairing is currently unpinned — issue #13.
+
+**To bump:** re-download from the URL above, update the version in this file and in the `test_vendored_socketio_client_is_served` assertion in `tests/test_integration.py`.
 
 ## Configuration
 

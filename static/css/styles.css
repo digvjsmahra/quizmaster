@@ -130,6 +130,19 @@ html.qb-resuming #view-join { display: none; }
 
 .error-msg { color: var(--color-danger); font-size: 13px; margin-top: 8px; margin-bottom: 8px; }
 
+.script-load-error {
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px;
+  padding: 10px 12px;
+}
+.script-load-error p { margin: 0 0 10px; }
+.script-load-error .btn-primary { width: auto; padding: 8px 16px; }
+
 .status-msg { color: var(--color-text-muted); font-size: 15px; line-height: 1.5; }
 .status-msg-success { color: var(--color-success-text); font-weight: 600; }
 

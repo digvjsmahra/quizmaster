@@ -1,6 +1,10 @@
 (function () {
   'use strict';
 
+  // The template's inline guard already surfaced the failure; bail out
+  // instead of throwing ReferenceError on the io() call below.
+  if (typeof io === 'undefined') return;
+
   const socket = io();
 
   const state = {

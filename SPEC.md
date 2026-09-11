@@ -48,7 +48,7 @@ Scoring is **host-driven, split-value**: for each question the QM enters per-pla
 ## 3. Tech stack
 
 - **Backend:** Python 3.11+, Flask, Flask-SocketIO, eventlet (pinned), gunicorn, `openpyxl`.
-- **Frontend:** server-rendered HTML + vanilla JS, no build step. Socket.IO client from CDN.
+- **Frontend:** server-rendered HTML + vanilla JS, no build step. The Socket.IO client is vendored into `static/js/socket.io.min.js` and served from our own origin — no third-party CDN at runtime.
 - **Content:** per-room uploaded `.zip` bundle (`quiz.xlsx` + optional `media/`), held in memory plus an ephemeral temp-dir for media.
 - **State:** in-memory Python objects. No DB, no cache.
 
@@ -304,6 +304,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **Latency.** Buzz ordering is server-arrival FIFO. Network RTT differences are accepted, not equalized.
 - **Scale.** ~11 sockets per room. Load is trivial.
 - **Volatility.** A restart wipes all state, including uploaded quiz content. Acceptable — a quiz is one session; the QM re-uploads. Join codes and host tokens reset on restart; nothing is configured to survive it.
+- **No third-party runtime dependency.** Every JS and CSS asset a page needs is served from our own origin, so a page either loads fully or not at all — it can never render complete-looking but inert because an external host was blocked. If a script does fail to load, each page's inline guard shows a visible error instead of leaving dead controls.
 - **Deployment.** Single small always-on host (VM or PaaS dyno), HTTPS, WebSocket upgrades permitted. No redeploy needed to change quiz content — the QM uploads per room at runtime.
 
 ## 12. Locked decisions (do not revisit without a spec change)
@@ -324,6 +325,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **Scoring panel always reflects the live roster.** Players added post-Start appear in every reveal/scoring panel opened after that point, including re-opened closed cells, with `—` on questions closed before they were added.
 - **`host:roster_add { name }` creates a standalone roster entry**, unlinked to any buzz identity.
 - **Quiz content is uploaded per room as an XLSX/zip bundle**, never authored in-app, never CSV.
+- **Socket.IO client is self-hosted, never CDN-loaded.** A DNS-level block of `cdn.socket.io` on one player's network silently killed their page mid-game (2026-08-23): `io` was undefined, the entry script threw before attaching any listener, and every button looked fine but did nothing.
 
 ## 13. Acceptance criteria
 

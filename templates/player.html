@@ -63,7 +63,23 @@
 
   </div>
 </div>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/js/socket.io.min.js?v={{ asset_version }}"></script>
+<script>
+  // If the Socket.IO client failed to load, every entry script below would
+  // die on its first io() call and leave a page whose buttons do nothing.
+  // Say so instead.
+  if (!window.io) {
+    // player.js normally clears the head script's anti-flash class.
+    document.documentElement.classList.remove('qb-resuming');
+    document.body.insertAdjacentHTML('afterbegin',
+      '<div class="script-load-error">' +
+        '<p>This page didn\'t load properly and won\'t work until it\'s reloaded.</p>' +
+        '<button type="button" class="btn-primary" id="script-load-reload">Reload</button>' +
+      '</div>');
+    document.getElementById('script-load-reload')
+      .addEventListener('click', function () { location.reload(); });
+  }
+</script>
 <script src="/static/js/player.js?v={{ asset_version }}"></script>
 </body>
 </html>

@@ -1169,3 +1169,24 @@ def test_board_select_rejected_while_question_live(room):
     assert error_event["args"][0]["context"] == "board_select"
 
     host.disconnect()
+
+
+# ------------------------------------------------------------------
+# Self-hosted Socket.IO client (issue #12)
+# ------------------------------------------------------------------
+
+def test_socket_pages_load_the_vendored_client_not_a_cdn(room):
+    join_code, _, host_token = room
+    client = app.test_client()
+    for path in (f"/play/{join_code}",
+                 f"/host/{join_code}/{host_token}",
+                 f"/present/{join_code}/{host_token}"):
+        html = client.get(path).get_data(as_text=True)
+        assert "/static/js/socket.io.min.js" in html, path
+        assert "cdn.socket.io" not in html, path
+
+
+def test_vendored_socketio_client_is_served(room):
+    res = app.test_client().get("/static/js/socket.io.min.js")
+    assert res.status_code == 200
+    assert b"Socket.IO v4.7.5" in res.get_data()

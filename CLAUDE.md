@@ -80,6 +80,11 @@ pip install -r requirements-dev.txt
 python app.py
 
 # Production (single worker is mandatory)
+# Prod's real build/start commands live in the Render dashboard, not this
+# repo — there is no render.yaml (the service isn't blueprint-managed, and
+# a stale one was deleted). Golden rule 1's `-w 1` is therefore enforced by
+# a dashboard field that code review can't see. Verified in prod by
+# creating a room and re-fetching it: a second worker would lose it.
 gunicorn -k eventlet -w 1 -b 0.0.0.0:${PORT:-8000} app:app
 
 # Tests

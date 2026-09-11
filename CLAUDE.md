@@ -24,7 +24,7 @@ Where a `SPEC.md` section appears to conflict with another, do not silently assu
 6. **No undo/redo.** The always-open scorecard grid is the correction mechanism — the host re-clicks a cell and re-submits. (`question_cancel` is a pre-score reveal-undo, not a scoring undo — distinct from this rule. See SPEC.md §7. This rule still governs scoring corrections.)
 7. **Async mode is pinned to `eventlet`.** Do not substitute `gevent` or `threading`.
 8. **No features beyond `SPEC.md §2`'s scope.** Stop and ask before building anything not listed there.
-9. **Minimal dependencies.** Flask, Flask-SocketIO, eventlet, gunicorn, `openpyxl`. Justify anything else. (`openpyxl` is required for the XLSX bundle parser — see SPEC.md §6. The earlier CSV path and its stdlib `csv` usage have been retired.)
+9. **Minimal dependencies, fully pinned.** Flask, Flask-SocketIO, eventlet, gunicorn, `openpyxl`. Justify anything else. `requirements.txt` is an exact freeze including transitives — a rebuild must never change the stack (SPEC.md §11); add a dep by pinning the top level and regenerating per that file's header. Test-only deps go in `requirements-dev.txt`. (`openpyxl` is required for the XLSX bundle parser — see SPEC.md §6. The earlier CSV path and its stdlib `csv` usage have been retired.)
 
 ## Tech stack
 
@@ -59,7 +59,7 @@ requirements.txt
 
 **When to bump it:** only when there's a reason — a published advisory against `socket.io-client`, or a client bug you actually hit. Not on a schedule. The CDN URL it replaced was hard-pinned to 4.7.5 as well, so vendoring introduced no new version drift; the file is a static client speaking a frozen protocol.
 
-**What must stay in sync:** the wire protocol, not the package version. Client 4.x speaks Socket.IO protocol v5 / Engine.IO protocol v4, which every `python-socketio` 5.x serves — so any 4.x client works against any 5.x server. Only a client 5.x or a `python-socketio` 6.x could break that pairing, and as of 2026-09-11 neither exists (npm `latest` is 4.8.3). If `python-socketio` ever goes 6.x, check its protocol support before upgrading the server, and bump the client in the same change. Related: the server side of that pairing is currently unpinned — issue #13.
+**What must stay in sync:** the wire protocol, not the package version. Client 4.x speaks Socket.IO protocol v5 / Engine.IO protocol v4, which every `python-socketio` 5.x serves — so any 4.x client works against any 5.x server. Only a client 5.x or a `python-socketio` 6.x could break that pairing, and as of 2026-09-11 neither exists (npm `latest` is 4.8.3). If `python-socketio` ever goes 6.x, check its protocol support before upgrading the server, and bump the client in the same change. Both halves of that pairing are pinned: the client on disk, `python-socketio`/`python-engineio` in `requirements.txt`.
 
 **To bump:** re-download from the URL above, update the version in this file and in the `test_vendored_socketio_client_is_served` assertion in `tests/test_integration.py`.
 
@@ -72,9 +72,9 @@ The server boots with no quiz content. Each room's QM uploads a quiz bundle (`.z
 ## Commands
 
 ```bash
-# Setup
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# Setup (prod runs Python 3.11 — see runtime.txt)
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
 
 # Dev
 python app.py

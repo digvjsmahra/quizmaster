@@ -305,6 +305,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **Scale.** ~11 sockets per room. Load is trivial.
 - **Volatility.** A restart wipes all state, including uploaded quiz content. Acceptable — a quiz is one session; the QM re-uploads. Join codes and host tokens reset on restart; nothing is configured to survive it.
 - **No third-party runtime dependency.** Every JS and CSS asset a page needs is served from our own origin, so a page either loads fully or not at all — it can never render complete-looking but inert because an external host was blocked. If a script does fail to load, each page's inline guard shows a visible error instead of leaving dead controls.
+- **Pinned runtime.** `requirements.txt` is an exact freeze of every runtime package, transitives included, resolved against the Python in `runtime.txt`. Rebuilding must reproduce the same stack — `eventlet` and `gunicorn` are version-coupled (later Gunicorn dropped the eventlet worker), and `python-socketio` must keep speaking the protocol the vendored client is frozen against.
 - **Deployment.** Single small always-on host (VM or PaaS dyno), HTTPS, WebSocket upgrades permitted. No redeploy needed to change quiz content — the QM uploads per room at runtime.
 
 ## 12. Locked decisions (do not revisit without a spec change)

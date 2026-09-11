@@ -24,7 +24,7 @@ Where a `SPEC.md` section appears to conflict with another, do not silently assu
 6. **No undo/redo.** The always-open scorecard grid is the correction mechanism — the host re-clicks a cell and re-submits. (`question_cancel` is a pre-score reveal-undo, not a scoring undo — distinct from this rule. See SPEC.md §7. This rule still governs scoring corrections.)
 7. **Async mode is pinned to `eventlet`.** Do not substitute `gevent` or `threading`.
 8. **No features beyond `SPEC.md §2`'s scope.** Stop and ask before building anything not listed there.
-9. **Minimal dependencies, fully pinned.** Flask, Flask-SocketIO, eventlet, gunicorn, `openpyxl`. Justify anything else. `requirements.txt` is an exact freeze including transitives — a rebuild must never change the stack (SPEC.md §11); add a dep by pinning the top level and regenerating per that file's header. Test-only deps go in `requirements-dev.txt`. (`openpyxl` is required for the XLSX bundle parser — see SPEC.md §6. The earlier CSV path and its stdlib `csv` usage have been retired.)
+9. **Minimal dependencies, fully pinned.** Flask, Flask-SocketIO, eventlet, gunicorn, `openpyxl`. Justify anything else. `requirements.txt` is an exact freeze including transitives, and `.python-version` pins the interpreter — a rebuild must never change the stack (SPEC.md §11); add a dep by pinning the top level and regenerating per that file's header, on the Python in `.python-version` (transitives differ between versions). Render reads `.python-version` or `PYTHON_VERSION`, never `runtime.txt` — a `runtime.txt` here was silently ignored for the life of the project. Test-only deps go in `requirements-dev.txt`. (`openpyxl` is required for the XLSX bundle parser — see SPEC.md §6. The earlier CSV path and its stdlib `csv` usage have been retired.)
 
 ## Tech stack
 
@@ -72,8 +72,8 @@ The server boots with no quiz content. Each room's QM uploads a quiz bundle (`.z
 ## Commands
 
 ```bash
-# Setup (prod runs Python 3.11 — see runtime.txt)
-python3.11 -m venv .venv && source .venv/bin/activate
+# Setup (prod runs Python 3.13 — see .python-version)
+python3.13 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 
 # Dev

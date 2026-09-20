@@ -34,6 +34,25 @@
     </div>
 
     <div class="card">
+      <div class="chart-head">
+        <div class="card-label">Score over the quiz</div>
+        <button type="button" class="btn-nav chart-toggle" id="chart-table-toggle"
+                aria-expanded="false" aria-controls="chart-table">Show as table</button>
+      </div>
+      <p class="summary-note">
+        In the order questions were actually played, not board order. A re-scored question
+        moves its own point and shifts the rest of the line.
+      </p>
+      <div class="chart-wrap" id="chart-wrap">
+        <div id="chart"></div>
+        <div class="chart-tooltip hidden" id="chart-tooltip" role="status" aria-live="off"></div>
+      </div>
+      <div class="chart-legend" id="chart-legend"></div>
+      <div class="summary-table-scroll hidden" id="chart-table"></div>
+      <p class="summary-empty-inline hidden" id="chart-empty">No questions closed yet.</p>
+    </div>
+
+    <div class="card">
       <div class="card-label">Buzzer stats</div>
       <p class="summary-note">
         Counted on closed questions only. Buzzes the QM cleared with a reset don't count,

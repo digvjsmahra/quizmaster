@@ -1336,3 +1336,41 @@ def test_control_center_links_to_the_summary(room):
     join_code, _, host_token = room
     html = app.test_client().get(f"/host/{join_code}/{host_token}").get_data(as_text=True)
     assert f"/summary/{join_code}/{host_token}" in html
+
+
+def test_summary_payload_carries_the_timeline(room):
+    join_code, game, _ = room
+    p1, _ = game.player_join("Ankur")
+    game.start_quiz()
+    for qid, award in (("1:History:10", 10.0), ("1:History:20", 20.0)):
+        game.question_reveal(qid)
+        game.answer_reveal()
+        game.question_submit(qid, {p1: award})
+
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": join_code})
+    payload = next(e for e in summary.get_received() if e["name"] == "state:summary")["args"][0]
+
+    timeline = payload["timeline"]
+    assert [q["question_id"] for q in timeline["questions"]] == ["1:History:10", "1:History:20"]
+    assert timeline["questions"][0]["label"] == "History 10"
+    (series,) = timeline["series"]
+    assert series["points"] == [0.0, 10.0, 30.0]
+    # The chart's last point must agree with the standings it sits beside.
+    assert series["points"][-1] == payload["standings"][0]["total"]
+    summary.disconnect()
+
+
+def test_summary_timeline_never_leaks_question_or_answer_text(room):
+    join_code, game, _ = room
+    p1, _ = game.player_join("Ankur")
+    game.start_quiz()
+    game.question_reveal("1:History:10")
+    game.answer_reveal()
+    game.question_submit("1:History:10", {p1: 10.0})
+
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": join_code})
+    payload = next(e for e in summary.get_received() if e["name"] == "state:summary")["args"][0]
+    _assert_no_content_leak(payload)
+    summary.disconnect()

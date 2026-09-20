@@ -1191,3 +1191,66 @@ html.qb-resuming #view-join { display: none; }
   .summary-header { flex-direction: column; gap: 8px; }
   .summary-buzz { min-width: 460px; }
 }
+
+/* Chart — hand-rolled SVG (no charting library; SPEC.md §11).
+   Chrome/ink values are the data-viz reference instance's light column; the
+   series hues live in summary.js, where the slot order is the CVD-safety
+   mechanism and must stay fixed. */
+.chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.chart-head .card-label { margin-bottom: 0; }
+/* .btn-nav is the repo's small secondary button (board prev/next); it needs
+   no resizing here, only protection from the flex row stretching it. */
+.chart-toggle { flex: none; }
+.chart-wrap { position: relative; }
+.chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+.chart-grid { stroke: #e1e0d9; stroke-width: 1; }
+.chart-grid-zero { stroke: #c3c2b7; }
+.chart-tick { fill: #898781; font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart-tick-y { text-anchor: end; dominant-baseline: middle; }
+.chart-tick-x { text-anchor: middle; }
+.chart-axis-title { fill: #898781; font-size: 11px; text-anchor: middle; }
+
+.chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+/* A 2px surface ring keeps overlapping points readable where lines cross. */
+.chart-dot { stroke: var(--color-surface); stroke-width: 2; }
+
+.chart-end-label { fill: var(--color-text); font-size: 12px; dominant-baseline: middle; }
+.chart-end-value { fill: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+.chart-crosshair { stroke: var(--color-text-faint); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-hit { fill: transparent; }
+
+.chart-legend {
+  display: flex; flex-wrap: wrap; gap: 6px 16px;
+  margin-top: 12px; font-size: 12px; color: var(--color-text-secondary);
+}
+#chart-table:not(.hidden) { margin-top: 16px; border-top: 1px solid var(--color-border-subtle); padding-top: 12px; }
+.chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.chart-legend-dashed { opacity: .55; }
+
+.chart-tooltip {
+  position: absolute; top: 8px; z-index: 2; pointer-events: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card-strong);
+  padding: 8px 10px; font-size: 12px; min-width: 150px;
+}
+.chart-tooltip-title { color: var(--color-text-muted); margin-bottom: 6px; font-size: 11px; }
+.chart-tooltip-row { display: flex; align-items: center; gap: 6px; line-height: 1.7; }
+.chart-tooltip-name { flex: 1; color: var(--color-text); }
+.chart-tooltip-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+@media (max-width: 700px) {
+  /* Scaling an 820-wide plot into a phone makes the tick labels unreadable.
+     Scroll it instead, the same way wide tables and the board grid do. */
+  .chart-wrap { overflow-x: auto; }
+  .chart-svg { min-width: 620px; }
+}
+
+@media (max-width: 600px) {
+  /* Touch has no hover; the table view is the way in on a phone. */
+  .chart-tooltip { display: none; }
+}

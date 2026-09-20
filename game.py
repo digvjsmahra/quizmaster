@@ -488,9 +488,22 @@ class Game:
         return rows
 
     def get_summary_payload(self) -> dict:
+        timeline = stats.score_timeline(self.event_log, self.roster, self.players)
+        # stats.py reads the log and nothing else; the human-readable tick
+        # labels come from the loaded bundle, which only Game has.
+        timeline["questions"] = [
+            {
+                "question_id": qid,
+                "label": f"{self._all_questions[qid].category} {self._all_questions[qid].value}",
+                "board": self._all_questions[qid].board,
+            }
+            for qid in timeline["questions"]
+            if qid in self._all_questions
+        ]
         return {
             "standings": self.get_standings(),
             "buzz_stats": stats.buzz_stats(self.event_log, self.roster, self.players),
+            "timeline": timeline,
         }
 
     def get_full_state(self) -> dict:

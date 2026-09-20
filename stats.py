@@ -96,3 +96,41 @@ def buzz_stats(log: list, roster: list[str], players: dict) -> list[dict]:
     # Fastest first; players who never buzzed sort last regardless.
     rows.sort(key=lambda r: (r["avg_ms"] is None, r["avg_ms"] or 0))
     return rows
+
+
+def score_timeline(log: list, roster: list[str], players: dict) -> dict:
+    """Cumulative score per player over the order questions were actually played.
+
+    The x-axis is distinct questions in **first-submit** order, and each
+    question's values come from its **latest** submit. That pairing is what
+    "a correction amends the original point" means: re-scoring question 3
+    after question 12 moves point 3 and shifts everything after it, rather
+    than adding a thirteenth point for a question answered long ago.
+
+    Series lead with a zero so every line starts on the baseline, so each has
+    one more point than there are questions.
+    """
+    order: list[str] = []
+    latest: dict[str, dict] = {}
+    for ev in log:
+        if ev.type != "question_submit":
+            continue
+        if ev.question_id not in latest:
+            order.append(ev.question_id)
+        latest[ev.question_id] = ev.data.get("scores", {})
+
+    series = []
+    for pid in roster:
+        player = players.get(pid)
+        if player is None:
+            continue
+        running = 0.0
+        points = [0.0]
+        for qid in order:
+            running += latest[qid].get(pid, 0.0)
+            points.append(round(running, 2))
+        series.append({"player_id": pid, "name": player.name, "points": points})
+
+    # Highest finisher first, so the legend reads like the standings.
+    series.sort(key=lambda s: s["points"][-1], reverse=True)
+    return {"questions": order, "series": series}

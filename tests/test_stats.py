@@ -293,3 +293,106 @@ def test_empty_log_gives_a_zeroed_row_per_player():
     rows = _stats(g)
     assert rows["Ankur"]["closed_count"] == 0
     assert rows["Ankur"]["buzz_count"] == 0
+
+
+# ------------------------------------------------------------------
+# score_timeline
+# ------------------------------------------------------------------
+
+def _timeline(g):
+    from stats import score_timeline
+    return score_timeline(g.event_log, g.roster, g.players)
+
+
+def test_timeline_x_axis_is_play_order_not_board_order():
+    g, ankur, _ = _game()
+    for qid in (Q3, Q1, Q2):          # played out of board order
+        g.question_reveal(qid)
+        _close(g, qid, {ankur: 10.0})
+    assert _timeline(g)["questions"] == [Q3, Q1, Q2]
+
+
+def test_timeline_series_lead_with_zero_and_accumulate():
+    g, ankur, dev = _game()
+    g.question_reveal(Q1)
+    _close(g, Q1, {ankur: 10.0})
+    g.question_reveal(Q2)
+    _close(g, Q2, {ankur: 20.0, dev: -20.0})
+    rows = {s["name"]: s["points"] for s in _timeline(g)["series"]}
+    assert rows["Ankur"] == [0.0, 10.0, 30.0]
+    assert rows["Dev"] == [0.0, 0.0, -20.0]
+
+
+def test_correction_amends_the_original_point_and_shifts_later_ones():
+    g, ankur, _ = _game()
+    g.question_reveal(Q1)
+    _close(g, Q1, {ankur: 10.0})
+    g.question_reveal(Q2)
+    _close(g, Q2, {ankur: 20.0})
+    g.question_reveal(Q1)             # reopen the first question
+    _close(g, Q1, {ankur: 5.0})       # ...and correct it
+
+    tl = _timeline(g)
+    assert tl["questions"] == [Q1, Q2]        # no third point appended
+    (row,) = [s["points"] for s in tl["series"] if s["name"] == "Ankur"]
+    assert row == [0.0, 5.0, 25.0]            # point 1 amended, point 2 shifted
+
+
+def test_timeline_last_point_equals_the_standings_total():
+    g, ankur, dev = _game()
+    g.question_reveal(Q1)
+    _close(g, Q1, {ankur: 10.0, dev: -10.0})
+    g.question_reveal(Q2)
+    _close(g, Q2, {dev: 20.5})
+    g.question_reveal(Q3)
+    _close(g, Q3, {ankur: 10.0})
+    g.question_reveal(Q1)
+    _close(g, Q1, {ankur: 7.0, dev: -10.0})   # a late correction
+
+    finals = {s["name"]: s["points"][-1] for s in _timeline(g)["series"]}
+    totals = {r["name"]: r["total"] for r in g.get_standings()}
+    assert finals == totals
+
+
+def test_timeline_excludes_cancelled_questions():
+    g, ankur, _ = _game()
+    g.question_reveal(Q1)
+    g.question_cancel()
+    g.question_reveal(Q2)
+    _close(g, Q2, {ankur: 20.0})
+    assert _timeline(g)["questions"] == [Q2]
+
+
+def test_timeline_series_sorted_by_final_score():
+    g, ankur, dev = _game()
+    g.question_reveal(Q1)
+    _close(g, Q1, {dev: 30.0, ankur: 10.0})
+    assert [s["name"] for s in _timeline(g)["series"]] == ["Dev", "Ankur"]
+
+
+def test_timeline_includes_virtual_roster_entries():
+    # Unlike the buzz table, the graph is about scores — a host-added team
+    # scores like anyone else and belongs on it.
+    g, ankur, _ = _game()
+    ghost = g.roster_add("Phone-in team")
+    g.question_reveal(Q1)
+    _close(g, Q1, {ghost: 10.0, ankur: 5.0})
+    assert [s["name"] for s in _timeline(g)["series"]] == ["Phone-in team", "Ankur", "Dev"]
+
+
+def test_timeline_player_added_after_a_question_starts_flat():
+    g, ankur, _ = _game()
+    g.question_reveal(Q1)
+    _close(g, Q1, {ankur: 10.0})
+    late = g.roster_add("Latecomer")
+    g.question_reveal(Q2)
+    _close(g, Q2, {late: 20.0})
+    rows = {s["name"]: s["points"] for s in _timeline(g)["series"]}
+    assert rows["Latecomer"] == [0.0, 0.0, 20.0]
+
+
+def test_timeline_empty_before_anything_closes():
+    g, _, _ = _game()
+    tl = _timeline(g)
+    assert tl["questions"] == []
+    assert all(s["points"] == [0.0] for s in tl["series"])

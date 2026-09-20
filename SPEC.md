@@ -274,6 +274,18 @@ is linked from a player-reachable page.
 - Shows **final standings** — every roster member by cumulative total, highest first. Read
   from `scores`, never from the event log: this is the number that has to agree with the
   scorecard, so it comes from where the scorecard gets it.
+- Shows a **cumulative score chart** — one line per roster member, x-axis the questions in
+  the order they were actually *played* (not board order), each line starting at zero. Host-added
+  (`virtual=True`) entries are included here, unlike the buzz table: they score like anyone else.
+  A re-scored question **amends its own point** and shifts the rest of that line, rather than
+  appending a new point at the end — the chart shows the game as it now stands, and a correction
+  is a fix to the record, not an event in the game. Each line's last point therefore always
+  equals that player's standings total.
+- The chart is hand-rolled inline SVG. No charting library, for the same reason there is no CDN
+  (§11): every asset a page needs is served from our own origin. It ships a hover crosshair with
+  a per-question tooltip, an always-present legend, direct end-of-line labels, and a
+  "Show as table" view of the same numbers — three of the eight categorical hues fall below 3:1
+  against the card surface, so identity never rests on colour alone.
 - Shows **buzzer stats** — per player: buzz count against the number of closed questions,
   average and median time-to-buzz, and average queue position. Every average divides by that
   player's *own* buzzes, never by the question count, so a player who buzzed three times and
@@ -333,7 +345,7 @@ is linked from a player-reachable page.
 | `player:accepted` | one player | `{ player_id, phase, rejoin_token }` |
 | `player:rejected` | one player | `{ reason }` |
 | `player:removed` | one player | `{}` — sent just before the server force-disconnects a removed player (lobby or post-Start roster removal) |
-| `state:summary` | summary | `{ standings: [{player_id, name, total}], buzz_stats: [{player_id, name, buzz_count, closed_count, avg_ms, median_ms, avg_position}] }` — re-emitted whenever a question closes or the roster changes. Derived figures are `null` for a player with no counted buzzes. No question, answer, or media content. |
+| `state:summary` | summary | `{ standings: [{player_id, name, total}], buzz_stats: [{player_id, name, buzz_count, closed_count, avg_ms, median_ms, avg_position}], timeline: { questions: [{question_id, label, board}], series: [{player_id, name, points}] } }` — re-emitted whenever a question closes or the roster changes. Derived figures are `null` for a player with no counted buzzes. No question, answer, or media content. |
 | `error` | any | `{ message, context }` |
 
 `state:scores` and `state:live_question` are host-only. `state:presentation` is presentation-room-only. `state:summary` is summary-room-only. `state:players` is player-only, driving the "Others" section on the player phone — never sent to the host.
@@ -409,6 +421,8 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **The summary view is a page, not a phase.** No `ended` state was added; `phase` stays `lobby | live`.
 - **Buzz stats count only questions closed by `question_submit`**, and only the final sub-round within each — a QM-initiated `queue_reset` discards everything before it and restarts the clock. `t0` is the reveal, or the last reset if there was one.
 - **Buzz averages divide by the player's own buzz count**, never by the number of questions.
+- **A re-scored question amends its original point on the chart**, shifting later points; it never appends a new one. The event log stays append-only (§5) and the chart reads the latest submit per question, plotted at that question's first-submit position.
+- **No charting library.** The chart is hand-rolled SVG — same no-third-party-runtime rule as the vendored Socket.IO client.
 - **Socket.IO client is self-hosted, never CDN-loaded.** A DNS-level block of `cdn.socket.io` on one player's network silently killed their page mid-game (2026-08-23): `io` was undefined, the entry script threw before attaching any listener, and every button looked fine but did nothing.
 
 ## 13. Acceptance criteria
@@ -425,7 +439,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - A dropped player reconnecting on the same device silently resumes their identity and queue position, no re-entry.
 - Host can remove a lobby entry pre-Start, and a roster member (discarding their scores) post-Start; the removed player, if connected, lands back on a working join form.
 - Totals panel shows Board and Total columns, sorted by board score descending. Board Prev/Next navigation works and is locked while a question is live.
-- The summary view opens at any point and shows final standings plus buzzer stats, updating live as questions close. Buzzes on a cancelled question, and buzzes the QM cleared with a reset, are absent from the stats.
+- The summary view opens at any point and shows final standings, a cumulative score chart in play order, and buzzer stats, updating live as questions close. Each chart line ends on that player's standings total, and re-scoring an early question moves its own point rather than adding one. Buzzes on a cancelled question, and buzzes the QM cleared with a reset, are absent from the stats.
 - No question text, answer, or media URL ever reaches a player socket or a player-reachable route.
 - A full quiz (multiple boards, image questions included) runs end-to-end with the QM touching only the control center and presentation view — no external slides, no tab-switching.
 - Single eventlet worker on a public host, survives a full quiz without restart.

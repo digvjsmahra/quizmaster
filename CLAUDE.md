@@ -51,7 +51,8 @@ static/
   js/media.js     # shared between host.js/present.js: mediaImagesHtml() — the one identical sliver of question rendering
   js/host.js      # includes the reveal-flow rewire (question_reveal/answer_reveal/question_cancel/board_select) and the shared modal (peek + reveal)
   js/present.js   # pure rendering — state:presentation + state:queue, no emits beyond present:join
-  js/summary.js   # pure rendering — state:summary only, no emits beyond summary:join
+  js/summary.js   # pure rendering — state:summary only, no emits beyond summary:join;
+                  #   includes the hand-rolled SVG chart (no charting library — see SPEC.md §8)
   css/styles.css  # :root token block (colors/radii/shadows) + all page styles
 requirements.txt
 ```
@@ -110,7 +111,7 @@ pytest
 
 Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals, `player_rejoin` (valid token resumes the same identity, unknown/virtual token rejected, roster/scores/queue untouched), `remove_player` (deletes a lobby entry, rejected once live, rejected for an unknown id), `remove_from_roster` (deletes a real or virtual roster member and discards their scores, rejected before Start, rejected for an unknown id), `_cell_state`'s `negative_only` flag (green/red truth table: all-positive, mixed, all-negative, negative+zero, all-zero), event log (`seq` 1-based and monotonic, every log point's payload, a buzz's `at` equalling its `BuzzEntry.received_at`, `player_name` surviving `remove_from_roster`, rejected buzzes not logged, and a manual `queue_reset` logged while `question_submit`/`question_cancel`'s implicit clear is not).
 
-Unit-test `stats.py` through a real `Game`, so the log under test is the one the app produces: the episode rule (normal, cancelled, cancel-then-re-reveal, `reviewing` reopen, dead-period buzz, still-open question) and the sub-round rule (accidental buzzes discarded by an immediate reset, a re-buzz timed from the reset not the reveal, no double-count across sub-rounds, freeze-without-reset still timed from the reveal, a trailing reset yielding no buzz data). Plus: averages divide by the player's own buzz count, virtual entries omitted, removed roster members dropped.
+Unit-test `stats.py` through a real `Game`, so the log under test is the one the app produces: the episode rule (normal, cancelled, cancel-then-re-reveal, `reviewing` reopen, dead-period buzz, still-open question) and the sub-round rule (accidental buzzes discarded by an immediate reset, a re-buzz timed from the reset not the reveal, no double-count across sub-rounds, freeze-without-reset still timed from the reveal, a trailing reset yielding no buzz data). Plus: averages divide by the player's own buzz count, virtual entries omitted, removed roster members dropped. For `score_timeline`: play order not board order, series lead with zero, a correction amends its original point and shifts later ones without appending, virtual entries *included* (unlike the buzz table), and the invariant that each series' last point equals `get_standings()`'s total.
 
 Unit-test `bundle_loader.py` independently of `game.py`: valid parse, every structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows, unsupported/missing media), xlsx cell-type normalization, and `extract_media`.
 

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizMaster — Summary</title>
+  <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_version }}">
+</head>
+<body>
+<div class="summary-wrap">
+
+  <header class="summary-header">
+    <div>
+      <h1>Quiz Summary</h1>
+      <div class="subtitle">Room {{ join_code }}</div>
+    </div>
+    <span id="summary-live-badge" class="phase-badge lobby">live</span>
+  </header>
+
+  <p class="summary-empty" id="summary-empty">
+    Nothing to summarise yet — start the quiz and score a question.
+  </p>
+
+  <div class="summary-body hidden" id="summary-body">
+
+    <div class="card">
+      <div class="card-label">Final standings</div>
+      <table class="totals-table summary-standings">
+        <thead>
+          <tr><th class="summary-rank-col">#</th><th>Player</th><th>Total</th></tr>
+        </thead>
+        <tbody id="standings-body"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Buzzer stats</div>
+      <p class="summary-note">
+        Counted on closed questions only. Buzzes the QM cleared with a reset don't count,
+        and times run from the moment buzzing opened.
+      </p>
+      <div class="summary-table-scroll">
+        <table class="totals-table summary-buzz">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Buzzed</th>
+              <th>Avg time</th>
+              <th>Median</th>
+              <th>Avg position</th>
+            </tr>
+          </thead>
+          <tbody id="buzz-body"></tbody>
+        </table>
+      </div>
+      <p class="summary-empty-inline hidden" id="buzz-empty">No buzzes on any closed question yet.</p>
+    </div>
+
+  </div>
+</div>
+<script src="/static/js/socket.io.min.js?v={{ asset_version }}"></script>
+<script>
+  // Any script below failing to load leaves a page that looks complete but
+  // does nothing at all. Say so instead. Each entry script sets
+  // window.qbReady as its last statement, so a missing flag once the
+  // document has parsed means something above never finished.
+  function qbShowLoadError() {
+    if (document.getElementById('script-load-reload')) return;
+    document.body.insertAdjacentHTML('afterbegin',
+      '<div class="script-load-error">' +
+        '<p>This page didn\'t load properly and won\'t work until it\'s reloaded.</p>' +
+        '<button type="button" class="btn-primary" id="script-load-reload">Reload</button>' +
+      '</div>');
+    document.getElementById('script-load-reload')
+      .addEventListener('click', function () { location.reload(); });
+  }
+  if (!window.io) qbShowLoadError();
+  document.addEventListener('DOMContentLoaded', function () {
+    if (!window.qbReady) qbShowLoadError();
+  });
+</script>
+<script>const JOIN_CODE = "{{ join_code }}"; const HOST_TOKEN = "{{ host_token }}";</script>
+<script src="/static/js/summary.js?v={{ asset_version }}"></script>
+</body>
+</html>

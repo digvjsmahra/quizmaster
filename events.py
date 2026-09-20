@@ -131,6 +131,7 @@ def register(socketio, rooms):
         socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
         emit("state:scores", room["game"].get_scores_payload())
         socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
+        socketio.emit("state:summary", room["game"].get_summary_payload(), to=f"summary_{join_code}")
 
     @socketio.on("host:roster_remove")
     def on_roster_remove(data):
@@ -153,6 +154,7 @@ def register(socketio, rooms):
         socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
         socketio.emit("state:scores", room["game"].get_scores_payload(), to=f"host_{join_code}")
         socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
+        socketio.emit("state:summary", room["game"].get_summary_payload(), to=f"summary_{join_code}")
 
     @socketio.on("host:player_remove")
     def on_player_remove(data):
@@ -275,6 +277,7 @@ def register(socketio, rooms):
         socketio.emit("state:scores", room["game"].get_scores_payload(), to=f"host_{join_code}")
         socketio.emit("state:live_question", room["game"].get_live_question_payload(), to=f"host_{join_code}")
         socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
+        socketio.emit("state:summary", room["game"].get_summary_payload(), to=f"summary_{join_code}")
         queue_payload = room["game"].get_queue_payload()
         socketio.emit("state:queue", queue_payload, to=f"players_{join_code}")
         socketio.emit("state:queue", queue_payload, to=f"host_{join_code}")
@@ -292,6 +295,16 @@ def register(socketio, rooms):
             emit("error", {"message": str(e), "context": "board_select"})
             return
         socketio.emit("state:presentation", room["game"].get_presentation_payload(), to=f"present_{join_code}")
+
+    @socketio.on("summary:join")
+    def on_summary_join(data):
+        join_code = (data.get("room_id") or "").strip()
+        room = rooms.get(join_code)
+        if not room:
+            emit("error", {"message": "Room not found.", "context": "summary_join"})
+            return
+        join_room(f"summary_{join_code}")
+        emit("state:summary", room["game"].get_summary_payload())
 
     @socketio.on("present:join")
     def on_present_join(data):

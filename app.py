@@ -71,6 +71,14 @@ def present_page(join_code, host_token):
     return render_template("present.html", join_code=join_code, host_token=host_token)
 
 
+@app.route("/summary/<join_code>/<host_token>")
+def summary_page(join_code, host_token):
+    room = rooms.get(join_code)
+    if not room or room["host_token"] != host_token:
+        abort(404)
+    return render_template("summary.html", join_code=join_code, host_token=host_token)
+
+
 @app.route("/host/<join_code>/<host_token>/upload", methods=["POST"])
 def upload_bundle(join_code, host_token):
     room = rooms.get(join_code)

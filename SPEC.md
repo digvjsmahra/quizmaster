@@ -23,6 +23,7 @@ Scoring is **host-driven, split-value**: for each question the QM enters per-pla
 - Join by code or shared permalink (`/play/<code>`, code pre-filled). Code input is OTP-style (auto-advance, auto-uppercase, paste support). Invalid codes show a human-legible inline error, never a 404.
 - Host control center (`/host/<join_code>/<host_token>`) — obscurity, not auth. Shows the join link/code, joined players, and (once uploaded) the scorecard board.
 - Presentation view (`/present/<join_code>/<host_token>`) — read-only, socket-driven, meant for screen-share; not linked from any player-reachable page.
+- Summary view (`/summary/<join_code>/<host_token>`) — read-only, socket-driven: final standings plus buzzer stats derived from the event log. Meant for the end of the quiz, but carries no "quiz ended" state and is live throughout.
 - ~10 concurrent players, WebSocket-based buzzing, server-arrival FIFO.
 - **Lobby → live phase gate**: QM clicks "Start quiz" to snapshot the roster and open buzzing.
 - **Mandatory per-room quiz upload**: a `.zip` bundle of `quiz.xlsx` + optional `media/`, validated at upload time. No upload → no board → no start.
@@ -66,7 +67,7 @@ Presentation  ──WebSocket──┘          │                     scores, 
                                                    room-scoped temp dir)
 ```
 
-Socket.IO rooms: players in a shared player room; host in a `host` room; presentation in a `presentation` room, per join_code.
+Socket.IO rooms: players in a shared player room; host in a `host` room; presentation in a `presentation` room; summary in a `summary` room — all per join_code.
 
 **Content boundary:** question, answer, and media content may only be served on host-secret or presentation-secret routes and emitted to host/presentation sockets. A question, answer, or media URL reaching a player payload or a player-reachable route is a bug. Player sockets receive only join state and queue — nothing about quiz content, ever.
 
@@ -238,7 +239,13 @@ Unplayed ──(host:question_reveal)──► Revealed ──(host:answer_revea
 
 **Answer visibility:** the QM sees the answer in the control center from the moment of Reveal (private judging aid, including any `answer_media` once `answer` is present). The presentation view shows it only after `answer_reveal`. Player sockets never see it.
 
-## 8. Presentation view
+## 8. Read-only views
+
+Two socket-driven pages behind the same per-room host token, each opened by the QM in its own
+window from a plain link in the control-center header. Neither accepts any input, and neither
+is linked from a player-reachable page.
+
+### Presentation view
 
 - Route: `/present/<join_code>/<host_token>` (same per-room host token as the control center). Not linked from any player-reachable page. Opened manually by the QM (a plain link in the control center header) — not auto-opened on Start, so there's time to set up Zoom screen-share calmly beforehand; opening it at any point bootstraps full current state, so there's no wrong moment to open it.
 - Read-only, socket-driven; the QM never interacts with it. Intended use: a second browser window on the QM's screen, and *that window* (not the full screen) is what's shared on Zoom.
@@ -254,6 +261,41 @@ Unplayed ──(host:question_reveal)──► Revealed ──(host:answer_revea
   - Board grid updating on question close is how a closed question visually "grays out."
   - Sidebar (outside the stage, always visible, independent of whatever's on stage): running score totals (a live leaderboard) and the live buzz queue.
 - The host's control-center reveal modal shows the same content (question/answer text + media) as a private judging aid — it's never a fixed-size stage, so it has no slide-swap behavior; it just shows everything inline.
+
+### Summary view
+
+- Route: `/summary/<join_code>/<host_token>`. Read-only, socket-driven, and — like the
+  presentation view — bootstraps full current state whenever it's opened, so there's no wrong
+  moment to open it.
+- **There is no "quiz ended" phase.** `phase` remains `lobby | live`; the summary is a page,
+  not a state. Its intended use is after the last question, but it is live throughout and a
+  window left open keeps updating as questions close. The QM decides when the quiz is over by
+  closing the laptop, not by clicking anything.
+- Shows **final standings** — every roster member by cumulative total, highest first. Read
+  from `scores`, never from the event log: this is the number that has to agree with the
+  scorecard, so it comes from where the scorecard gets it.
+- Shows **buzzer stats** — per player: buzz count against the number of closed questions,
+  average and median time-to-buzz, and average queue position. Every average divides by that
+  player's *own* buzzes, never by the question count, so a player who buzzed three times and
+  was first each time averages position 1.0. Players who never buzzed still get a row, with
+  `—` in the derived columns. Host-added (`virtual=True`) entries are omitted — they have no
+  socket and can never buzz.
+
+**Which buzzes count** (derived from the event log, §5):
+
+- A question contributes only if it **closed via `question_submit`**. A cancelled question was
+  never played, so its buzzes are not reaction times to anything; a reopened
+  (`reviewing`) question doesn't start a new measurement, since its answer is already known;
+  and a question still live when the summary is read hasn't closed yet.
+- Within a closed question, a QM-initiated `queue_reset` **discards everything before it** and
+  restarts the clock. Only the final sub-round counts, timed from whatever opened it — the
+  reveal, or that last reset. This is what makes the common "someone buzzed by accident,
+  reset it" correction actually erase the misfire instead of recording it as a fast buzz,
+  and it means a player who buzzed both before and after a reset is counted once.
+- A frozen interval can never sit inside a counted measurement: once the queue is frozen no
+  buzz is accepted, and the only way back to an open queue is a reset, which starts a fresh
+  sub-round. So no reported time includes a period in which the player couldn't act.
+- A buzz in the dead period between questions belongs to no question and is excluded.
 
 ## 9. Socket.IO protocol
 
@@ -276,6 +318,7 @@ Unplayed ──(host:question_reveal)──► Revealed ──(host:answer_revea
 | `host:answer_reveal` | host | `{}` | Reveal the answer of the currently-revealed question (§7). |
 | `host:question_cancel` | host | `{}` | Clear the live question without scoring (§7). |
 | `host:board_select` | host | `{ board_index }` | Change which board the control center/presentation view shows when nothing's live. Rejected if a question is currently live or the index is out of range. |
+| `summary:join` | summary | `{ room_id }` | Register the summary socket; receive current `state:summary`. |
 
 ### Server → client
 
@@ -290,9 +333,10 @@ Unplayed ──(host:question_reveal)──► Revealed ──(host:answer_revea
 | `player:accepted` | one player | `{ player_id, phase, rejoin_token }` |
 | `player:rejected` | one player | `{ reason }` |
 | `player:removed` | one player | `{}` — sent just before the server force-disconnects a removed player (lobby or post-Start roster removal) |
+| `state:summary` | summary | `{ standings: [{player_id, name, total}], buzz_stats: [{player_id, name, buzz_count, closed_count, avg_ms, median_ms, avg_position}] }` — re-emitted whenever a question closes or the roster changes. Derived figures are `null` for a player with no counted buzzes. No question, answer, or media content. |
 | `error` | any | `{ message, context }` |
 
-`state:scores` and `state:live_question` are host-only. `state:presentation` is presentation-room-only. `state:players` is player-only, driving the "Others" section on the player phone — never sent to the host.
+`state:scores` and `state:live_question` are host-only. `state:presentation` is presentation-room-only. `state:summary` is summary-room-only. `state:players` is player-only, driving the "Others" section on the player phone — never sent to the host.
 
 ## 10. User flows
 
@@ -310,6 +354,7 @@ Unplayed ──(host:question_reveal)──► Revealed ──(host:answer_revea
 10. **Totals** (sidebar, always visible): Board and Total columns, sorted by board score descending.
 11. **Adding a late joiner:** the host types a name and clicks "Add" → the player appears immediately as a new roster row (Board 0, Total 0) and in every reveal modal opened from that point on. The host can re-open any closed cell to score them retroactively. Live-phase only.
 12. **Removing a player:** pre-Start, a lobby entry can be removed outright (§9 `host:player_remove`). Post-Start, a roster member (real or host-added) can be removed, discarding their scores (§9 `host:roster_remove`).
+13. **Summary:** at the end (or at any point — it's live), the QM opens `/summary/<join_code>/<host_token>` from the header for final standings and buzzer stats (§8).
 
 ### Player flow
 
@@ -361,6 +406,9 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **Scoring panel always reflects the live roster.** Players added post-Start appear in every reveal/scoring panel opened after that point, including re-opened closed cells, with `—` on questions closed before they were added.
 - **`host:roster_add { name }` creates a standalone roster entry**, unlinked to any buzz identity.
 - **Quiz content is uploaded per room as an XLSX/zip bundle**, never authored in-app, never CSV.
+- **The summary view is a page, not a phase.** No `ended` state was added; `phase` stays `lobby | live`.
+- **Buzz stats count only questions closed by `question_submit`**, and only the final sub-round within each — a QM-initiated `queue_reset` discards everything before it and restarts the clock. `t0` is the reveal, or the last reset if there was one.
+- **Buzz averages divide by the player's own buzz count**, never by the number of questions.
 - **Socket.IO client is self-hosted, never CDN-loaded.** A DNS-level block of `cdn.socket.io` on one player's network silently killed their page mid-game (2026-08-23): `io` was undefined, the entry script threw before attaching any listener, and every button looked fine but did nothing.
 
 ## 13. Acceptance criteria
@@ -377,6 +425,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - A dropped player reconnecting on the same device silently resumes their identity and queue position, no re-entry.
 - Host can remove a lobby entry pre-Start, and a roster member (discarding their scores) post-Start; the removed player, if connected, lands back on a working join form.
 - Totals panel shows Board and Total columns, sorted by board score descending. Board Prev/Next navigation works and is locked while a question is live.
+- The summary view opens at any point and shows final standings plus buzzer stats, updating live as questions close. Buzzes on a cancelled question, and buzzes the QM cleared with a reset, are absent from the stats.
 - No question text, answer, or media URL ever reaches a player socket or a player-reachable route.
 - A full quiz (multiple boards, image questions included) runs end-to-end with the QM touching only the control center and presentation view — no external slides, no tab-switching.
 - Single eventlet worker on a public host, survives a full quiz without restart.

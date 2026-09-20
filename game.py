@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Literal
 
+import stats
 from bundle_loader import BundleQuestion
 
 
@@ -466,6 +467,30 @@ class Game:
             "closed": list(self.closed_questions),
             "roster": roster_players,
             "boards": self._boards,
+        }
+
+    def get_standings(self) -> list[dict]:
+        """Final table: every roster member by cumulative score, highest first.
+
+        Read from `scores`, not the event log — this is the number that has to
+        agree with the scorecard, so it comes from the same place the scorecard
+        does. The log supplies trajectory, never totals.
+        """
+        rows = [
+            {
+                "player_id": pid,
+                "name": self.players[pid].name,
+                "total": sum(self.scores.get(pid, {}).values()),
+            }
+            for pid in self.roster
+        ]
+        rows.sort(key=lambda r: r["total"], reverse=True)
+        return rows
+
+    def get_summary_payload(self) -> dict:
+        return {
+            "standings": self.get_standings(),
+            "buzz_stats": stats.buzz_stats(self.event_log, self.roster, self.players),
         }
 
     def get_full_state(self) -> dict:

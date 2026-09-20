@@ -1137,3 +1137,57 @@ html.qb-resuming #view-join { display: none; }
   .cell { min-width: 64px; min-height: 40px; font-size: 11px; padding: 8px 4px; }
   .cell-unplayed { font-size: 13px; }
 }
+
+/* ================================================================
+   Summary view (/summary/<code>/<token>)
+   ================================================================ */
+
+.summary-wrap {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding: 24px 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.summary-header h1 { margin: 0; font-size: 22px; }
+.summary-body { display: flex; flex-direction: column; gap: 16px; }
+.summary-empty {
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 32px 20px;
+  text-align: center;
+  margin: 0;
+}
+.summary-empty-inline { color: var(--color-text-muted); font-size: 13px; margin: 10px 0 0; }
+.summary-note { color: var(--color-text-muted); font-size: 12px; margin: -4px 0 12px; line-height: 1.5; }
+
+/* The shared .totals-table right-aligns every column but the first. That fits
+   the buzz table as-is; standings lead with a rank column, so the name beside
+   it has to be pulled back to the left. */
+.summary-standings td:nth-child(2),
+.summary-standings th:nth-child(2) { text-align: left; font-weight: 500; }
+.summary-rank-col { width: 2.5em; text-align: left !important; color: var(--color-text-faint); font-weight: 600 !important; }
+.summary-standings tr:first-child .summary-rank-col { color: var(--color-primary); }
+.summary-total { font-variant-numeric: tabular-nums; }
+
+.summary-buzz { font-variant-numeric: tabular-nums; }
+.summary-of { color: var(--color-text-faint); font-weight: 400; }
+.summary-row-idle td { color: var(--color-text-faint); }
+
+/* A wide table on a phone scrolls inside its own box rather than pushing the
+   page sideways. */
+.summary-table-scroll { overflow-x: auto; }
+
+@media (max-width: 600px) {
+  .summary-header { flex-direction: column; gap: 8px; }
+  .summary-buzz { min-width: 460px; }
+}

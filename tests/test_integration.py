@@ -1202,3 +1202,137 @@ def test_entry_scripts_set_the_readiness_flag_the_guard_checks(room):
     for script in ("player.js", "host.js", "present.js"):
         body = client.get(f"/static/js/{script}").get_data(as_text=True)
         assert "window.qbReady = true;" in body, script
+
+
+# ------------------------------------------------------------------
+# Summary view (/summary/<join_code>/<host_token>)
+# ------------------------------------------------------------------
+
+def test_summary_route_requires_the_host_token(room):
+    join_code, _, host_token = room
+    client = app.test_client()
+    assert client.get(f"/summary/{join_code}/{host_token}").status_code == 200
+    assert client.get(f"/summary/{join_code}/wrong-token").status_code == 404
+    assert client.get(f"/summary/ZZZZ/{host_token}").status_code == 404
+
+
+def test_summary_page_serves_same_origin_assets_only(room):
+    join_code, _, host_token = room
+    html = app.test_client().get(f"/summary/{join_code}/{host_token}").get_data(as_text=True)
+    assert "/static/js/socket.io.min.js" in html
+    assert "/static/js/summary.js" in html
+    assert "cdn." not in html
+
+
+def test_summary_join_bootstraps_state_summary(room):
+    join_code, game, _ = room
+    p1, _ = game.player_join("Ankur")
+    game.start_quiz()
+    game.question_reveal("1:History:10")
+    game.player_buzz(p1)
+    game.answer_reveal()
+    game.question_submit("1:History:10", {p1: 10.0})
+
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": join_code})
+    received = summary.get_received()
+
+    event = next((e for e in received if e["name"] == "state:summary"), None)
+    assert event is not None
+    payload = event["args"][0]
+    assert payload["standings"] == [{"player_id": p1, "name": "Ankur", "total": 10.0}]
+    assert payload["buzz_stats"][0]["buzz_count"] == 1
+    assert payload["buzz_stats"][0]["closed_count"] == 1
+    summary.disconnect()
+
+
+def test_summary_join_rejects_unknown_room():
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": "ZZZZ"})
+    received = summary.get_received()
+    assert any(e["name"] == "error" for e in received)
+    assert not any(e["name"] == "state:summary" for e in received)
+    summary.disconnect()
+
+
+def test_question_submit_broadcasts_state_summary(room):
+    join_code, game, host_token = room
+    p1, _ = game.player_join("Ankur")
+    game.start_quiz()
+
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": join_code})
+    summary.get_received()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+    host.emit("host:question_reveal", {"question_id": "1:History:20"})
+    host.emit("host:answer_reveal")
+    host.emit("host:question_submit", {"question_id": "1:History:20", "scores": {p1: 20.0}})
+
+    event = next((e for e in summary.get_received() if e["name"] == "state:summary"), None)
+    assert event is not None
+    assert event["args"][0]["standings"][0]["total"] == 20.0
+
+    summary.disconnect()
+    host.disconnect()
+
+
+def test_roster_changes_broadcast_state_summary(room):
+    join_code, game, _ = room
+    p1, _ = game.player_join("Ankur")
+    game.start_quiz()
+
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": join_code})
+    summary.get_received()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    host.emit("host:roster_add", {"name": "Phone-in team"})
+    names = [r["name"] for r in
+             next(e for e in summary.get_received() if e["name"] == "state:summary")["args"][0]["standings"]]
+    assert names == ["Ankur", "Phone-in team"]
+
+    host.emit("host:roster_remove", {"player_id": p1})
+    names = [r["name"] for r in
+             next(e for e in summary.get_received() if e["name"] == "state:summary")["args"][0]["standings"]]
+    assert names == ["Phone-in team"]
+
+    summary.disconnect()
+    host.disconnect()
+
+
+def test_summary_is_never_emitted_to_player_or_present_rooms(room):
+    join_code, game, _ = room
+    p1_client = socketio.test_client(app)
+    p1_client.emit("player:join", {"room_id": join_code, "name": "Ankur"})
+    p1 = game.get_lobby_players()[0]["player_id"]
+    present = socketio.test_client(app)
+    present.emit("present:join", {"room_id": join_code})
+    game.start_quiz()
+    p1_client.get_received()
+    present.get_received()
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    host.emit("host:answer_reveal")
+    host.emit("host:question_submit", {"question_id": "1:History:10", "scores": {p1: 10.0}})
+
+    assert not any(e["name"] == "state:summary" for e in p1_client.get_received())
+    assert not any(e["name"] == "state:summary" for e in present.get_received())
+
+    p1_client.disconnect()
+    present.disconnect()
+    host.disconnect()
+
+
+def test_control_center_links_to_the_summary(room):
+    join_code, _, host_token = room
+    html = app.test_client().get(f"/host/{join_code}/{host_token}").get_data(as_text=True)
+    assert f"/summary/{join_code}/{host_token}" in html

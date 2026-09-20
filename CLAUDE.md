@@ -35,6 +35,7 @@ Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn, openpyxl. Vanilla JS + 
 ```
 app.py            # Flask app + SocketIO init + HTTP routes (incl. per-room upload + media routes)
 game.py           # all in-memory state and game logic (phase, roster, queue, scoring, event log)
+stats.py          # pure derivations over the event log (buzz stats) — no game.py import, see its header
 events.py         # SocketIO event handlers — thin wrappers that delegate to game.py
 bundle_loader.py  # zip/xlsx bundle parser + validation + media extraction (SPEC.md §6)
 templates/
@@ -42,6 +43,7 @@ templates/
   player.html     # waiting → buzzer → queue-position (single page, JS-driven)
   host.html       # control center: board scorecard + shared board-covering modal (peek + reveal) + queue + totals
   present.html    # read-only presentation view (SPEC.md §8) — stage + sidebar, no interaction
+  summary.html    # read-only summary view (SPEC.md §8) — standings + buzzer stats, no interaction
 static/
   js/socket.io.min.js  # vendored Socket.IO 4.7.5 client (see "Vendored Socket.IO client" below)
   js/create.js    # OTP input logic, code validation, redirect
@@ -49,6 +51,7 @@ static/
   js/media.js     # shared between host.js/present.js: mediaImagesHtml() — the one identical sliver of question rendering
   js/host.js      # includes the reveal-flow rewire (question_reveal/answer_reveal/question_cancel/board_select) and the shared modal (peek + reveal)
   js/present.js   # pure rendering — state:presentation + state:queue, no emits beyond present:join
+  js/summary.js   # pure rendering — state:summary only, no emits beyond summary:join
   css/styles.css  # :root token block (colors/radii/shadows) + all page styles
 requirements.txt
 ```
@@ -107,9 +110,11 @@ pytest
 
 Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals, `player_rejoin` (valid token resumes the same identity, unknown/virtual token rejected, roster/scores/queue untouched), `remove_player` (deletes a lobby entry, rejected once live, rejected for an unknown id), `remove_from_roster` (deletes a real or virtual roster member and discards their scores, rejected before Start, rejected for an unknown id), `_cell_state`'s `negative_only` flag (green/red truth table: all-positive, mixed, all-negative, negative+zero, all-zero), event log (`seq` 1-based and monotonic, every log point's payload, a buzz's `at` equalling its `BuzzEntry.received_at`, `player_name` surviving `remove_from_roster`, rejected buzzes not logged, and a manual `queue_reset` logged while `question_submit`/`question_cancel`'s implicit clear is not).
 
+Unit-test `stats.py` through a real `Game`, so the log under test is the one the app produces: the episode rule (normal, cancelled, cancel-then-re-reveal, `reviewing` reopen, dead-period buzz, still-open question) and the sub-round rule (accidental buzzes discarded by an immediate reset, a re-buzz timed from the reset not the reveal, no double-count across sub-rounds, freeze-without-reset still timed from the reveal, a trailing reset yielding no buzz data). Plus: averages divide by the player's own buzz count, virtual entries omitted, removed roster members dropped.
+
 Unit-test `bundle_loader.py` independently of `game.py`: valid parse, every structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows, unsupported/missing media), xlsx cell-type normalization, and `extract_media`.
 
-Integration tests with the Flask-SocketIO test client: join → buzz → queue broadcast; room validation (valid/invalid/case-insensitive); late joiner behind frozen queue; `player:rejoin` restores identity + queue state, and survives a stale disconnect arriving after the new connection (SPEC.md §9); `host:player_remove` kicks the target socket with `player:removed` before disconnecting it, and is rejected once live (SPEC.md §9); `host:roster_remove` discards scores and broadcasts `state:scores` to every host tab, and is rejected before Start (SPEC.md §9). No browser/E2E tooling.
+Integration tests with the Flask-SocketIO test client: join → buzz → queue broadcast; room validation (valid/invalid/case-insensitive); late joiner behind frozen queue; `player:rejoin` restores identity + queue state, and survives a stale disconnect arriving after the new connection (SPEC.md §9); `host:player_remove` kicks the target socket with `player:removed` before disconnecting it, and is rejected once live (SPEC.md §9); `host:roster_remove` discards scores and broadcasts `state:scores` to every host tab, and is rejected before Start (SPEC.md §9); `/summary` 404s without the host token, `summary:join` bootstraps `state:summary`, closing a question and changing the roster both rebroadcast it, and it never reaches a player or presentation socket. No browser/E2E tooling.
 
 ## Workflow
 

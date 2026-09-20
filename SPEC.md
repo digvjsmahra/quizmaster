@@ -95,11 +95,13 @@ Game
   live_question: LiveQuestion | None      # current reveal-state-machine position
   boards: dict[board_name → list[Question]]              # from the uploaded bundle
   current_board_index: int
+  event_log: list[LogEvent]               # append-only record of play (below)
 
 Player:    id, name, connected, joined_at, virtual, rejoin_token
 BuzzEntry: player_id, received_at         # monotonic server timestamp
 Question:  id, board, category, value, question, answer, question_media, answer_media
            # id = f"{board}:{category}:{value}"
+LogEvent:  seq, at, type, question_id, player_id, player_name, data
 ```
 
 ### Two-tier identity
@@ -119,6 +121,39 @@ On the *same* device, a reconnect silently resumes the same buzz identity via a 
 | **Passed** | In `closed_questions`, zero score entries | "~passed~" (grey) |
 
 Awarded applies to any closed question with entries, including negative-only. Passed is strictly zero attempts — a wrong answer is still an entry. An explicit `0` entry counts as neither positive nor negative — a cell with only zero entries stays green/neutral; a real negative plus a zero is still red, since the zero doesn't cancel the penalty. `0` entries are rare in practice, since a blank scoring row is skipped and produces no entry at all — a host has to type `0` explicitly. The color is computed once server-side (`Game._cell_state`) as a `negative_only: bool`, so both the host board and the presentation board derive the same color from the same source.
+
+### Event log
+
+`scores` records what the final numbers are, not how they were reached: it is unordered, and
+`queue` is wiped every time a question closes. The event log is the in-memory, append-only
+record of the play itself — the order questions were actually played in, and every buzz with
+its timing. Like all other state it lives only in the process and dies with the room.
+
+| `type` | when | `data` |
+|--------|------|--------|
+| `question_reveal` | a question is revealed, fresh or reopened | `reviewing: bool` |
+| `answer_reveal` | the answer is revealed | — |
+| `buzz` | a buzz is accepted into the queue | `position: int` (1-based) |
+| `question_submit` | scores are saved and the question closes | `scores: {player_id: value}` as stored |
+| `question_cancel` | a live question is dismissed without scoring | — |
+| `queue_freeze` | the QM freezes the queue | — |
+| `queue_reset` | the QM **manually** resets the queue | — |
+
+- `seq` is 1-based and strictly increasing within a room; `at` is a monotonic server
+  timestamp on the same clock as `BuzzEntry.received_at`, so a buzz latency is a plain
+  subtraction. Nothing in the log is wall-clock.
+- `question_id` is the question live at the time, or `null` — a buzz in the dead period
+  between questions carries no question.
+- `player_name` is **snapshotted at log time**, because `host:roster_remove` deletes the
+  `Player` record outright and the log has to stay readable afterwards.
+- **Only a QM-initiated `queue_reset` is logged.** `question_submit` and `question_cancel`
+  also clear the queue, but that is bookkeeping, not an act of the QM discarding a queue —
+  and the distinction is load-bearing, since a logged reset marks the point where buzzing
+  reopened on a question.
+- The log is never rewritten. A re-submitted correction appends a second `question_submit`
+  for the same question rather than amending the first; readers take the latest.
+- Rejected buzzes (queue locked, already queued, unknown player) are not logged — the log
+  records what happened, not what was attempted.
 
 ## 6. Quiz content: bundle format
 

@@ -33,6 +33,26 @@ class BuzzEntry:
     received_at: float
 
 
+@dataclass
+class LogEvent:
+    """One recorded moment of play (SPEC.md §5).
+
+    Ordering and durations only. `at` is monotonic — the same clock as
+    BuzzEntry.received_at — so a buzz latency is a plain subtraction. Nothing
+    here is wall-clock, and the log dies with the room like all other state.
+    """
+
+    seq: int
+    at: float
+    type: str
+    question_id: str | None = None
+    player_id: str | None = None
+    # Snapshotted at log time: remove_from_roster deletes the Player record
+    # outright, and the log has to stay readable after that.
+    player_name: str | None = None
+    data: dict = field(default_factory=dict)
+
+
 class Game:
     def __init__(self, questions: dict[str, list[BundleQuestion]] | None = None):
         self.questions: dict[str, list[BundleQuestion]] = {}
@@ -51,11 +71,41 @@ class Game:
         self.live_question: dict | None = None
         self.current_board_index: int = 0
         self.media_dir: str | None = None
+        self.event_log: list[LogEvent] = []
 
     def load_questions(self, questions: dict[str, list[BundleQuestion]]) -> None:
         self.questions = questions
         self._boards = list(questions.keys())
         self._all_questions = {q.id: q for qs in questions.values() for q in qs}
+
+    # ------------------------------------------------------------------
+    # Event log (SPEC.md §5)
+    # ------------------------------------------------------------------
+
+    def _live_question_id(self) -> str | None:
+        return self.live_question["question_id"] if self.live_question else None
+
+    def _log(
+        self,
+        event_type: str,
+        *,
+        at: float | None = None,
+        question_id: str | None = None,
+        player_id: str | None = None,
+        player_name: str | None = None,
+        **data,
+    ) -> None:
+        self.event_log.append(
+            LogEvent(
+                seq=len(self.event_log) + 1,
+                at=time.monotonic() if at is None else at,
+                type=event_type,
+                question_id=question_id,
+                player_id=player_id,
+                player_name=player_name,
+                data=data,
+            )
+        )
 
     # ------------------------------------------------------------------
     # Lobby
@@ -113,15 +163,33 @@ class Game:
             return None
         if any(e.player_id == player_id for e in self.queue):
             return None
-        self.queue.append(BuzzEntry(player_id=player_id, received_at=time.monotonic()))
+        entry = BuzzEntry(player_id=player_id, received_at=time.monotonic())
+        self.queue.append(entry)
+        self._log(
+            "buzz",
+            at=entry.received_at,
+            question_id=self._live_question_id(),
+            player_id=player_id,
+            player_name=self.players[player_id].name,
+            position=len(self.queue),
+        )
         return list(self.queue)
 
     def queue_freeze(self) -> None:
         self.queue_locked = True
+        self._log("queue_freeze", question_id=self._live_question_id())
 
-    def queue_reset(self) -> None:
+    def _clear_queue(self) -> None:
         self.queue.clear()
         self.queue_locked = False
+
+    def queue_reset(self) -> None:
+        # The manual host control, and the only clear that gets logged.
+        # question_submit/question_cancel clear through _clear_queue instead,
+        # so a logged reset always means the QM discarded a queue deliberately
+        # — which is what makes it a sub-round boundary for the buzz stats.
+        self._clear_queue()
+        self._log("queue_reset", question_id=self._live_question_id())
 
     # ------------------------------------------------------------------
     # Reveal / answer / cancel (SPEC.md §7)
@@ -138,6 +206,7 @@ class Game:
             "status": "answer_shown" if reviewing else "revealed",
             "reviewing": reviewing,
         }
+        self._log("question_reveal", question_id=question_id, reviewing=reviewing)
 
     def answer_reveal(self) -> None:
         if not self.live_question:
@@ -145,12 +214,14 @@ class Game:
         if self.live_question["status"] != "revealed":
             raise ValueError("Answer can only be revealed from an active question reveal.")
         self.live_question["status"] = "answer_shown"
+        self._log("answer_reveal", question_id=self.live_question["question_id"])
 
     def question_cancel(self) -> None:
         if not self.live_question:
             raise ValueError("No question is currently live.")
+        self._log("question_cancel", question_id=self.live_question["question_id"])
         self.live_question = None
-        self.queue_reset()
+        self._clear_queue()
 
     def select_board(self, index: int) -> None:
         if self.live_question:
@@ -277,8 +348,14 @@ class Game:
             self.scores[pid][question_id] = float(value)
 
         self.closed_questions.add(question_id)
+        stored = {
+            pid: self.scores[pid][question_id]
+            for pid in self.roster
+            if pid in self.scores and question_id in self.scores[pid]
+        }
+        self._log("question_submit", question_id=question_id, scores=stored)
         self.live_question = None  # always true here — the gate above already confirmed the match
-        self.queue_reset()
+        self._clear_queue()
 
     # ------------------------------------------------------------------
     # Derived state for broadcasts

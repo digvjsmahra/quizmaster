@@ -869,3 +869,215 @@ def test_split_value_award():
     board1 = {r["player_id"]: r for r in payload["per_board_totals"]["1"]}
     assert board1[pid1]["board_total"] == 10.0
     assert board1[pid2]["board_total"] == 10.0
+
+
+# ------------------------------------------------------------------
+# Event log (SPEC.md §5)
+# ------------------------------------------------------------------
+
+def _types(g):
+    return [e.type for e in g.event_log]
+
+
+def _only(g, event_type):
+    return [e for e in g.event_log if e.type == event_type]
+
+
+def test_event_log_starts_empty():
+    g = make_game()
+    assert g.event_log == []
+
+
+def test_event_log_seq_is_one_based_and_monotonic():
+    g, pid1, pid2 = _started_game()
+    g.question_reveal("1:History:10")
+    g.player_buzz(pid1)
+    g.player_buzz(pid2)
+    g.answer_reveal()
+    g.question_submit("1:History:10", {pid1: 10.0})
+    assert [e.seq for e in g.event_log] == list(range(1, len(g.event_log) + 1))
+
+
+def test_event_log_at_is_non_decreasing():
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.player_buzz(pid1)
+    g.answer_reveal()
+    g.question_submit("1:History:10", {pid1: 10.0})
+    stamps = [e.at for e in g.event_log]
+    assert stamps == sorted(stamps)
+
+
+def test_question_reveal_logs_with_reviewing_false():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    (ev,) = _only(g, "question_reveal")
+    assert ev.question_id == "1:History:10"
+    assert ev.data["reviewing"] is False
+
+
+def test_question_reveal_logs_reviewing_true_on_reopen():
+    g, pid1, _ = _started_game()
+    _score(g, "1:History:10", {pid1: 10.0})
+    g.question_reveal("1:History:10")  # reopen for correction
+    reveals = _only(g, "question_reveal")
+    assert [e.data["reviewing"] for e in reveals] == [False, True]
+
+
+def test_answer_reveal_logs_question_id():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.answer_reveal()
+    (ev,) = _only(g, "answer_reveal")
+    assert ev.question_id == "1:History:10"
+
+
+def test_buzz_logs_identity_position_and_live_question():
+    g, pid1, pid2 = _started_game()
+    g.question_reveal("1:History:20")
+    g.player_buzz(pid1)
+    g.player_buzz(pid2)
+    first, second = _only(g, "buzz")
+    assert (first.player_id, first.player_name, first.data["position"]) == (pid1, "Ankur", 1)
+    assert (second.player_id, second.player_name, second.data["position"]) == (pid2, "Dev", 2)
+    assert first.question_id == second.question_id == "1:History:20"
+
+
+def test_buzz_log_at_matches_the_queue_entry_timestamp():
+    # stats.py computes latency as buzz.at - t0, so the logged instant has to
+    # be the same one the queue ordered by, not a second later reading.
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.player_buzz(pid1)
+    (ev,) = _only(g, "buzz")
+    assert ev.at == g.queue[0].received_at
+
+
+def test_buzz_in_dead_period_logs_null_question_id():
+    g, pid1, _ = _started_game()
+    g.player_buzz(pid1)  # nothing revealed
+    (ev,) = _only(g, "buzz")
+    assert ev.question_id is None
+
+
+def test_rejected_buzz_is_not_logged():
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.player_buzz(pid1)
+    g.player_buzz(pid1)  # already queued
+    g.queue_freeze()
+    g.player_buzz(pid1)  # locked
+    assert len(_only(g, "buzz")) == 1
+
+
+def test_buzz_player_name_survives_roster_removal():
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.player_buzz(pid1)
+    g.remove_from_roster(pid1)
+    assert pid1 not in g.players
+    (ev,) = _only(g, "buzz")
+    assert ev.player_name == "Ankur"
+
+
+def test_question_submit_logs_stored_scores():
+    g, pid1, pid2 = _started_game()
+    _score(g, "1:History:20", {pid1: 20.0, pid2: -20.0})
+    (ev,) = _only(g, "question_submit")
+    assert ev.question_id == "1:History:20"
+    assert ev.data["scores"] == {pid1: 20.0, pid2: -20.0}
+
+
+def test_question_submit_logs_empty_scores_when_passed():
+    g, _, _ = _started_game()
+    _score(g, "1:History:10", {})
+    (ev,) = _only(g, "question_submit")
+    assert ev.data["scores"] == {}
+
+
+def test_resubmit_appends_a_second_submit_event():
+    # The log stays append-only; the graph reads the latest submit per
+    # question and plots it at the first submit's position.
+    g, pid1, _ = _started_game()
+    _score(g, "1:History:10", {pid1: 10.0})
+    _score(g, "1:History:10", {pid1: 5.0})
+    submits = _only(g, "question_submit")
+    assert [e.data["scores"][pid1] for e in submits] == [10.0, 5.0]
+
+
+def test_question_cancel_logs_the_question_it_cancelled():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.question_cancel()
+    (ev,) = _only(g, "question_cancel")
+    assert ev.question_id == "1:History:10"
+
+
+def test_queue_freeze_logs_with_live_question():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.queue_freeze()
+    (ev,) = _only(g, "queue_freeze")
+    assert ev.question_id == "1:History:10"
+
+
+def test_manual_queue_reset_is_logged():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.queue_reset()
+    (ev,) = _only(g, "queue_reset")
+    assert ev.question_id == "1:History:10"
+
+
+def test_question_submit_does_not_log_a_queue_reset():
+    # A logged reset means the QM deliberately discarded a queue — that's what
+    # makes it a sub-round boundary. The implicit clear inside submit is not one.
+    g, pid1, _ = _started_game()
+    _score(g, "1:History:10", {pid1: 10.0})
+    assert _only(g, "queue_reset") == []
+    assert _types(g) == ["question_reveal", "answer_reveal", "question_submit"]
+
+
+def test_question_cancel_does_not_log_a_queue_reset():
+    g, _, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.question_cancel()
+    assert _only(g, "queue_reset") == []
+    assert _types(g) == ["question_reveal", "question_cancel"]
+
+
+def test_clear_queue_still_clears_and_unlocks_on_submit_and_cancel():
+    # The _clear_queue split must not change observable queue behaviour.
+    g, pid1, _ = _started_game()
+    g.question_reveal("1:History:10")
+    g.player_buzz(pid1)
+    g.queue_freeze()
+    g.question_cancel()
+    assert g.queue == [] and g.queue_locked is False
+
+    g.question_reveal("1:History:20")
+    g.player_buzz(pid1)
+    g.queue_freeze()
+    g.answer_reveal()
+    g.question_submit("1:History:20", {pid1: 20.0})
+    assert g.queue == [] and g.queue_locked is False
+
+
+def test_full_question_cycle_logs_expected_sequence():
+    g, pid1, pid2 = _started_game()
+    g.question_reveal("1:History:10")
+    g.player_buzz(pid1)
+    g.queue_reset()          # QM discards accidental buzzes
+    g.player_buzz(pid2)
+    g.queue_freeze()
+    g.answer_reveal()
+    g.question_submit("1:History:10", {pid2: 10.0})
+    assert _types(g) == [
+        "question_reveal",
+        "buzz",
+        "queue_reset",
+        "buzz",
+        "queue_freeze",
+        "answer_reveal",
+        "question_submit",
+    ]

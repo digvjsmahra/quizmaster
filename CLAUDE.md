@@ -34,7 +34,7 @@ Python 3.11+, Flask, Flask-SocketIO, eventlet, gunicorn, openpyxl. Vanilla JS + 
 
 ```
 app.py            # Flask app + SocketIO init + HTTP routes (incl. per-room upload + media routes)
-game.py           # all in-memory state and game logic (phase, roster, queue, scoring)
+game.py           # all in-memory state and game logic (phase, roster, queue, scoring, event log)
 events.py         # SocketIO event handlers — thin wrappers that delegate to game.py
 bundle_loader.py  # zip/xlsx bundle parser + validation + media extraction (SPEC.md §6)
 templates/
@@ -105,7 +105,7 @@ pytest
 
 ## Testing
 
-Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals, `player_rejoin` (valid token resumes the same identity, unknown/virtual token rejected, roster/scores/queue untouched), `remove_player` (deletes a lobby entry, rejected once live, rejected for an unknown id), `remove_from_roster` (deletes a real or virtual roster member and discards their scores, rejected before Start, rejected for an unknown id), `_cell_state`'s `negative_only` flag (green/red truth table: all-positive, mixed, all-negative, negative+zero, all-zero).
+Unit-test `game.py`: join, FIFO buzz ordering, freeze/reset, host-entered awards (split/decimal/negative), `question_submit` overwrites, Start roster snapshot (real players only, not virtual), `roster_add` virtual flag, `get_active_players` excludes virtual, cell-state derivation (Unplayed/Awarded/Passed), per-board and cumulative totals, `player_rejoin` (valid token resumes the same identity, unknown/virtual token rejected, roster/scores/queue untouched), `remove_player` (deletes a lobby entry, rejected once live, rejected for an unknown id), `remove_from_roster` (deletes a real or virtual roster member and discards their scores, rejected before Start, rejected for an unknown id), `_cell_state`'s `negative_only` flag (green/red truth table: all-positive, mixed, all-negative, negative+zero, all-zero), event log (`seq` 1-based and monotonic, every log point's payload, a buzz's `at` equalling its `BuzzEntry.received_at`, `player_name` surviving `remove_from_roster`, rejected buzzes not logged, and a manual `queue_reset` logged while `question_submit`/`question_cancel`'s implicit clear is not).
 
 Unit-test `bundle_loader.py` independently of `game.py`: valid parse, every structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows, unsupported/missing media), xlsx cell-type normalization, and `extract_media`.
 

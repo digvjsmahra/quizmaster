@@ -1156,8 +1156,66 @@ html.qb-resuming #view-join { display: none; }
   gap: 16px;
   margin-bottom: 20px;
 }
-.summary-header h1 { margin: 0; font-size: 22px; }
-.summary-body { display: flex; flex-direction: column; gap: 16px; }
+.summary-body { display: flex; flex-direction: column; gap: 20px; }
+
+/* Type scale — scoped to this page on purpose.
+   .card-label, .subtitle and .totals-table are shared with the control center
+   and presentation view, where they sit in a dense sidebar and are tuned to
+   stay quiet. This page is wide, sparse and read at a distance, so it needs
+   more contrast between a heading and the sentence explaining it. Overriding
+   here rather than editing the shared rules keeps the other two pages exactly
+   as they are. */
+.summary-wrap h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
+/* .subtitle is defined only as `.host-header .subtitle`, so on this page it
+   matched nothing and fell back to body's 14px near-black — louder than every
+   section heading beneath it. */
+.summary-wrap .subtitle { font-size: 13px; color: var(--color-text-muted); margin: 3px 0 0; }
+.summary-wrap .card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  letter-spacing: .06em;
+  margin: 0;
+}
+.summary-wrap .totals-table th {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding-bottom: 8px;
+}
+.summary-wrap .totals-table td { font-size: 14px; padding: 8px 0; }
+
+/* Heading and its note form one column; an action button is a sibling column,
+   so the note can never flow underneath it. */
+.summary-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.summary-card-head-text { min-width: 0; }
+
+/* Connection status, not quiz state — it previously borrowed .phase-badge,
+   the control center's lobby/live chip, which read as a claim about the quiz
+   on a page titled "Quiz Summary". */
+.summary-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.summary-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-success-strong-text);
+}
+.summary-live.offline { color: var(--color-warning-text); }
+.summary-live.offline::before { background: var(--color-warning-text); }
 .summary-empty {
   color: var(--color-text-muted);
   background: var(--color-surface);
@@ -1168,7 +1226,13 @@ html.qb-resuming #view-join { display: none; }
   margin: 0;
 }
 .summary-empty-inline { color: var(--color-text-muted); font-size: 13px; margin: 10px 0 0; }
-.summary-note { color: var(--color-text-muted); font-size: 12px; margin: -4px 0 12px; line-height: 1.5; }
+.summary-note {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 6px 0 0;
+  max-width: 64ch;
+}
 
 /* The shared .totals-table right-aligns every column but the first. That fits
    the buzz table as-is; standings lead with a rank column, so the name beside
@@ -1176,7 +1240,9 @@ html.qb-resuming #view-join { display: none; }
 .summary-standings td:nth-child(2),
 .summary-standings th:nth-child(2) { text-align: left; font-weight: 500; }
 .summary-rank-col { width: 2.5em; text-align: left !important; color: var(--color-text-faint); font-weight: 600 !important; }
-.summary-standings tr:first-child .summary-rank-col { color: var(--color-primary); }
+/* tbody, not tr:first-child — the latter also matches the header row, which
+   painted the "#" column heading as though it were the winner. */
+.summary-standings tbody tr:first-child .summary-rank-col { color: var(--color-primary); }
 .summary-total { font-variant-numeric: tabular-nums; }
 
 .summary-buzz { font-variant-numeric: tabular-nums; }
@@ -1190,17 +1256,25 @@ html.qb-resuming #view-join { display: none; }
 @media (max-width: 600px) {
   .summary-header { flex-direction: column; gap: 8px; }
   .summary-buzz { min-width: 460px; }
+  /* Side by side, the button starves the note into a five-line column. Stack
+     them; the toggle then sits directly above the chart it controls. */
+  .summary-card-head { flex-direction: column; gap: 12px; }
+  .chart-toggle { align-self: flex-start; }
 }
 
 /* Chart — hand-rolled SVG (no charting library; SPEC.md §11).
    Chrome/ink values are the data-viz reference instance's light column; the
    series hues live in summary.js, where the slot order is the CVD-safety
    mechanism and must stay fixed. */
-.chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.chart-head .card-label { margin-bottom: 0; }
-/* .btn-nav is the repo's small secondary button (board prev/next); it needs
-   no resizing here, only protection from the flex row stretching it. */
-.chart-toggle { flex: none; }
+/* .btn-nav is the repo's small secondary button (board prev/next). Here it sits
+   beside a heading rather than in a control strip, so it loses the grey fill
+   and takes it back on hover. */
+.chart-toggle {
+  flex: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.chart-toggle:hover { background: var(--color-border-subtle); }
 .chart-wrap { position: relative; }
 .chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
 

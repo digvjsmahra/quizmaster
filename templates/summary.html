@@ -14,7 +14,7 @@
       <h1>Quiz Summary</h1>
       <div class="subtitle">Room {{ join_code }}</div>
     </div>
-    <span id="summary-live-badge" class="phase-badge lobby">live</span>
+    <span id="summary-live-badge" class="summary-live">live</span>
   </header>
 
   <p class="summary-empty" id="summary-empty">
@@ -24,7 +24,11 @@
   <div class="summary-body hidden" id="summary-body">
 
     <div class="card">
-      <div class="card-label">Final standings</div>
+      <div class="summary-card-head">
+        <div class="summary-card-head-text">
+          <div class="card-label">Final standings</div>
+        </div>
+      </div>
       <table class="totals-table summary-standings">
         <thead>
           <tr><th class="summary-rank-col">#</th><th>Player</th><th>Total</th></tr>
@@ -34,15 +38,17 @@
     </div>
 
     <div class="card">
-      <div class="chart-head">
-        <div class="card-label">Score over the quiz</div>
+      <div class="summary-card-head">
+        <div class="summary-card-head-text">
+          <div class="card-label">Score over the quiz</div>
+          <p class="summary-note">
+            In the order questions were actually played, not board order. A re-scored question
+            moves its own point and shifts the rest of the line.
+          </p>
+        </div>
         <button type="button" class="btn-nav chart-toggle" id="chart-table-toggle"
                 aria-expanded="false" aria-controls="chart-table">Show as table</button>
       </div>
-      <p class="summary-note">
-        In the order questions were actually played, not board order. A re-scored question
-        moves its own point and shifts the rest of the line.
-      </p>
       <div class="chart-wrap" id="chart-wrap">
         <div id="chart"></div>
         <div class="chart-tooltip hidden" id="chart-tooltip" role="status" aria-live="off"></div>
@@ -53,11 +59,15 @@
     </div>
 
     <div class="card">
-      <div class="card-label">Buzzer stats</div>
-      <p class="summary-note">
-        Counted on closed questions only. Buzzes the QM cleared with a reset don't count,
-        and times run from the moment buzzing opened.
-      </p>
+      <div class="summary-card-head">
+        <div class="summary-card-head-text">
+          <div class="card-label">Buzzer stats</div>
+          <p class="summary-note">
+            Counted on closed questions only. Buzzes the QM cleared with a reset don't count,
+            and times run from the moment buzzing opened.
+          </p>
+        </div>
+      </div>
       <div class="summary-table-scroll">
         <table class="totals-table summary-buzz">
           <thead>

@@ -30,7 +30,7 @@ def _game():
 
 
 def _stats(g):
-    return {r["name"]: r for r in buzz_stats(g.event_log, g.roster, g.players)}
+    return {r["name"]: r for r in buzz_stats(g.event_log, g.players)}
 
 
 def _shift(g, pid, seconds):
@@ -261,13 +261,14 @@ def test_rows_sorted_fastest_first_with_non_buzzers_last():
     g.player_buzz(ankur)
     _shift(g, ankur, 0.5)
     _close(g, Q2, {ankur: 20.0})
-    g.roster_add("Ghost")             # virtual, omitted entirely
+    g.roster_add("Ghost")             # host-added, omitted entirely
 
-    names = [r["name"] for r in buzz_stats(g.event_log, g.roster, g.players)]
+    names = [r["name"] for r in buzz_stats(g.event_log, g.players)]
     assert names == ["Dev", "Ankur", "Quiet"]
 
 
-def test_virtual_roster_entries_are_omitted():
+def test_host_added_entries_are_omitted():
+    # Excluded for having no socket, not for anything about the roster.
     g, ankur, _ = _game()
     g.roster_add("Phone-in team")
     g.question_reveal(Q1)
@@ -276,7 +277,9 @@ def test_virtual_roster_entries_are_omitted():
     assert "Phone-in team" not in _stats(g)
 
 
-def test_removed_roster_member_drops_out_of_the_table():
+def test_removed_player_drops_out_of_the_table():
+    # remove_from_roster deletes the Player record outright, so the row falls
+    # out naturally now that rows come from `players`. Removal stays a removal.
     g, ankur, dev = _game()
     g.question_reveal(Q1)
     g.player_buzz(ankur)
@@ -396,3 +399,94 @@ def test_timeline_empty_before_anything_closes():
     tl = _timeline(g)
     assert tl["questions"] == []
     assert all(s["points"] == [0.0] for s in tl["series"])
+
+
+# ------------------------------------------------------------------
+# Rows come from buzz identities, not the roster (SPEC.md §5, §8)
+# ------------------------------------------------------------------
+
+def test_late_joiner_who_buzzes_appears():
+    # The roster is snapshotted at Start, so a post-Start joiner is never in
+    # it — but they can buzz from the moment they land.
+    g, ankur, _ = _game()
+    late, _ = g.player_join("Latecomer")
+    assert late not in g.roster
+    g.question_reveal(Q1)
+    g.player_buzz(late)
+    _close(g, Q1, {ankur: 10.0})
+    row = _stats(g)["Latecomer"]
+    assert row["buzz_count"] == 1
+    assert row["avg_position"] == 1.0
+
+
+def test_buzzers_appear_when_every_roster_entry_is_host_added():
+    """The reported bug, end to end at the stats layer.
+
+    QM starts the quiz before anyone joins, players join by room code, then the
+    QM adds matching scorecard rows by hand. Each human ends up with two Player
+    records and every roster entry is virtual — which used to yield an empty
+    buzz table even though the log was full of buzzes.
+    """
+    g = Game(questions={"1": [_q(Q1, "1", "History", 10), _q(Q2, "1", "History", 20)]})
+    g.start_quiz()                      # nobody has joined yet
+    assert g.roster == []
+
+    m, _ = g.player_join("M")           # joins by code, post-Start
+    d, _ = g.player_join("D")
+    m_row, d_row = g.roster_add("M"), g.roster_add("D")   # host bridges for scoring
+
+    g.question_reveal(Q1)
+    g.player_buzz(m)
+    g.player_buzz(d)
+    _close(g, Q1, {m_row: 10.0})
+
+    rows = _stats(g)
+    assert set(rows) == {"M", "D"}                 # the buzz identities, not the roster rows
+    assert rows["M"]["buzz_count"] == 1
+    assert rows["D"]["buzz_count"] == 1
+    assert rows["M"]["avg_position"] == 1.0
+    assert rows["D"]["avg_position"] == 2.0
+    # and the scorecard still belongs to the host-added rows
+    assert [r["name"] for r in g.get_standings()] == ["M", "D"]
+    assert {r["player_id"] for r in g.get_standings()} == {m_row, d_row}
+
+
+def test_host_added_row_sharing_a_name_with_a_real_player_is_not_a_second_row():
+    g, ankur, _ = _game()
+    g.roster_add("Ankur")               # same name, separate virtual record
+    g.question_reveal(Q1)
+    g.player_buzz(ankur)
+    _close(g, Q1, {ankur: 10.0})
+    rows = [r for r in buzz_stats(g.event_log, g.players) if r["name"] == "Ankur"]
+    assert len(rows) == 1
+    assert rows[0]["player_id"] == ankur
+
+
+def test_same_device_reconnect_stays_one_row():
+    # A rejoin resolves to the same player_id, so reconnecting mid-quiz must
+    # not split someone into two buzz identities.
+    g, ankur, _ = _game()
+    token = g.players[ankur].rejoin_token
+    g.question_reveal(Q1)
+    g.player_buzz(ankur)
+    _close(g, Q1, {ankur: 10.0})
+
+    g.players[ankur].connected = False
+    assert g.player_rejoin(token) == (ankur, "live")
+
+    g.question_reveal(Q2)
+    g.player_buzz(ankur)
+    _close(g, Q2, {ankur: 20.0})
+
+    rows = [r for r in buzz_stats(g.event_log, g.players) if r["name"] == "Ankur"]
+    assert len(rows) == 1
+    assert rows[0]["buzz_count"] == 2
+
+
+def test_disconnected_player_still_gets_a_row():
+    g, ankur, _ = _game()
+    g.question_reveal(Q1)
+    g.player_buzz(ankur)
+    _close(g, Q1, {ankur: 10.0})
+    g.players[ankur].connected = False          # phone died before the summary
+    assert _stats(g)["Ankur"]["buzz_count"] == 1

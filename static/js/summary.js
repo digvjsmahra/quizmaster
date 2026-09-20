@@ -44,8 +44,17 @@
   }
 
   function renderBuzz(rows) {
+    // No rows at all means nobody joined from a phone — host-added scorecard
+    // entries have no buzzer. That's a different thing from "everyone joined
+    // but nobody has buzzed yet", and saying the wrong one reads as a bug.
+    const hasPlayers = rows.length > 0;
     const anyBuzzes = rows.some(r => r.buzz_count > 0);
+    el('buzz-empty').textContent = hasPlayers
+      ? 'No buzzes on any closed question yet.'
+      : 'Nobody has joined from a phone yet. Players added by the host are scorecard rows only \u2014 they have no buzzer, so they never appear here.';
     el('buzz-empty').classList.toggle('hidden', anyBuzzes);
+    // A column header with nothing under it reads as broken, not empty.
+    el('buzz-table').classList.toggle('hidden', !hasPlayers);
     el('buzz-body').innerHTML = rows.map(r =>
       `<tr${r.buzz_count ? '' : ' class="summary-row-idle"'}>
          <td>${esc(r.name)}</td>

@@ -1,6 +1,6 @@
 """Derivations over a room's event log (SPEC.md §5).
 
-Pure functions: they read a `list[LogEvent]` and the roster it should be
+Pure functions: they read a `list[LogEvent]` plus the identities it should be
 reported against, and hold no state of their own. Kept out of `game.py` for
 the same reason `bundle_loader.py` is — `game.py` records what happened,
 this interprets it, and the two are worth testing apart.
@@ -58,8 +58,22 @@ def _episodes(log: list) -> list[dict]:
     return episodes
 
 
-def buzz_stats(log: list, roster: list[str], players: dict) -> list[dict]:
-    """Per-player buzzer figures, one row per non-virtual roster member.
+def buzz_stats(log: list, players: dict) -> list[dict]:
+    """Per-player buzzer figures, one row per buzz identity.
+
+    **Rows come from buzz identities, not the roster.** Those are two separate
+    tracks (SPEC.md §5): the roster is who gets *scored*, and the host bridges
+    the two mentally. Keying this table to the roster dropped every buzz in the
+    common case where the QM starts the quiz first, players join by room code
+    afterwards — post-Start joiners are never in the roster snapshot — and the
+    QM then adds matching scorecard rows by hand. Each human then has two
+    Player records, and all the buzzing belongs to the one the roster doesn't
+    contain.
+
+    So the set here is every non-virtual player: everyone who joined with the
+    link or the code, whether or not they ended up on the scorecard. Host-added
+    entries are excluded because they have no socket and can never buzz, not
+    because of anything about the roster.
 
     Every average is over that player's own buzzes, never over the question
     count: someone who buzzed four times and was first each time averages
@@ -68,15 +82,14 @@ def buzz_stats(log: list, roster: list[str], players: dict) -> list[dict]:
     """
     episodes = _episodes(log)
 
-    per_player: dict[str, list[LogEvent]] = {}
+    per_player: dict[str, list] = {}
     for ep in episodes:
         for ev in ep["buzzes"]:
             per_player.setdefault(ev.player_id, []).append((ev, ep["t0"]))
 
     rows = []
-    for pid in roster:
-        player = players.get(pid)
-        if player is None or player.virtual:
+    for pid, player in sorted(players.items(), key=lambda kv: kv[1].joined_at):
+        if player.virtual:
             continue
         buzzes = per_player.get(pid, [])
         latencies = [round((ev.at - t0) * 1000) for ev, t0 in buzzes]

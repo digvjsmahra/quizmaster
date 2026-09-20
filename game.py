@@ -502,7 +502,7 @@ class Game:
         ]
         return {
             "standings": self.get_standings(),
-            "buzz_stats": stats.buzz_stats(self.event_log, self.roster, self.players),
+            "buzz_stats": stats.buzz_stats(self.event_log, self.players),
             "timeline": timeline,
         }
 

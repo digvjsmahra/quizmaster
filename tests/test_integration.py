@@ -1374,3 +1374,76 @@ def test_summary_timeline_never_leaks_question_or_answer_text(room):
     payload = next(e for e in summary.get_received() if e["name"] == "state:summary")["args"][0]
     _assert_no_content_leak(payload)
     summary.disconnect()
+
+
+def test_buzz_stats_survive_the_start_first_then_add_to_roster_flow(room):
+    """The reported bug, over real sockets.
+
+    QM hits Start before anyone joins, players then join by room code, and the
+    QM adds matching scorecard rows by hand to score against. Every roster entry
+    is host-added and every real player is a post-Start joiner, so keying the
+    buzz table to the roster showed nothing at all.
+    """
+    join_code, game, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+    host.emit("host:start_quiz")
+    host.get_received()
+    assert game.roster == []
+
+    phones = []
+    for name in ("M", "D"):
+        c = socketio.test_client(app)
+        c.emit("player:join", {"room_id": join_code, "name": name})
+        c.get_received()
+        phones.append(c)
+    real = {p["name"]: p["player_id"] for p in game.get_lobby_players()}
+
+    host.emit("host:roster_add", {"name": "M"})
+    host.emit("host:roster_add", {"name": "D"})
+    host.get_received()
+    assert all(game.players[pid].virtual for pid in game.roster)
+
+    host.emit("host:question_reveal", {"question_id": "1:History:10"})
+    phones[0].emit("player:buzz")
+    phones[1].emit("player:buzz")
+    host.emit("host:answer_reveal")
+    host.emit("host:question_submit",
+              {"question_id": "1:History:10", "scores": {game.roster[0]: 10.0}})
+    host.get_received()
+
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": join_code})
+    payload = next(e for e in summary.get_received() if e["name"] == "state:summary")["args"][0]
+
+    buzz = {r["name"]: r for r in payload["buzz_stats"]}
+    assert set(buzz) == {"M", "D"}
+    assert buzz["M"]["player_id"] == real["M"]        # the phone identity, not the roster row
+    assert buzz["M"]["buzz_count"] == 1 and buzz["M"]["avg_position"] == 1.0
+    assert buzz["D"]["buzz_count"] == 1 and buzz["D"]["avg_position"] == 2.0
+
+    # ...while the scorecard still belongs to the host-added rows
+    assert [r["player_id"] for r in payload["standings"]] == game.roster
+
+    for c in phones + [host, summary]:
+        c.disconnect()
+
+
+def test_buzz_stats_empty_when_nobody_joined_from_a_phone(room):
+    join_code, game, _ = room
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.emit("host:start_quiz")
+    host.emit("host:roster_add", {"name": "Team A"})
+    host.get_received()
+
+    summary = socketio.test_client(app)
+    summary.emit("summary:join", {"room_id": join_code})
+    payload = next(e for e in summary.get_received() if e["name"] == "state:summary")["args"][0]
+
+    assert payload["buzz_stats"] == []                 # host-added entries have no buzzer
+    assert [r["name"] for r in payload["standings"]] == ["Team A"]
+    host.disconnect()
+    summary.disconnect()

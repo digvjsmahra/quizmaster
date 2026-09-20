@@ -290,8 +290,17 @@ is linked from a player-reachable page.
   average and median time-to-buzz, and average queue position. Every average divides by that
   player's *own* buzzes, never by the question count, so a player who buzzed three times and
   was first each time averages position 1.0. Players who never buzzed still get a row, with
-  `—` in the derived columns. Host-added (`virtual=True`) entries are omitted — they have no
-  socket and can never buzz.
+  `—` in the derived columns.
+- **Its rows are buzz identities, not roster members** — the two are separate tracks (§5), and
+  this table belongs to the buzzing one. Every `virtual=False` player gets a row: anyone who
+  joined with the link or the room code, *including a post-Start joiner who is not on the
+  scorecard at all*. Host-added (`virtual=True`) entries never appear, because they have no
+  socket and can never buzz — not because of anything about the roster. So the same person can
+  legitimately appear once here under the name they typed on their phone and once in the
+  standings under the label the QM gave their scorecard row; those are two `Player` records and
+  the cards are showing different things. Within this table it is one row per buzz identity —
+  the exception being someone who joined from two devices, which is two identities by design
+  (§5), each holding part of their buzzes.
 
 **Which buzzes count** (derived from the event log, §5):
 
@@ -421,6 +430,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **The summary view is a page, not a phase.** No `ended` state was added; `phase` stays `lobby | live`.
 - **Buzz stats count only questions closed by `question_submit`**, and only the final sub-round within each — a QM-initiated `queue_reset` discards everything before it and restarts the clock. `t0` is the reveal, or the last reset if there was one.
 - **Buzz averages divide by the player's own buzz count**, never by the number of questions.
+- **The buzz table is keyed to buzz identity, never the roster.** Scoring and buzzing are separate identity tracks (§5) and this table belongs to the buzzing one. Keying it to the roster silently produced an empty table for the common flow where the QM starts the quiz first, players join by code afterwards, and the QM then adds matching scorecard rows by hand — every human has two `Player` records there, and the roster holds the one that cannot buzz.
 - **A re-scored question amends its original point on the chart**, shifting later points; it never appends a new one. The event log stays append-only (§5) and the chart reads the latest submit per question, plotted at that question's first-submit position.
 - **No charting library.** The chart is hand-rolled SVG — same no-third-party-runtime rule as the vendored Socket.IO client.
 - **Socket.IO client is self-hosted, never CDN-loaded.** A DNS-level block of `cdn.socket.io` on one player's network silently killed their page mid-game (2026-08-23): `io` was undefined, the entry script threw before attaching any listener, and every button looked fine but did nothing.

@@ -85,11 +85,11 @@ def upload_bundle(join_code, host_token):
     if not room or room["host_token"] != host_token:
         abort(404)
     if room["game"].phase == "live":
-        return {"errors": [{"row": None, "message": "Quiz is already live — create a new room to load a different bundle."}], "warnings": []}, 409
+        return {"errors": [{"row": None, "message": "Quiz is already live — create a new room to load a different bundle"}], "warnings": []}, 409
 
     uploaded = request.files.get("bundle")
     if not uploaded:
-        return {"errors": [{"row": None, "message": "No file was uploaded."}], "warnings": []}, 400
+        return {"errors": [{"row": None, "message": "No file was uploaded"}], "warnings": []}, 400
 
     result = parse_bundle(uploaded.stream)
     if result.errors:

@@ -24,11 +24,11 @@ def register(socketio, rooms):
         join_code = (data.get("room_id") or "").strip()
         room = rooms.get(join_code)
         if not room:
-            emit("player:rejected", {"reason": "Room not found."})
+            emit("player:rejected", {"reason": "Room not found"})
             return
         name = (data.get("name") or "").strip()
         if not name:
-            emit("player:rejected", {"reason": "Name cannot be empty."})
+            emit("player:rejected", {"reason": "Name cannot be empty"})
             return
         try:
             player_id, phase = room["game"].player_join(name)
@@ -51,7 +51,7 @@ def register(socketio, rooms):
         join_code = (data.get("room_id") or "").strip()
         room = rooms.get(join_code)
         if not room:
-            emit("player:rejected", {"reason": "Room not found."})
+            emit("player:rejected", {"reason": "Room not found"})
             return
         token = (data.get("token") or "").strip()
         result = room["game"].player_rejoin(token)
@@ -90,7 +90,7 @@ def register(socketio, rooms):
         join_code = (data.get("room_id") or "").strip()
         room = rooms.get(join_code)
         if not room:
-            emit("error", {"message": "Room not found.", "context": "host_join"})
+            emit("error", {"message": "Room not found", "context": "host_join"})
             return
         _sid_room[request.sid] = join_code
         join_room(f"host_{join_code}")
@@ -121,7 +121,7 @@ def register(socketio, rooms):
             return
         name = (data.get("name") or "").strip()
         if not name:
-            emit("error", {"message": "Name cannot be empty.", "context": "roster_add"})
+            emit("error", {"message": "Name cannot be empty", "context": "roster_add"})
             return
         try:
             room["game"].roster_add(name)
@@ -258,7 +258,7 @@ def register(socketio, rooms):
         raw_scores = data.get("scores") or {}
 
         if not question_id or not room["game"].question_exists(question_id):
-            emit("error", {"message": "Unknown question.", "context": "question_submit"})
+            emit("error", {"message": "Unknown question", "context": "question_submit"})
             return
 
         scores: dict[str, float] = {}
@@ -301,7 +301,7 @@ def register(socketio, rooms):
         join_code = (data.get("room_id") or "").strip()
         room = rooms.get(join_code)
         if not room:
-            emit("error", {"message": "Room not found.", "context": "summary_join"})
+            emit("error", {"message": "Room not found", "context": "summary_join"})
             return
         join_room(f"summary_{join_code}")
         emit("state:summary", room["game"].get_summary_payload())
@@ -311,7 +311,7 @@ def register(socketio, rooms):
         join_code = (data.get("room_id") or "").strip()
         room = rooms.get(join_code)
         if not room:
-            emit("error", {"message": "Room not found.", "context": "present_join"})
+            emit("error", {"message": "Room not found", "context": "present_join"})
             return
         join_room(f"present_{join_code}")
         emit("state:presentation", room["game"].get_presentation_payload())

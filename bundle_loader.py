@@ -218,7 +218,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
     try:
         zf = zipfile.ZipFile(fileobj)
     except zipfile.BadZipFile:
-        return BundleParseResult(None, [ValidationError(None, "not a valid .zip file")], [], set())
+        return BundleParseResult(None, [ValidationError(None, "Not a valid .zip file")], [], set())
 
     with zf:
         entries = _resolve_bundle_entries(zf.namelist())
@@ -230,14 +230,14 @@ def parse_bundle(fileobj) -> BundleParseResult:
         # matched case-insensitively below.
         xlsx_entries = [(eff, orig) for eff, orig in entries if eff.lower().endswith(".xlsx")]
         if not xlsx_entries:
-            return BundleParseResult(None, [ValidationError(None, "bundle is missing an Excel file (.xlsx)")], [], set())
+            return BundleParseResult(None, [ValidationError(None, "Bundle is missing an Excel file (.xlsx)")], [], set())
         if len(xlsx_entries) > 1:
             names = ", ".join(eff.rsplit("/", 1)[-1] for eff, orig in xlsx_entries)
             return BundleParseResult(
                 None,
                 [ValidationError(
                     None,
-                    f"found multiple Excel files ({names}) — keep only one .xlsx file in the bundle",
+                    f"Found multiple Excel files ({names}) — keep only one .xlsx file in the bundle",
                 )],
                 [],
                 set(),
@@ -276,7 +276,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
         for base in sorted(collisions):
             names = ", ".join(sorted(by_base[base]))
             errors.append(ValidationError(
-                None, f"found multiple media files matching {base!r} ({names}) — keep only one"
+                None, f"Found multiple media files matching {base!r} ({names}) — keep only one"
             ))
 
         orig_by_basename = {basename: orig for basename, orig in media_entries}
@@ -330,9 +330,10 @@ def parse_bundle(fileobj) -> BundleParseResult:
         # it's already been said once at the bundle level.
         missing_columns = REQUIRED_COLUMNS - set(header.keys())
         if missing_columns:
-            message = f"{quiz_name} is missing required column(s): {', '.join(sorted(missing_columns))}."
+            # One sentence, no period; a second sentence gives both periods.
+            message = f"{quiz_name} is missing required column(s): {', '.join(sorted(missing_columns))}"
             if found_labels:
-                message += f" Columns found in your file: {', '.join(found_labels)}."
+                message += f". Columns found in your file: {', '.join(found_labels)}."
             errors.append(ValidationError(None, message))
 
         boards: dict[str, list[BundleQuestion]] = {}
@@ -393,7 +394,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
                 question_key = (board, category, value)
                 if question_key in seen_ids:
                     row_errors.append(
-                        f"this board/category/value combination ('{board} / {category} / {value}') "
+                        f"This board/category/value combination ('{board} / {category} / {value}') "
                         "is used by more than one row — that's a duplicate question"
                     )
                 else:
@@ -417,7 +418,7 @@ def parse_bundle(fileobj) -> BundleParseResult:
             )
 
         warnings = [
-            f"media file {basename!r} is not referenced by any question in the quiz"
+            f"Media file {basename!r} is not referenced by any question in the quiz"
             for base, (basename, fmt) in sorted(resolved_media.items())
             if base not in referenced_bases
         ]

@@ -115,7 +115,7 @@ class Game:
     def player_join(self, name: str) -> tuple[str, str]:
         name = name.strip()
         if not name:
-            raise ValueError("Name cannot be empty.")
+            raise ValueError("Name cannot be empty")
         player_id = secrets.token_urlsafe(8)
         self.players[player_id] = Player(
             id=player_id, name=name, connected=True, joined_at=time.monotonic()
@@ -124,9 +124,9 @@ class Game:
 
     def remove_player(self, player_id: str) -> None:
         if self.phase != "lobby":
-            raise ValueError("Cannot remove a player after the quiz has started.")
+            raise ValueError("Cannot remove a player after the quiz has started")
         if player_id not in self.players:
-            raise ValueError("Unknown player.")
+            raise ValueError("Unknown player")
         del self.players[player_id]
 
     def player_rejoin(self, token: str) -> tuple[str, str] | None:
@@ -143,7 +143,7 @@ class Game:
         if self.phase == "live":
             return self.roster
         if not self.questions:
-            raise ValueError("Cannot start: no quiz content uploaded.")
+            raise ValueError("Cannot start: no quiz content uploaded")
         self.phase = "live"
         self.roster = sorted(
             [pid for pid, p in self.players.items() if not p.virtual],
@@ -198,9 +198,9 @@ class Game:
 
     def question_reveal(self, question_id: str) -> None:
         if question_id not in self._all_questions:
-            raise ValueError("Unknown question.")
+            raise ValueError("Unknown question")
         if self.live_question and self.live_question["question_id"] != question_id:
-            raise ValueError("Another question is already live.")
+            raise ValueError("Another question is already live")
         reviewing = question_id in self.closed_questions
         self.live_question = {
             "question_id": question_id,
@@ -211,24 +211,24 @@ class Game:
 
     def answer_reveal(self) -> None:
         if not self.live_question:
-            raise ValueError("No question is currently revealed.")
+            raise ValueError("No question is currently revealed")
         if self.live_question["status"] != "revealed":
-            raise ValueError("Answer can only be revealed from an active question reveal.")
+            raise ValueError("Answer can only be revealed from an active question reveal")
         self.live_question["status"] = "answer_shown"
         self._log("answer_reveal", question_id=self.live_question["question_id"])
 
     def question_cancel(self) -> None:
         if not self.live_question:
-            raise ValueError("No question is currently live.")
+            raise ValueError("No question is currently live")
         self._log("question_cancel", question_id=self.live_question["question_id"])
         self.live_question = None
         self._clear_queue()
 
     def select_board(self, index: int) -> None:
         if self.live_question:
-            raise ValueError("Cannot change boards while a question is live.")
+            raise ValueError("Cannot change boards while a question is live")
         if not (0 <= index < len(self._boards)):
-            raise ValueError("Unknown board.")
+            raise ValueError("Unknown board")
         self.current_board_index = index
 
     def get_live_question_payload(self) -> dict:
@@ -306,7 +306,7 @@ class Game:
     def roster_add(self, name: str) -> str:
         name = name.strip()
         if not name:
-            raise ValueError("Name cannot be empty.")
+            raise ValueError("Name cannot be empty")
         player_id = secrets.token_urlsafe(8)
         self.players[player_id] = Player(
             id=player_id, name=name, connected=True, joined_at=time.monotonic(), virtual=True
@@ -316,9 +316,9 @@ class Game:
 
     def remove_from_roster(self, player_id: str) -> None:
         if self.phase != "live":
-            raise ValueError("No roster to remove from before Start.")
+            raise ValueError("No roster to remove from before Start")
         if player_id not in self.roster:
-            raise ValueError("Unknown roster member.")
+            raise ValueError("Unknown roster member")
         self.roster.remove(player_id)
         self.scores.pop(player_id, None)
         self.players.pop(player_id, None)
@@ -332,7 +332,7 @@ class Game:
             and self.live_question["question_id"] == question_id
             and self.live_question["status"] == "answer_shown"
         ):
-            raise ValueError("Question must be revealed and its answer shown before scoring.")
+            raise ValueError("Question must be revealed and its answer shown before scoring")
 
         # Clear prior entries for this question
         for pid in self.scores:

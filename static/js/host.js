@@ -275,8 +275,15 @@
   // ----------------------------------------------------------------
   function openBoardModal(html) {
     const modal = el('board-modal');
+    const overlay = el('board-modal-overlay');
+    const opening = overlay.classList.contains('hidden');
     modal.innerHTML = html;
-    el('board-modal-overlay').classList.remove('hidden');
+    overlay.classList.remove('hidden');
+    // The modal centres in the board area, which can sit partly below the
+    // fold — bring it to the middle of the window. Only on first open: the
+    // reveal panel re-renders in place (e.g. on answer reveal) and must not
+    // jump the page each time.
+    if (opening) modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return modal;
   }
 

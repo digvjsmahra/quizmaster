@@ -468,8 +468,13 @@ html.qb-resuming #view-join { display: none; }
   cursor: pointer;
   margin-bottom: 10px;
 }
-/* The card is board-width now; keep the guide's lines readable. */
-.bundle-format { max-width: 65ch; }
+.bundle-format-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 65ch);
+  gap: 32px;
+  align-items: start;
+}
+.bundle-format-body .bundle-rules { margin-top: 0; }
 
 .upload-hint {
   font-size: 12px;
@@ -529,7 +534,9 @@ html.qb-resuming #view-join { display: none; }
   font-size: 11px;
 }
 
-#upload-btn { width: 100%; margin-bottom: 4px; }
+/* Sized to its label: in a board-width card a full-width ghost button
+   reads as heavier than Start, the page's one primary action. */
+#upload-btn { width: auto; padding: 10px 20px; margin-bottom: 4px; }
 
 .upload-alert { border-radius: var(--radius-md); padding: 10px 12px; margin: 8px 0; font-size: 12px; }
 .upload-alert-error { background: var(--color-danger-bg); border: 1px solid var(--color-danger-border); }
@@ -728,7 +735,9 @@ html.qb-resuming #view-join { display: none; }
   padding: 24px;
   width: 100%;
   max-width: 640px;
-  max-height: 100%;
+  /* Never taller than the window, so host.js can always centre it in
+     view; long content scrolls inside the modal. */
+  max-height: min(100%, calc(100vh - 48px));
   overflow-y: auto;
   position: relative;
 }
@@ -1149,6 +1158,7 @@ html.qb-resuming #view-join { display: none; }
 /* Responsive — mobile only (≤ 640px)                                  */
 /* ------------------------------------------------------------------ */
 @media (max-width: 640px) {
+  .bundle-format-body { grid-template-columns: 1fr; gap: 20px; }
   /* Board cells — smaller, still scrollable */
   .cell { min-width: 64px; min-height: 40px; font-size: 11px; padding: 8px 4px; }
   .cell-unplayed { font-size: 13px; }

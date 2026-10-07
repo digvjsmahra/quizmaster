@@ -119,7 +119,7 @@ On the *same* device, a reconnect silently resumes the same buzz identity via a 
 |-------|-----------|---------|
 | **Unplayed** | Not in `closed_questions` | Face value (clickable) |
 | **Awarded** | In `closed_questions`, at least one score entry | Player name(s) + amount(s); **green** if any entry is positive, **red** if a negative entry exists and none is positive |
-| **Passed** | In `closed_questions`, zero score entries | "~passed~" (grey) |
+| **Passed** | In `closed_questions`, zero score entries | "~Passed~" (grey) |
 
 Awarded applies to any closed question with entries, including negative-only. Passed is strictly zero attempts — a wrong answer is still an entry. An explicit `0` entry counts as neither positive nor negative — a cell with only zero entries stays green/neutral; a real negative plus a zero is still red, since the zero doesn't cancel the penalty. `0` entries are rare in practice, since a blank scoring row is skipped and produces no entry at all — a host has to type `0` explicitly. The color is computed once server-side (`Game._cell_state`) as a `negative_only: bool`, so both the host board and the presentation board derive the same color from the same source.
 

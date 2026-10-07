@@ -50,7 +50,7 @@
     const hasPlayers = rows.length > 0;
     const anyBuzzes = rows.some(r => r.buzz_count > 0);
     el('buzz-empty').textContent = hasPlayers
-      ? 'No buzzes on any closed question yet.'
+      ? 'No buzzes on any closed question yet'
       : 'Nobody has joined from a phone yet. Players added by the host are scorecard rows only \u2014 they have no buzzer, so they never appear here.';
     el('buzz-empty').classList.toggle('hidden', anyBuzzes);
     // A column header with nothing under it reads as broken, not empty.
@@ -169,9 +169,9 @@
     // X axis: 0 is the pre-quiz baseline, then one tick per closed question
     for (let i = 0; i <= n; i++) {
       if (i > 0 && (i % everyX !== 0) && i !== n) continue;
-      parts.push(`<text class="chart-tick chart-tick-x" x="${xAt(i)}" y="${CHART.top + plotH + 18}">${i === 0 ? 'start' : i}</text>`);
+      parts.push(`<text class="chart-tick chart-tick-x" x="${xAt(i)}" y="${CHART.top + plotH + 18}">${i === 0 ? 'Start' : i}</text>`);
     }
-    parts.push(`<text class="chart-axis-title" x="${CHART.left + plotW / 2}" y="${CHART.h - 4}">question, in play order</text>`);
+    parts.push(`<text class="chart-axis-title" x="${CHART.left + plotW / 2}" y="${CHART.h - 4}">Question, in play order</text>`);
 
     // Series
     series.forEach((s, i) => {
@@ -230,7 +230,7 @@
 
   function renderChartTable(questions, series) {
     const head = ['Question'].concat(series.map(s => esc(s.name)));
-    const rows = [`<tr><td>start</td>${series.map(() => '<td>0</td>').join('')}</tr>`];
+    const rows = [`<tr><td>Start</td>${series.map(() => '<td>0</td>').join('')}</tr>`];
     questions.forEach((q, x) => {
       rows.push(`<tr><td>${x + 1}. ${esc(q.label)}</td>${
         series.map(s => `<td>${fmt(s.points[x + 1])}</td>`).join('')}</tr>`);
@@ -295,13 +295,13 @@
 
   socket.on('connect', function () {
     el('summary-live-badge').classList.remove('offline');
-    el('summary-live-badge').textContent = 'live';
+    el('summary-live-badge').textContent = 'Live';
     socket.emit('summary:join', { room_id: JOIN_CODE });
   });
 
   socket.on('disconnect', function () {
     el('summary-live-badge').classList.add('offline');
-    el('summary-live-badge').textContent = 'reconnecting…';
+    el('summary-live-badge').textContent = 'Reconnecting…';
   });
 
   socket.on('state:summary', render);

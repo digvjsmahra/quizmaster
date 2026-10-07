@@ -83,7 +83,7 @@
             .join('<br>');
         } else {
           cell.classList.add('cell-passed');
-          cell.textContent = '~passed~';
+          cell.textContent = '~Passed~';
         }
         container.appendChild(cell);
       });
@@ -262,7 +262,7 @@
       list.innerHTML = data.queue
         .map((e, i) => {
           const badge = i === 0
-            ? `<span class="buzz-delta first">⚡ first</span>`
+            ? `<span class="buzz-delta first">⚡ First</span>`
             : `<span class="buzz-delta">${fmtDelta(e.delta_ms)}</span>`;
           return `<li><span class="queue-name">${i + 1}. ${esc(e.name)}</span>${badge}</li>`;
         })

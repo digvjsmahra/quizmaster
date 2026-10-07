@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QM Control Center</title>
+  <title>QM control center</title>
   <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_version }}">
 </head>
 <body>
@@ -12,14 +12,14 @@
   <!-- Header -->
   <header class="host-header">
     <div>
-      <h1>QM Control Center</h1>
+      <h1>QM control center</h1>
       <div class="subtitle" id="header-subtitle"></div>
     </div>
     <div class="host-header-actions">
       <a href="/present/{{ join_code }}/{{ host_token }}" target="_blank" rel="noopener" class="present-link">🖥 Open presentation view →</a>
       <a href="/summary/{{ join_code }}/{{ host_token }}" target="_blank" rel="noopener" class="present-link">📊 Open summary →</a>
-      <span id="reconnect-badge" class="phase-badge offline hidden">⚠ reconnecting…</span>
-      <span id="phase-badge" class="phase-badge lobby">⏱ lobby</span>
+      <span id="reconnect-badge" class="phase-badge offline hidden">⚠ Reconnecting…</span>
+      <span id="phase-badge" class="phase-badge lobby">⏱ Lobby</span>
     </div>
   </header>
 
@@ -89,9 +89,9 @@
 
         <!-- Board navigation -->
         <div class="board-nav">
-          <button id="btn-prev" class="btn-nav" disabled>← prev</button>
+          <button id="btn-prev" class="btn-nav" disabled>← Prev</button>
           <span class="board-nav-label" id="board-label">Board 1 of 1</span>
-          <button id="btn-next" class="btn-nav" disabled>next →</button>
+          <button id="btn-next" class="btn-nav" disabled>Next →</button>
         </div>
 
         <p class="board-preview-hint hidden" id="board-preview-hint">👇 Click a tile to preview its question and answer before you start</p>
@@ -127,9 +127,9 @@
         <div class="card-label">Share with players</div>
         <div class="join-url-row">
           <input id="join-url-input" class="join-url-input" type="text" readonly>
-          <button id="copy-btn" class="btn-copy">⎘ copy</button>
+          <button id="copy-btn" class="btn-copy">⎘ Copy</button>
         </div>
-        <div class="join-url-hint">or share the room code verbally</div>
+        <div class="join-url-hint">Or share the room code verbally</div>
         <div class="otp-boxes otp-display">
           {% for char in join_code %}
           <div class="otp-display-box">{{ char }}</div>
@@ -149,14 +149,14 @@
       <div class="card live-only">
         <div class="queue-header">
           <span class="queue-title">Buzz queue</span>
-          <span class="queue-gap-label">gap from first</span>
+          <span class="queue-gap-label">Gap from first</span>
         </div>
-        <div id="queue-locked-badge" class="queue-locked-badge hidden">🔒 frozen</div>
+        <div id="queue-locked-badge" class="queue-locked-badge hidden">🔒 Frozen</div>
         <ol class="queue-list" id="queue-list"></ol>
-        <div class="queue-empty hidden" id="queue-empty">no buzzes yet</div>
+        <div class="queue-empty hidden" id="queue-empty">No buzzes yet</div>
         <div class="queue-actions">
-          <button class="btn-queue" id="btn-freeze">freeze</button>
-          <button class="btn-queue" id="btn-reset">reset</button>
+          <button class="btn-queue" id="btn-freeze">Freeze</button>
+          <button class="btn-queue" id="btn-reset">Reset</button>
         </div>
       </div>
 
@@ -173,7 +173,7 @@
           </thead>
           <tbody id="totals-body"></tbody>
         </table>
-        <div class="totals-sort-hint">sorted by board score</div>
+        <div class="totals-sort-hint">Sorted by board score</div>
       </div>
 
       <!-- Add player -->
@@ -181,7 +181,7 @@
         <div class="card-label">Add a player</div>
         <div class="add-player-form">
           <input id="add-player-input" class="add-player-input" type="text" placeholder="Add a player…" maxlength="30">
-          <button id="btn-add-player" class="btn-add-player">+ add</button>
+          <button id="btn-add-player" class="btn-add-player">+ Add</button>
         </div>
       </div>
 
@@ -199,7 +199,7 @@
     if (document.getElementById('script-load-reload')) return;
     document.body.insertAdjacentHTML('afterbegin',
       '<div class="script-load-error">' +
-        '<p>This page didn\'t load properly and won\'t work until it\'s reloaded.</p>' +
+        '<p>This page didn\'t load properly and won\'t work until it\'s reloaded</p>' +
         '<button type="button" class="btn-primary" id="script-load-reload">Reload</button>' +
       '</div>');
     document.getElementById('script-load-reload')

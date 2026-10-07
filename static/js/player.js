@@ -64,7 +64,7 @@
     if (currentQueue.length > 0) {
       listEl.innerHTML = currentQueue.map((e, i) => {
         const badge = i === 0
-          ? `<span class="buzz-delta first">⚡ first</span>`
+          ? `<span class="buzz-delta first">⚡ First</span>`
           : `<span class="buzz-delta">${fmtDelta(e.delta_ms)}</span>`;
         const cls = e.player_id === playerId ? ' class="buzz-me"' : '';
         return `<li${cls}>${i + 1}. ${esc(e.name)} ${badge}</li>`;

@@ -11,10 +11,10 @@
 
   <header class="summary-header">
     <div>
-      <h1>Quiz Summary</h1>
+      <h1>Quiz summary</h1>
       <div class="subtitle">Room {{ join_code }}</div>
     </div>
-    <span id="summary-live-badge" class="summary-live">live</span>
+    <span id="summary-live-badge" class="summary-live">Live</span>
   </header>
 
   <p class="summary-empty" id="summary-empty">
@@ -55,7 +55,7 @@
       </div>
       <div class="chart-legend" id="chart-legend"></div>
       <div class="summary-table-scroll hidden" id="chart-table"></div>
-      <p class="summary-empty-inline hidden" id="chart-empty">No questions closed yet.</p>
+      <p class="summary-empty-inline hidden" id="chart-empty">No questions closed yet</p>
     </div>
 
     <div class="card">
@@ -82,7 +82,7 @@
           <tbody id="buzz-body"></tbody>
         </table>
       </div>
-      <p class="summary-empty-inline hidden" id="buzz-empty">No buzzes on any closed question yet.</p>
+      <p class="summary-empty-inline hidden" id="buzz-empty">No buzzes on any closed question yet</p>
     </div>
 
   </div>
@@ -97,7 +97,7 @@
     if (document.getElementById('script-load-reload')) return;
     document.body.insertAdjacentHTML('afterbegin',
       '<div class="script-load-error">' +
-        '<p>This page didn\'t load properly and won\'t work until it\'s reloaded.</p>' +
+        '<p>This page didn\'t load properly and won\'t work until it\'s reloaded</p>' +
         '<button type="button" class="btn-primary" id="script-load-reload">Reload</button>' +
       '</div>');
     document.getElementById('script-load-reload')

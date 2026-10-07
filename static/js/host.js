@@ -44,7 +44,7 @@
   function showLobby() {
     state.phase = 'lobby';
     el('phase-badge').className = 'phase-badge lobby';
-    el('phase-badge').textContent = '⏱ lobby';
+    el('phase-badge').textContent = '⏱ Lobby';
     applyPhaseVisibility();
     updateBoardAreaVisibility();
   }
@@ -52,7 +52,7 @@
   function showLive() {
     state.phase = 'live';
     el('phase-badge').className = 'phase-badge live';
-    el('phase-badge').textContent = '⏺ live';
+    el('phase-badge').textContent = '⏺ Live';
     applyPhaseVisibility();
     updateBoardAreaVisibility();
   }
@@ -167,7 +167,7 @@
             .join('<br>');
         } else {
           cell.classList.add('cell-passed');
-          cell.textContent = '~passed~';
+          cell.textContent = '~Passed~';
         }
 
         cell.addEventListener('click', () => onCellClick(qid, board, cat, val));
@@ -240,7 +240,7 @@
       list.innerHTML = data.queue
         .map((e, i) => {
           const badge = i === 0
-            ? `<span class="buzz-delta first">⚡ first</span>`
+            ? `<span class="buzz-delta first">⚡ First</span>`
             : `<span class="buzz-delta">${fmtDelta(e.delta_ms)}</span>`;
           return `<li><span class="queue-name">${i + 1}. ${esc(e.name)}</span>${badge}</li>`;
         })
@@ -324,7 +324,7 @@
   // ----------------------------------------------------------------
   function showRevealPanel(live) {
     const revealBtnHtml = live.status === 'revealed'
-      ? `<button class="btn-close-question" id="btn-reveal-answer">👁 reveal answer</button>`
+      ? `<button class="btn-close-question" id="btn-reveal-answer">👁 Reveal answer</button>`
       : '';
 
     let scoringHtml = '';
@@ -351,8 +351,8 @@
       }).join('');
       scoringHtml = `
         <div class="panel-players" id="panel-players">${rows}</div>
-        <button class="btn-close-question" id="btn-close-question">✓ close question</button>
-        <div class="panel-hint">nothing saves until you close · blank rows are skipped</div>
+        <button class="btn-close-question" id="btn-close-question">✓ Close question</button>
+        <div class="panel-hint">Nothing saves until you close · blank rows are skipped</div>
       `;
     }
 
@@ -360,12 +360,12 @@
     const modal = openBoardModal(`
       <div class="panel-header">
         <span class="panel-title">${esc(live.category)} · ${live.value}</span>
-        ${live.reviewing ? '<span class="panel-default">reviewing</span>' : ''}
+        ${live.reviewing ? '<span class="panel-default">Reviewing</span>' : ''}
       </div>
       ${questionContentHtml(live.question, live.question_media, live.answer, live.answer_media)}
       ${revealBtnHtml}
       ${scoringHtml}
-      <button class="btn-cancel-reveal" id="btn-cancel-reveal">✕ cancel</button>
+      <button class="btn-cancel-reveal" id="btn-cancel-reveal">✕ Cancel</button>
     `);
 
     if (live.status === 'revealed') {
@@ -479,7 +479,7 @@
 
     // Header subtitle
     el('header-subtitle').textContent =
-      `sharing /play/${data.join_code} · host this page`;
+      `Sharing /play/${data.join_code} · host this page`;
 
     // Set up join URL in lobby
     const joinUrl = `${window.location.origin}/play/${data.join_code}`;
@@ -574,8 +574,8 @@
     const input = el('join-url-input');
     input.select();
     navigator.clipboard.writeText(input.value).then(() => {
-      el('copy-btn').textContent = '✓ copied';
-      setTimeout(() => { el('copy-btn').textContent = '⎘ copy'; }, 1500);
+      el('copy-btn').textContent = '✓ Copied';
+      setTimeout(() => { el('copy-btn').textContent = '⎘ Copy'; }, 1500);
     }).catch(() => {
       document.execCommand('copy');
     });
@@ -587,7 +587,7 @@
   el('start-btn').addEventListener('click', () => {
     if (!state.boards || state.boards.length === 0) {
       const errEl = el('start-error');
-      errEl.textContent = 'Upload a quiz bundle above before starting.';
+      errEl.textContent = 'Upload a quiz bundle above before starting';
       errEl.classList.remove('hidden');
       return;
     }
@@ -689,7 +689,7 @@
       const body = await res.json();
 
       if (res.ok) {
-        successEl.textContent = `✓ ${file.name} loaded.`;
+        successEl.textContent = `✓ ${file.name} loaded`;
         successEl.classList.remove('hidden');
         renderWarnings(body.warnings);
         // Board itself renders via the server's state:scores broadcast —

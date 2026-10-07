@@ -66,13 +66,13 @@
       if (!res.ok) {
         showError('No room found with that code. Ask your host for the latest code.');
         joinBtn.disabled = false;
-        joinBtn.textContent = 'Join Room';
+        joinBtn.textContent = 'Join room';
         return;
       }
     } catch {
       showError('Unable to reach the server. Please try again.');
       joinBtn.disabled = false;
-      joinBtn.textContent = 'Join Room';
+      joinBtn.textContent = 'Join room';
       return;
     }
 

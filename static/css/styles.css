@@ -473,6 +473,9 @@ html.qb-resuming #view-join { display: none; }
   grid-template-columns: auto minmax(0, 65ch);
   gap: 32px;
   align-items: start;
+  /* Without this, the auto column stretches to soak up spare width on a
+     wide screen and the rules drift to the far right edge. */
+  justify-content: start;
 }
 .bundle-format-body .bundle-rules { margin-top: 0; }
 

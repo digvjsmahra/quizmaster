@@ -468,22 +468,19 @@ html.qb-resuming #view-join { display: none; }
   cursor: pointer;
   margin-bottom: 10px;
 }
-.bundle-format-body {
-  display: grid;
-  grid-template-columns: auto minmax(0, 65ch);
-  gap: 32px;
-  align-items: start;
-  /* Without this, the auto column stretches to soak up spare width on a
-     wide screen and the rules drift to the far right edge. */
-  justify-content: start;
-}
-.bundle-format-body .bundle-rules { margin-top: 0; }
+/* Upload + sample share one size (.present-link) — the card's action and
+   its shortcut, both secondary to Start. */
+.upload-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.upload-actions .present-link { display: inline-flex; align-items: center; line-height: 1.4; }
+button.present-link { background: none; font-family: inherit; cursor: pointer; }
+button.present-link:disabled { opacity: .6; cursor: default; }
+.bundle-format { max-width: 65ch; }
 
 .upload-hint {
   font-size: 12px;
   color: var(--color-text-muted);
   line-height: 1.5;
-  margin-bottom: 10px;
+  margin: 0 0 10px;
 }
 
 .file-tree, .file-tree ul {
@@ -537,9 +534,7 @@ html.qb-resuming #view-join { display: none; }
   font-size: 11px;
 }
 
-/* Sized to its label: in a board-width card a full-width ghost button
-   reads as heavier than Start, the page's one primary action. */
-#upload-btn { width: auto; padding: 10px 20px; margin-bottom: 4px; }
+
 
 .upload-alert { border-radius: var(--radius-md); padding: 10px 12px; margin: 8px 0; font-size: 12px; }
 .upload-alert-error { background: var(--color-danger-bg); border: 1px solid var(--color-danger-border); }
@@ -591,6 +586,9 @@ html.qb-resuming #view-join { display: none; }
 /* Main layout — both phases (lobby and live)                           */
 /* ------------------------------------------------------------------ */
 .live-body {
+  /* Past ~1440px the board and Start just stretch into long flat bars. */
+  max-width: 1440px;
+  margin: 0 auto;
   display: flex;
   gap: 16px;
   padding: 16px;
@@ -1161,7 +1159,6 @@ html.qb-resuming #view-join { display: none; }
 /* Responsive — mobile only (≤ 640px)                                  */
 /* ------------------------------------------------------------------ */
 @media (max-width: 640px) {
-  .bundle-format-body { grid-template-columns: 1fr; gap: 20px; }
   /* Board cells — smaller, still scrollable */
   .cell { min-width: 64px; min-height: 40px; font-size: 11px; padding: 8px 4px; }
   .cell-unplayed { font-size: 13px; }

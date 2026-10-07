@@ -70,14 +70,11 @@
   }
 
   // The board is visible whenever one has been uploaded, independent of
-  // phase — this is what lets the host preview it before Start. The format
-  // guide collapses once a board exists (including on reload), since by
-  // then the QM has already got the format right.
+  // phase — this is what lets the host preview it before Start.
   function updateBoardAreaVisibility() {
     const hasBoard = state.boards && state.boards.length > 0;
     el('board-block').classList.toggle('hidden', !hasBoard);
     el('board-preview-hint').classList.toggle('hidden', !(hasBoard && state.phase !== 'live'));
-    el('bundle-format').open = !hasBoard;
     // "Upload a quiz bundle above before starting" is stale once one is.
     if (hasBoard) el('start-error').classList.add('hidden');
   }

@@ -47,7 +47,9 @@
         </div>
         <p class="upload-hint">A <code>.zip</code> with one <code>.xlsx</code> sheet and an optional <code>media/</code> folder</p>
 
-        <details class="bundle-format" id="bundle-format">
+        <!-- Open while the room has no board — a first upload needs the
+             details; closed once one loads (host.js updateBoardAreaVisibility). -->
+        <details class="bundle-format" id="bundle-format" open>
           <summary>Format details</summary>
           <ul class="file-tree" aria-hidden="true">
             <li>📦 <code>starter-quiz-bundle.zip</code>

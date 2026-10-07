@@ -18,6 +18,7 @@
     liveQuestion: null,  // server-confirmed reveal state (B1's state:live_question), or null
     modalDismissable: false, // true while the pre-Start peek modal is open (backdrop/✕ close it); false for the live reveal modal (Cancel is the only exit)
     scrollToBoardPending: false, // see scrollToBoard()
+    hadBoard: null,              // last board presence seen by updateBoardAreaVisibility()
   };
 
   // ----------------------------------------------------------------
@@ -75,6 +76,13 @@
     const hasBoard = state.boards && state.boards.length > 0;
     el('board-block').classList.toggle('hidden', !hasBoard);
     el('board-preview-hint').classList.toggle('hidden', !(hasBoard && state.phase !== 'live'));
+    // Format details: open while there's no board, closed once one loads.
+    // Only on that transition, so a host who opens it by hand afterwards
+    // isn't snapped shut by the next state:scores.
+    if (hasBoard !== state.hadBoard) {
+      el('bundle-format').open = !hasBoard;
+      state.hadBoard = hasBoard;
+    }
     // "Upload a quiz bundle above before starting" is stale once one is.
     if (hasBoard) el('start-error').classList.add('hidden');
   }

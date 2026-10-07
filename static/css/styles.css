@@ -464,13 +464,23 @@ html.qb-resuming #view-join { display: none; }
 }
 .btn-remove-player:hover { color: var(--color-danger); background: var(--color-border-subtle); }
 
+/* A secondary text link (same weight as "+ N more"), in the primary
+   colour like the buttons above it — not the browser's default marker. */
 .bundle-format > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--color-primary);
   cursor: pointer;
   margin-bottom: 10px;
 }
+.bundle-format > summary::-webkit-details-marker { display: none; }
+.bundle-format > summary::after { content: "›"; display: inline-block; transition: transform .15s; }
+.bundle-format[open] > summary::after { transform: rotate(90deg); }
+.bundle-format > summary:hover { text-decoration: underline; }
 /* Upload + sample share one size (.present-link) — the card's action and
    its shortcut, both secondary to Start. */
 .upload-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }

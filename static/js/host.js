@@ -17,6 +17,7 @@
     scoresData: null,    // latest scores payload from server
     liveQuestion: null,  // server-confirmed reveal state (B1's state:live_question), or null
     modalDismissable: false, // true while the pre-Start peek modal is open (backdrop/✕ close it); false for the live reveal modal (Cancel is the only exit)
+    scrollToBoardPending: false, // see scrollToBoard()
   };
 
   // ----------------------------------------------------------------
@@ -42,34 +43,52 @@
   // ----------------------------------------------------------------
   function showLobby() {
     state.phase = 'lobby';
-    el('view-lobby').classList.remove('hidden');
     el('phase-badge').className = 'phase-badge lobby';
     el('phase-badge').textContent = '⏱ lobby';
-    updateSidebarVisibility();
+    applyPhaseVisibility();
     updateBoardAreaVisibility();
   }
 
   function showLive() {
     state.phase = 'live';
-    el('view-lobby').classList.add('hidden');
     el('phase-badge').className = 'phase-badge live';
     el('phase-badge').textContent = '⏺ live';
-    updateSidebarVisibility();
+    applyPhaseVisibility();
     updateBoardAreaVisibility();
   }
 
-  // Board area (#view-live) is visible whenever a board has been uploaded,
-  // independent of phase — this is what lets the host preview the board
-  // before Start. The sidebar (queue/totals/add-player) within it only
-  // shows once actually live, since none of it is meaningful pre-Start.
-  function updateBoardAreaVisibility() {
-    const hasBoard = state.boards && state.boards.length > 0;
-    el('view-live').classList.toggle('hidden', !hasBoard);
-    el('board-preview-hint').classList.toggle('hidden', !(hasBoard && state.phase !== 'live'));
+  // One layout for both phases: .lobby-only cards (upload, Start, share,
+  // players) give way to .live-only ones (queue, totals, add-player) in
+  // the same columns. The lobby sidebar is sticky, so the joined count
+  // stays in view down at the Start button.
+  function applyPhaseVisibility() {
+    const live = state.phase === 'live';
+    el('view-main').classList.remove('hidden');
+    document.querySelectorAll('.lobby-only').forEach(n => n.classList.toggle('hidden', live));
+    document.querySelectorAll('.live-only').forEach(n => n.classList.toggle('hidden', !live));
+    el('sidebar').classList.toggle('lobby', !live);
   }
 
-  function updateSidebarVisibility() {
-    el('sidebar').classList.toggle('hidden', state.phase !== 'live');
+  // The board is visible whenever one has been uploaded, independent of
+  // phase — this is what lets the host preview it before Start. The format
+  // guide collapses once a board exists (including on reload), since by
+  // then the QM has already got the format right.
+  function updateBoardAreaVisibility() {
+    const hasBoard = state.boards && state.boards.length > 0;
+    el('board-block').classList.toggle('hidden', !hasBoard);
+    el('board-preview-hint').classList.toggle('hidden', !(hasBoard && state.phase !== 'live'));
+    el('bundle-format').open = !hasBoard;
+    // "Upload a quiz bundle above before starting" is stale once one is.
+    if (hasBoard) el('start-error').classList.add('hidden');
+  }
+
+  // Set by a successful upload in this tab, consumed by the next
+  // state:scores. The server emits that broadcast before the upload's HTTP
+  // response returns, but the two can still arrive in either order —
+  // uploadBundle() scrolls straight away if the board is already showing.
+  function scrollToBoard() {
+    state.scrollToBoardPending = false;
+    el('board-block').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ----------------------------------------------------------------
@@ -90,6 +109,14 @@
       });
     });
     el('lobby-count').textContent = players.length;
+    el('start-hint').textContent = startHintText(players.length);
+  }
+
+  // Start snapshots the roster, so say how many it will add and what
+  // happens to anyone later — the QM's cue to wait for stragglers.
+  function startHintText(n) {
+    if (n === 0) return 'No players yet — anyone who joins after you start must be added by hand';
+    return `Adds ${n} player${n === 1 ? '' : 's'} to the scorecard — anyone who joins later must be added by hand`;
   }
 
   // ----------------------------------------------------------------
@@ -505,6 +532,7 @@
     updateBoardAreaVisibility();
     renderBoard();
     updateScoringPanelRoster();
+    if (state.scrollToBoardPending && state.boards.length > 0) scrollToBoard();
   });
 
   socket.on('state:live_question', ({ live_question }) => {
@@ -665,7 +693,10 @@
         successEl.classList.remove('hidden');
         renderWarnings(body.warnings);
         // Board itself renders via the server's state:scores broadcast —
-        // this handler only owns the upload card's own feedback.
+        // this handler only owns the upload card's own feedback, plus
+        // taking the QM to the preview they need to check next.
+        if (state.boards.length > 0) scrollToBoard();
+        else state.scrollToBoardPending = true;
       } else {
         renderErrors(body.errors);
         renderWarnings(body.warnings);

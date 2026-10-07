@@ -24,120 +24,129 @@
   </header>
 
   <!-- ============================================================ -->
-  <!-- Lobby view                                                    -->
+  <!-- One two-column layout for both phases (see host.js            -->
+  <!-- applyPhaseVisibility): content on the left, people on the     -->
+  <!-- right. .lobby-only/.live-only swap the cards on Start, so the -->
+  <!-- sidebar keeps its place across the transition.                -->
   <!-- ============================================================ -->
-  <div id="view-lobby" class="lobby-body hidden">
+  <div id="view-main" class="live-body hidden">
 
-    <div class="card">
-      <div class="card-label">Share with players</div>
-      <div class="join-url-row">
-        <input id="join-url-input" class="join-url-input" type="text" readonly>
-        <button id="copy-btn" class="btn-copy">⎘ copy</button>
-      </div>
-      <div class="join-url-hint">or share the room code verbally</div>
-      <div class="otp-boxes otp-display">
-        {% for char in join_code %}
-        <div class="otp-display-box">{{ char }}</div>
-        {% endfor %}
-      </div>
-    </div>
+    <!-- Content: upload → preview → Start, top to bottom -->
+    <div class="board-area">
 
-    <div class="card">
-      <div class="players-header">
-        <div class="card-label" style="margin:0">Players joined</div>
-        <span class="players-count" id="lobby-count">0</span>
-      </div>
-      <div class="players-grid" id="lobby-players"></div>
-    </div>
+      <div class="card lobby-only">
+        <div class="card-label">Quiz content</div>
 
-    <div class="card">
-      <div class="card-label">Quiz content</div>
-      <div class="upload-hint">New here? The example below shows the format in action.</div>
+        <!-- Open until a board is loaded, then collapsed (host.js
+             updateBoardAreaVisibility) — the format guide is only useful
+             before the first successful upload. -->
+        <details class="bundle-format" id="bundle-format" open>
+          <summary>Bundle format</summary>
+          <div class="upload-hint">New here? The example below shows the format in action.</div>
 
-      <ul class="file-tree" aria-hidden="true">
-        <li>📦 <code>starter-quiz-bundle.zip</code>
-          <ul>
-            <li>📄 <code>quiz.xlsx</code></li>
-            <li>📁 <code>media/</code>
+          <ul class="file-tree" aria-hidden="true">
+            <li>📦 <code>starter-quiz-bundle.zip</code>
               <ul>
-                <li>🖼 <code>movie_poster</code></li>
-                <li>🖼 <code>poster_a</code></li>
-                <li class="file-tree-more">+ 3 more</li>
+                <li>📄 <code>quiz.xlsx</code></li>
+                <li>📁 <code>media/</code>
+                  <ul>
+                    <li>🖼 <code>movie_poster</code></li>
+                    <li>🖼 <code>poster_a</code></li>
+                    <li class="file-tree-more">+ 3 more</li>
+                  </ul>
+                </li>
               </ul>
             </li>
           </ul>
-        </li>
-      </ul>
-      <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link">⬇ Download sample bundle</a>
+          <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link">⬇ Download sample bundle</a>
 
-      <ul class="bundle-rules">
-        <li>Upload a single <code>.zip</code> file.</li>
-        <li>Questions live in one sheet, in a single <code>.xlsx</code> file (any filename) — columns: <code>board</code>, <code>category</code>, <code>value</code>, <code>question</code>, <code>answer</code>, <code>question_media</code>, <code>answer_media</code>.</li>
-        <li>Images are the only supported media for now — place them in a <code>media/</code> folder next to the <code>.xlsx</code> file. The extension doesn't matter — just reference the file by name, e.g. <code>poster</code>.</li>
-        <li>Filenames in <code>question_media</code>/<code>answer_media</code> just need to match a file in <code>media/</code> by name (extension ignored) — case-sensitive on the name itself.</li>
-        <li>Leave a media cell blank for no image — not "NA" or "-". Multiple images for one cell: comma-separate the filenames.</li>
-      </ul>
+          <ul class="bundle-rules">
+            <li>Upload a single <code>.zip</code> file.</li>
+            <li>Questions live in one sheet, in a single <code>.xlsx</code> file (any filename) — columns: <code>board</code>, <code>category</code>, <code>value</code>, <code>question</code>, <code>answer</code>, <code>question_media</code>, <code>answer_media</code>.</li>
+            <li>Images are the only supported media for now — place them in a <code>media/</code> folder next to the <code>.xlsx</code> file. The extension doesn't matter — just reference the file by name, e.g. <code>poster</code>.</li>
+            <li>Filenames in <code>question_media</code>/<code>answer_media</code> just need to match a file in <code>media/</code> by name (extension ignored) — case-sensitive on the name itself.</li>
+            <li>Leave a media cell blank for no image — not "NA" or "-". Multiple images for one cell: comma-separate the filenames.</li>
+          </ul>
+        </details>
 
-      <input type="file" id="bundle-input" accept=".zip" class="hidden">
-      <button id="upload-btn" class="btn-ghost">📁 Upload .zip</button>
-      <div class="upload-alert upload-alert-error hidden" id="upload-errors">
-        <p class="upload-alert-title" id="upload-errors-title"></p>
-        <ul class="upload-alert-list" id="upload-errors-list"></ul>
-      </div>
-      <div class="upload-alert upload-alert-warning hidden" id="upload-warnings">
-        <p class="upload-alert-title" id="upload-warnings-title"></p>
-        <ul class="upload-alert-list" id="upload-warnings-list"></ul>
-      </div>
-      <p class="status-msg status-msg-success hidden" id="upload-success"></p>
-    </div>
-
-    <div>
-      <button id="start-btn" class="btn-start">▷ Start quiz</button>
-      <div class="start-hint">freezes the scorecard roster — you can still add players after</div>
-      <p class="error-msg hidden" id="start-error"></p>
-    </div>
-
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- Board + sidebar row. Visibility is now two independent toggles -->
-  <!-- (see host.js): this whole row shows once a board is uploaded,  -->
-  <!-- regardless of phase (pre-Start preview); #sidebar within it    -->
-  <!-- only shows once phase is actually live.                       -->
-  <!-- ============================================================ -->
-  <div id="view-live" class="live-body hidden">
-
-    <!-- Board area -->
-    <div class="board-area">
-
-      <!-- Board navigation -->
-      <div class="board-nav">
-        <button id="btn-prev" class="btn-nav" disabled>← prev</button>
-        <span class="board-nav-label" id="board-label">Board 1 of 1</span>
-        <button id="btn-next" class="btn-nav" disabled>next →</button>
+        <input type="file" id="bundle-input" accept=".zip" class="hidden">
+        <button id="upload-btn" class="btn-ghost">📁 Upload .zip</button>
+        <div class="upload-alert upload-alert-error hidden" id="upload-errors">
+          <p class="upload-alert-title" id="upload-errors-title"></p>
+          <ul class="upload-alert-list" id="upload-errors-list"></ul>
+        </div>
+        <div class="upload-alert upload-alert-warning hidden" id="upload-warnings">
+          <p class="upload-alert-title" id="upload-warnings-title"></p>
+          <ul class="upload-alert-list" id="upload-warnings-list"></ul>
+        </div>
+        <p class="status-msg status-msg-success hidden" id="upload-success"></p>
       </div>
 
-      <p class="board-preview-hint hidden" id="board-preview-hint">👇 Click a tile to preview its question and answer before you start</p>
-      <p class="error-msg hidden" id="reveal-error"></p>
+      <!-- Board: shown once a board is uploaded, regardless of phase
+           (pre-Start preview). The modal is positioned against this
+           block, so it covers the board only — not the upload card. -->
+      <div class="board-block hidden" id="board-block">
 
-      <!-- Board grid -->
-      <div class="board-grid-wrap">
-        <div class="board-grid" id="board-grid"></div>
+        <!-- Board navigation -->
+        <div class="board-nav">
+          <button id="btn-prev" class="btn-nav" disabled>← prev</button>
+          <span class="board-nav-label" id="board-label">Board 1 of 1</span>
+          <button id="btn-next" class="btn-nav" disabled>next →</button>
+        </div>
+
+        <p class="board-preview-hint hidden" id="board-preview-hint">👇 Click a tile to preview its question and answer before you start</p>
+        <p class="error-msg hidden" id="reveal-error"></p>
+
+        <!-- Board grid -->
+        <div class="board-grid-wrap">
+          <div class="board-grid" id="board-grid"></div>
+        </div>
+
+        <!-- Board modal: pre-Start peek or the live reveal flow, covers
+             only the board area (sidebar stays usable throughout) -->
+        <div class="board-modal-overlay hidden" id="board-modal-overlay">
+          <div class="board-modal" id="board-modal"></div>
+        </div>
+
       </div>
 
-      <!-- Board modal: pre-Start peek or the live reveal flow, covers
-           only the board area (sidebar stays usable throughout) -->
-      <div class="board-modal-overlay hidden" id="board-modal-overlay">
-        <div class="board-modal" id="board-modal"></div>
+      <!-- Start sits under the preview, so the board is checked on the
+           way to it. The hint carries the live joined count (host.js). -->
+      <div class="lobby-only">
+        <button id="start-btn" class="btn-start">▷ Start quiz</button>
+        <div class="start-hint" id="start-hint"></div>
+        <p class="error-msg hidden" id="start-error"></p>
       </div>
 
     </div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar: who's in the room (lobby) → queue/totals (live) -->
     <div class="sidebar" id="sidebar">
 
+      <div class="card lobby-only">
+        <div class="card-label">Share with players</div>
+        <div class="join-url-row">
+          <input id="join-url-input" class="join-url-input" type="text" readonly>
+          <button id="copy-btn" class="btn-copy">⎘ copy</button>
+        </div>
+        <div class="join-url-hint">or share the room code verbally</div>
+        <div class="otp-boxes otp-display">
+          {% for char in join_code %}
+          <div class="otp-display-box">{{ char }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card lobby-only">
+        <div class="players-header">
+          <div class="card-label" style="margin:0">Players joined</div>
+          <span class="players-count" id="lobby-count">0</span>
+        </div>
+        <div class="players-grid" id="lobby-players"></div>
+      </div>
+
       <!-- Buzz queue -->
-      <div class="card">
+      <div class="card live-only">
         <div class="queue-header">
           <span class="queue-title">Buzz queue</span>
           <span class="queue-gap-label">gap from first</span>
@@ -152,7 +161,7 @@
       </div>
 
       <!-- Totals -->
-      <div class="card">
+      <div class="card live-only">
         <div class="totals-title">Totals</div>
         <table class="totals-table">
           <thead>
@@ -168,7 +177,7 @@
       </div>
 
       <!-- Add player -->
-      <div class="card">
+      <div class="card live-only">
         <div class="card-label">Add a player</div>
         <div class="add-player-form">
           <input id="add-player-input" class="add-player-input" type="text" placeholder="Add a player…" maxlength="30">

@@ -346,6 +346,9 @@ html.qb-resuming #view-join { display: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Wrap rather than overflow: on a phone the actions drop below the title. */
+  flex-wrap: wrap;
+  gap: 8px 16px;
   padding: 14px 24px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -353,7 +356,7 @@ html.qb-resuming #view-join { display: none; }
 .host-header h1 { font-size: 17px; font-weight: 700; margin: 0; }
 .host-header .subtitle { font-size: 12px; color: var(--color-text-faint); margin: 2px 0 0; }
 
-.host-header-actions { display: flex; align-items: center; gap: 10px; }
+.host-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .present-link {
   padding: 6px 12px;
   font-size: 13px;

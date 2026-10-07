@@ -480,7 +480,9 @@ html.qb-resuming #view-join { display: none; }
 .bundle-format > summary::-webkit-details-marker { display: none; }
 .bundle-format > summary::after { content: "›"; display: inline-block; transition: transform .15s; }
 .bundle-format[open] > summary::after { transform: rotate(90deg); }
-.bundle-format > summary:hover { text-decoration: underline; }
+/* Underline the words only — on the summary itself the underline also runs
+   under the chevron and turns into a stray bar when it rotates open. */
+.bundle-format > summary:hover > span { text-decoration: underline; }
 /* Upload + sample share one size (.present-link) — the card's action and
    its shortcut, both secondary to Start. */
 .upload-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }

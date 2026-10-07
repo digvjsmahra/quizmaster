@@ -229,6 +229,62 @@ def test_players_broadcast_on_disconnect(room):
     p1.disconnect()
 
 
+def _host_lobby(host):
+    """The most recent host-bound state:players payload, by name → connected."""
+    events_ = [e for e in host.get_received() if e["name"] == "state:players"]
+    assert events_, "host should receive state:players"
+    return {p["name"]: p["connected"] for p in events_[-1]["args"][0]["players"]}
+
+
+def test_host_sees_disconnected_lobby_player_dimmed_then_restored_on_rejoin(room):
+    join_code, _, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    token = next(e for e in p1.get_received() if e["name"] == "player:accepted")["args"][0]["rejoin_token"]
+    p2 = socketio.test_client(app)
+    p2.emit("player:join", {"name": "Dev", "room_id": join_code})
+    p2.get_received()
+    host.get_received()
+
+    p1.disconnect()
+    assert _host_lobby(host) == {"Ankur": False, "Dev": True}
+
+    p1_new = socketio.test_client(app)
+    p1_new.emit("player:rejoin", {"room_id": join_code, "token": token})
+    assert _host_lobby(host) == {"Ankur": True, "Dev": True}
+
+    for c in (p1_new, p2, host):
+        c.disconnect()
+
+
+def test_host_can_remove_disconnected_lobby_player(room):
+    join_code, game, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    pid = next(e for e in p1.get_received() if e["name"] == "player:accepted")["args"][0]["player_id"]
+    p1.disconnect()
+    host.get_received()
+
+    host.emit("host:player_remove", {"player_id": pid})
+    received = host.get_received()
+    assert not any(e["name"] == "error" for e in received)
+    assert pid not in game.players
+    players_event = [e for e in received if e["name"] == "state:players"][-1]
+    assert players_event["args"][0]["players"] == []
+
+    host.disconnect()
+
+
 def test_start_quiz_broadcasts_state_players(room):
     join_code, _, _ = room
 
@@ -380,6 +436,32 @@ def test_player_rejoin_survives_stale_disconnect_from_old_connection(room):
 
     assert game.players[pid].connected is True
     p1_new.disconnect()
+
+
+def test_stale_disconnect_after_rejoin_never_dims_host_lobby_entry(room):
+    join_code, game, _ = room
+
+    host = socketio.test_client(app)
+    host.emit("host:join", {"room_id": join_code})
+    host.get_received()
+
+    p1 = socketio.test_client(app)
+    p1.emit("player:join", {"name": "Ankur", "room_id": join_code})
+    token = next(e for e in p1.get_received() if e["name"] == "player:accepted")["args"][0]["rejoin_token"]
+
+    p1_new = socketio.test_client(app)
+    p1_new.emit("player:rejoin", {"room_id": join_code, "token": token})
+    p1_new.get_received()
+    host.get_received()
+
+    p1.disconnect()  # stale — the player is already back on p1_new
+
+    for e in host.get_received():
+        if e["name"] == "state:players":
+            assert all(p["connected"] for p in e["args"][0]["players"])
+
+    p1_new.disconnect()
+    host.disconnect()
 
 
 # ------------------------------------------------------------------

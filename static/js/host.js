@@ -96,9 +96,11 @@
   // ----------------------------------------------------------------
   function renderLobbyPlayers(players) {
     const grid = el('lobby-players');
+    // A disconnected entry stays listed and counted — Start still adds
+    // it — but dimmed, so the QM can see whose phone has dropped.
     grid.innerHTML = players.map(p => `
-      <div class="player-item">
-        <span class="player-item-name">${esc(p.name)}</span>
+      <div class="player-item${p.connected === false ? ' offline' : ''}">
+        <span class="player-item-name"${p.connected === false ? ' title="Offline — still added to the scorecard at Start"' : ''}>${esc(p.name)}</span>
         <button class="btn-remove-player" data-pid="${p.player_id}" title="Remove ${esc(p.name)}">✕</button>
       </div>
     `).join('');

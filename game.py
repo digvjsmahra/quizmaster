@@ -363,8 +363,11 @@ class Game:
     # ------------------------------------------------------------------
 
     def get_lobby_players(self) -> list[dict]:
+        # Host-facing: every lobby entry, connected or not — exactly who
+        # start_quiz() will snapshot. `connected` lets the host dim the
+        # ones whose phone has dropped. Players get get_active_players().
         return [
-            {"player_id": pid, "name": p.name}
+            {"player_id": pid, "name": p.name, "connected": p.connected}
             for pid, p in sorted(self.players.items(), key=lambda x: x[1].joined_at)
         ]
 

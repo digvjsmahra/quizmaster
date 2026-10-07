@@ -18,6 +18,7 @@ def register(socketio, rooms):
             if room and pid in room["game"].players and pid not in _sid_player.values():
                 room["game"].players[pid].connected = False
                 socketio.emit("state:players", {"players": room["game"].get_active_players()}, to=f"players_{join_code}")
+                socketio.emit("state:players", {"players": room["game"].get_lobby_players()}, to=f"host_{join_code}")
 
     @socketio.on("player:join")
     def on_player_join(data):

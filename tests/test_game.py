@@ -414,6 +414,22 @@ def test_active_players_excludes_virtual():
     assert pid_virtual not in active_ids
 
 
+def test_lobby_players_include_disconnected_with_flag():
+    g = make_game()
+    pid1, _ = g.player_join("Ankur")
+    pid2, _ = g.player_join("Dev")
+    pid3, _ = g.player_join("Meera")
+    g.players[pid2].connected = False
+
+    lobby = g.get_lobby_players()
+    assert [p["player_id"] for p in lobby] == [pid1, pid2, pid3]  # join order
+    assert [p["connected"] for p in lobby] == [True, False, True]
+    # Players' own view still drops the disconnected entry...
+    assert pid2 not in {p["player_id"] for p in g.get_active_players()}
+    # ...while the host's list is exactly who Start snapshots.
+    assert len(lobby) == len(g.start_quiz())
+
+
 # ------------------------------------------------------------------
 # question_submit
 # ------------------------------------------------------------------

@@ -443,6 +443,10 @@ html.qb-resuming #view-join { display: none; }
 .player-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--color-text-secondary); justify-content: space-between; }
 .player-item-name { display: flex; align-items: center; gap: 6px; }
 .player-item-name::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-muted); flex-shrink: 0; }
+/* Disconnected lobby entry (host.js renderLobbyPlayers): faint name, and
+   the status dot hollows out into a ring. */
+.player-item.offline { color: var(--color-text-faint); }
+.player-item.offline .player-item-name::before { background: transparent; box-shadow: inset 0 0 0 1px var(--color-text-muted); }
 
 .btn-remove-player {
   background: none;

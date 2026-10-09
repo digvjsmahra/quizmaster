@@ -318,19 +318,21 @@ a { color: var(--color-primary); }
   background: var(--color-primary-light); color: var(--color-primary); font-weight: 600; font-size: 14px;
 }
 
-/* Two ways to play: alternating image + text rows, so each image gets
-   most of the page width and its content stays readable. */
-.ways { display: grid; gap: 40px; }
-.way { display: grid; gap: 18px; align-items: center; }
-.way figure { margin: 0; }
-.way-text h3 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 8px; }
-.way-text p { margin: 0; font-size: 17px; color: var(--color-text-secondary); max-width: 30em; }
+/* Feature rows: alternating image + text, so each image gets most of the
+   page width and its content stays readable. */
+.features { display: grid; gap: 40px; }
+.feature { display: grid; gap: 18px; align-items: center; }
+.feature figure { margin: 0; }
+.feature-text h3 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 8px; }
+.feature-text p { margin: 0; font-size: 17px; color: var(--color-text-secondary); max-width: 30em; }
+.feature-text p + h3 { margin-top: 28px; }
 @media (min-width: 900px) {
-  .ways { gap: 64px; }
-  .way { grid-template-columns: 3fr 2fr; gap: 48px; }
-  .way-flip { grid-template-columns: 2fr 3fr; }
-  .way-flip > figure { order: 2; }
+  .features { gap: 64px; }
+  .feature { grid-template-columns: 3fr 2fr; gap: 48px; }
+  .feature-flip { grid-template-columns: 2fr 3fr; }
+  .feature-flip > :first-child { order: 2; }
 }
+.section-lede { font-size: 18px; color: var(--color-text-secondary); margin: -12px 0 32px; max-width: 36em; }
 
 .needs { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 10px; }
 @media (min-width: 700px) { .needs { grid-template-columns: repeat(2, 1fr); } }

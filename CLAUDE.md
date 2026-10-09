@@ -62,6 +62,8 @@ site/             # public landing page — static, GitHub Pages (SPEC.md §2, �
   styles.css      # verbatim copy of the app's two token blocks (tests/test_site_tokens.py) + landing styles
   js/landing.js   # APP_URL (the only place the app's address appears) + code box → /play/<CODE>
   img/            # screenshots (light + dark) and the real Google Meet game photo
+  favicon.svg     # two-tone "QM" tile (+ favicon-32.png / apple-touch-icon.png fallbacks);
+                  #   the same three files are copied into static/ for the app's pages
 .github/workflows/pages.yml  # deploys site/ to Pages on pushes to main that touch it
 requirements.txt
 ```

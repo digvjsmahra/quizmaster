@@ -9,6 +9,9 @@
   <meta property="og:description" content="One quizmaster, everyone else buzzes from their phone — in the same room or over a video call.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="img/host-light.png">
+  <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <!-- Same dark/light switch as the app's static/js/theme.js: the OS
        setting, unless the visitor flipped the header toggle away from it
        (saved in this browser). Inline so it runs before first paint. -->
@@ -104,6 +107,25 @@
     </figure>
   </div>
 
+  <section class="wrap section">
+    <p class="section-label">Why QuizMaster</p>
+    <h2>Skip the slides and the score sheet</h2>
+    <div class="features">
+      <div class="feature">
+        <picture class="frame">
+          <source srcset="img/lobby-dark.png" media="(prefers-color-scheme: dark)" data-dark>
+          <img src="img/lobby-light.png" width="1548" height="1606" alt="The control center right after an upload: the quiz file loaded, a 5-by-5 board ready to play, four players joined and a Start quiz button" loading="lazy">
+        </picture>
+        <div class="feature-text">
+          <h3>One spreadsheet, and you're ready</h3>
+          <p>No slide deck to build. Write your questions in a spreadsheet and upload it — the board, the question slides and the answer reveals are made for you.</p>
+          <h3>Scores that keep themselves</h3>
+          <p>No Google Sheet on the side. Score each answer on the board as you go, and every screen shows the running totals, board by board and overall.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="wrap section" id="how">
     <p class="section-label">How it works</p>
     <h2>From spreadsheet to buzzers in three steps</h2>
@@ -130,25 +152,25 @@
   <section class="wrap section">
     <p class="section-label">Two ways to play</p>
     <h2>In the same room, or miles apart</h2>
-    <div class="ways">
-      <div class="way">
+    <div class="features">
+      <div class="feature">
         <picture class="frame">
           <source srcset="img/present-dark.png" media="(prefers-color-scheme: dark)" data-dark>
           <img src="img/present-light.png" width="1920" height="1080" alt="The presentation view: a question in large type, with running totals and the buzz queue beside it" loading="lazy">
         </picture>
-        <div class="way-text">
+        <div class="feature-text">
           <h3>Around one screen</h3>
           <p>Put the presentation view on a TV or projector. Everyone watches the same board and buzzes from the phone in their hand.</p>
         </div>
       </div>
-      <div class="way way-flip">
+      <div class="feature feature-flip">
         <figure>
           <div class="frame">
             <img src="img/virtual-quiz-night.jpg" width="2000" height="1299" alt="A real QuizMaster game mid-board, screen-shared to friends on a Google Meet call" loading="lazy">
           </div>
           <figcaption class="caption">A real quiz night over Google Meet</figcaption>
         </figure>
-        <div class="way-text">
+        <div class="feature-text">
           <h3>Over a video call</h3>
           <p>Screen-share the presentation view on Zoom or Google Meet. Players join from wherever they are and buzz from their own phones.</p>
         </div>
@@ -161,6 +183,34 @@
       <li><strong>A shared screen</strong>A TV, a projector or a video call</li>
       <li><strong>About 10 players</strong>The size it's built for</li>
     </ul>
+  </section>
+
+  <section class="wrap section">
+    <p class="section-label">After the game</p>
+    <h2>The post-game debrief, built in</h2>
+    <p class="section-lede">Who doesn't love picking a quiz night apart? Open the summary when the last question closes.</p>
+    <div class="features">
+      <div class="feature">
+        <picture class="frame">
+          <source srcset="img/chart-dark.png" media="(prefers-color-scheme: dark)" data-dark>
+          <img src="img/chart-light.png" width="1736" height="1016" alt="A line chart of each player's score after every question, with the lead changing hands several times" loading="lazy">
+        </picture>
+        <div class="feature-text">
+          <h3>How the lead changed hands</h3>
+          <p>Every player's score, question by question, in the order you actually played them.</p>
+        </div>
+      </div>
+      <div class="feature feature-flip">
+        <picture class="frame">
+          <source srcset="img/stats-dark.png" media="(prefers-color-scheme: dark)" data-dark>
+          <img src="img/stats-light.png" width="1736" height="556" alt="A table of buzzer stats: how many questions each player buzzed on, their average and median time to buzz, and their average place in the queue" loading="lazy">
+        </picture>
+        <div class="feature-text">
+          <h3>Who was quickest on the buzzer</h3>
+          <p>How often each player buzzed, how fast they were on average, and where they usually landed in the queue.</p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="wrap section">

@@ -141,9 +141,14 @@ def validate_room(join_code):
 
 @app.route("/play/<join_code>")
 def player_page(join_code):
-    if join_code.upper() not in rooms:
-        abort(404)
-    return render_template("player.html", code=join_code.upper())
+    code = join_code.upper()
+    if code not in rooms:
+        # A stale permalink, or a mistyped code handed off from the public
+        # landing page: show the join page with the code kept and the same
+        # inline error the join form shows (SPEC.md §2: never a bare 404).
+        prefill = code if len(code) == 4 and code.isalnum() else ""
+        return render_template("create.html", prefill_code=prefill, room_not_found=True), 404
+    return render_template("player.html", code=code)
 
 
 import events  # noqa: E402

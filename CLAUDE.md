@@ -18,7 +18,7 @@ Where a `SPEC.md` section appears to conflict with another, do not silently assu
 
 1. **Single worker.** State is in-process and unshared. Run as exactly one worker (`gunicorn -k eventlet -w 1`). Never add Redis or a message queue.
 2. **In-memory only.** No database, no ORM, no durable on-disk persistence. Quiz content comes from a per-room uploaded bundle (SPEC.md §6), held in memory plus an ephemeral temp-dir for media, wiped on restart.
-3. **No build step.** Vanilla JS + server-rendered HTML. The Socket.IO client is vendored into `static/js/` and served same-origin — never from a CDN (SPEC.md §12). No npm, bundlers, or transpilers.
+3. **No build step.** Vanilla JS + server-rendered HTML. The Socket.IO client is vendored into `static/js/` and served same-origin — never from a CDN (SPEC.md §12). No npm, bundlers, or transpilers. This covers the static landing page in `site/` too: hand-written HTML/CSS/JS, its own files only, no fonts or scripts from elsewhere.
 4. **Never leak questions or scores to players.** Player-bound emits carry only join state and queue position. Any question, answer, or score in a player payload is a bug. (The boundary also covers routes and media, not just payloads — see SPEC.md §4.)
 5. **Host enters scores; server stores verbatim.** Awards may be decimal or negative. The server never computes scores from the uploaded quiz content — `value` is used only for tile labels and `±value` quick-fill defaults. Scoring is always against roster entries, never from the queue.
 6. **No undo/redo.** The always-open scorecard grid is the correction mechanism — the host re-clicks a cell and re-submits. (`question_cancel` is a pre-score reveal-undo, not a scoring undo — distinct from this rule. See SPEC.md §7. This rule still governs scoring corrections.)
@@ -57,6 +57,12 @@ static/
                   #   includes the hand-rolled SVG chart (no charting library — see SPEC.md §8)
   css/styles.css  # light :root + dark [data-theme="dark"] token blocks (colors/radii/shadows/
                   #   chart/buzzer) + all page styles
+site/             # public landing page — static, GitHub Pages (SPEC.md §2, §11); not served by Flask
+  index.html
+  styles.css      # verbatim copy of the app's two token blocks (tests/test_site_tokens.py) + landing styles
+  js/landing.js   # APP_URL (the only place the app's address appears) + code box → /play/<CODE>
+  img/            # screenshots (light + dark) and the real Google Meet game photo
+.github/workflows/pages.yml  # deploys site/ to Pages on pushes to main that touch it
 requirements.txt
 ```
 
@@ -94,6 +100,11 @@ python app.py
 # creating a room and re-fetching it: a second worker would lose it.
 gunicorn -k eventlet -w 1 -b 0.0.0.0:${PORT:-8000} app:app
 
+# Landing page (site/) — deploys itself: a push to main touching site/ runs
+# .github/workflows/pages.yml. To preview locally, open site/index.html or
+# serve the folder; set APP_URL in site/js/landing.js to a local app to try
+# the join/host handoff.
+
 # Tests
 pytest
 ```
@@ -106,6 +117,7 @@ pytest
 - No reconnection identity matching *between devices*. Roster entries are always durable. On the *same* device, a buzz identity now persists across reconnects via a rejoin token (SPEC.md §10) — only a token-less device (first join, a different device, cleared storage) gets a fresh, disposable buzz identity.
 - Player UI is one page — buzzer view contains the queue list and sections inline; no separate route or view for queue position.
 - Responsive layout for phones; no design polish.
+- **The landing page's token blocks are a verbatim copy of the app's.** Change a colour in `static/css/styles.css`, then re-copy both blocks into `site/styles.css`; `tests/test_site_tokens.py` fails until you do. Landing-only values go in the separate `--site-*` block below the copy.
 - **No raw colour values outside the two token blocks** at the top of `styles.css` (light `:root`, dark `:root[data-theme="dark"]`) — component CSS and JS reference `var(--…)` only, so every colour has a dark value. A new token needs both. SVG marks set colour via `style="…var()"`, never a presentation attribute (those don't resolve `var()`).
 - **UI copy is sentence case** — capitalise the first word and proper nouns only, for every kind of copy: headings, card labels, buttons, badges, captions, empty states, errors — including error and validation messages the server sends for the UI to display. Not Title Case ("Join room", not "Join Room") and not all-lowercase ("Freeze", not "freeze"). Two exceptions: the player's "BUZZ" button, a display element rather than a label, and the landing page's lowercase "or" divider between joining and hosting, a separator rather than copy. A leading icon or symbol doesn't change this ("⏱ Lobby", "✓ Close question"). An identifier keeps its own case even as the first word — a bundle column or filename stays as the QM typed it ("Row 3: board is required", "quiz.xlsx has no header row"). Card labels are written in sentence case and uppercased by CSS (`.card-label`), so don't type them in caps.
 - **Trailing period only when the copy has more than one sentence.** "No buzzes yet" — no period; "No room found with that code. Ask your host for the latest code." — periods. A list keeps one style throughout: if any item needs periods, every item gets them.
@@ -121,7 +133,7 @@ Unit-test `stats.py` through a real `Game`, so the log under test is the one the
 
 Unit-test `bundle_loader.py` independently of `game.py`: valid parse, every structured-error path (missing columns, empty fields, non-numeric or non-positive value, duplicate `question_id`, no data rows, unsupported/missing media), xlsx cell-type normalization, and `extract_media`.
 
-Integration tests with the Flask-SocketIO test client: join → buzz → queue broadcast; room validation (valid/invalid/case-insensitive); late joiner behind frozen queue; `player:rejoin` restores identity + queue state, and survives a stale disconnect arriving after the new connection (SPEC.md §9); `host:player_remove` kicks the target socket with `player:removed` before disconnecting it, works on a disconnected lobby entry, and is rejected once live (SPEC.md §9); a player disconnect reaches the host's lobby list as `connected: False`, a rejoin restores it, and a stale disconnect after a rejoin never dims it; `host:roster_remove` discards scores and broadcasts `state:scores` to every host tab, and is rejected before Start (SPEC.md §9); `/summary` 404s without the host token, `summary:join` bootstraps `state:summary`, closing a question and changing the roster both rebroadcast it, and it never reaches a player or presentation socket. No browser/E2E tooling.
+Integration tests with the Flask-SocketIO test client: join → buzz → queue broadcast; room validation (valid/invalid/case-insensitive); `/play/<unknown code>` renders the join page with the code kept and the inline error (not a bare 404 page); late joiner behind frozen queue; `player:rejoin` restores identity + queue state, and survives a stale disconnect arriving after the new connection (SPEC.md §9); `host:player_remove` kicks the target socket with `player:removed` before disconnecting it, works on a disconnected lobby entry, and is rejected once live (SPEC.md §9); a player disconnect reaches the host's lobby list as `connected: False`, a rejoin restores it, and a stale disconnect after a rejoin never dims it; `host:roster_remove` discards scores and broadcasts `state:scores` to every host tab, and is rejected before Start (SPEC.md §9); `/summary` 404s without the host token, `summary:join` bootstraps `state:summary`, closing a question and changing the roster both rebroadcast it, and it never reaches a player or presentation socket. `tests/test_site_tokens.py` checks the landing page's token blocks still match the app's. No browser/E2E tooling.
 
 ## Workflow
 

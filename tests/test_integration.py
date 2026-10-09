@@ -155,6 +155,24 @@ def test_validate_room_case_insensitive(room):
     assert res.status_code == 200
 
 
+def test_play_unknown_code_shows_join_page_with_inline_error(room):
+    # A stale permalink or a mistyped code from the public landing page
+    # lands on the join page with the code kept — never a bare 404 page.
+    res = app.test_client().get("/play/zzzz")
+    assert res.status_code == 404
+    html = res.get_data(as_text=True)
+    assert "No room found with that code. Ask your host for the latest code." in html
+    assert 'class="error-msg hidden"' not in html
+    assert html.count('value="Z"') == 4
+
+
+def test_play_unknown_malformed_code_is_not_prefilled(room):
+    res = app.test_client().get("/play/<b>x")
+    html = res.get_data(as_text=True)
+    assert "No room found with that code" in html
+    assert "<b>" not in html
+
+
 def test_late_joiner_receives_queue_state_when_frozen(room):
     join_code, game, _ = room
 

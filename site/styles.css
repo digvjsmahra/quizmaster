@@ -1,0 +1,340 @@
+/* QuizMaster public landing page (site/, served by GitHub Pages).
+
+   The two token blocks below are copied VERBATIM from the app's
+   static/css/styles.css — tests/test_site_tokens.py fails if they drift.
+   To change a colour, change it in the app and re-copy both blocks here.
+   Below them: landing-only styles, reusing the app's primitives (card,
+   OTP boxes, primary/ghost buttons) so the two read as one product. */
+
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-disabled: #a5a6f6;
+  --color-primary-light: #f5f3ff;
+  --color-primary-focus-ring: rgba(99,102,241,.15);
+
+  /* Surfaces */
+  --color-bg: #f5f5f4;
+  --color-surface: #fff;
+  --color-text-on-primary: #fff;
+
+  /* Borders / fills */
+  --color-border: #e5e7eb;
+  --color-border-subtle: #f3f4f6;
+  --color-border-input: #d1d5db;
+  --color-bg-subtle: #f9fafb;
+
+  /* Text */
+  --color-text: #1a1a1a;
+  --color-text-secondary: #374151;
+  --color-text-muted: #6b7280;
+  --color-text-faint: #9ca3af;
+
+  /* Semantic */
+  --color-success-bg: #dcfce7;
+  --color-success-border: #86efac;
+  --color-success-text: #166534;
+  --color-success-strong-bg: #d1fae5;
+  --color-success-strong-text: #059669;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fee2e2;
+  --color-danger-border: #fca5a5;
+  --color-warning-bg: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-warning-text: #92400e;
+  --color-info-bg: #dbeafe;
+  --color-info-text: #1d4ed8;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 99px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0,0,0,.06);
+  --shadow-card-strong: 0 1px 4px rgba(0,0,0,.08);
+
+  /* Overlay behind the board modal */
+  --color-backdrop: rgba(17,17,17,.55);
+
+  /* Summary chart. Series hues are the validated 8-slot categorical order
+     (see summary.js); chrome stays recessive behind them. */
+  --chart-grid: #e1e0d9;
+  --chart-grid-zero: #c3c2b7;
+  --chart-ink-muted: #898781;
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-series-3: #1baf7a;
+  --chart-series-4: #eda100;
+  --chart-series-5: #e87ba4;
+  --chart-series-6: #008300;
+  --chart-series-7: #4a3aa7;
+  --chart-series-8: #e34948;
+
+  /* BUZZ button — a physical arcade button, not themed chrome: the dark
+     block below deliberately leaves these alone. */
+  --buzzer-face: radial-gradient(circle at 38% 32%, #ff6b6b 0%, #dc2626 45%, #7f1d1d 100%);
+  --buzzer-face-hover: radial-gradient(circle at 38% 32%, #ff8080 0%, #ef4444 45%, #991b1b 100%);
+  --buzzer-face-disabled: radial-gradient(circle at 38% 32%, #d1d5db 0%, #9ca3af 45%, #6b7280 100%);
+  --buzzer-edge: #450a0a;
+  --buzzer-edge-disabled: #374151;
+  --buzzer-text: #fff;
+  --buzzer-text-disabled: #e5e7eb;
+  --buzzer-shadow:
+    0 8px 0 var(--buzzer-edge),
+    0 12px 24px rgba(0,0,0,.45),
+    inset 0 -4px 8px rgba(0,0,0,.3),
+    inset 0 4px 12px rgba(255,255,255,.18);
+  --buzzer-shadow-pressed:
+    0 2px 0 var(--buzzer-edge),
+    0 4px 10px rgba(0,0,0,.35),
+    inset 0 -2px 4px rgba(0,0,0,.3),
+    inset 0 2px 8px rgba(255,255,255,.12);
+  --buzzer-shadow-disabled:
+    0 8px 0 var(--buzzer-edge-disabled),
+    0 12px 24px rgba(0,0,0,.3),
+    inset 0 -4px 8px rgba(0,0,0,.2);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Brand — lifted a step to read on dark; ink on it flips to dark */
+  --color-primary: #818cf8;
+  --color-primary-hover: #a5b4fc;
+  --color-primary-disabled: #545a9e;
+  --color-primary-light: #25264a;
+  --color-primary-focus-ring: rgba(129,140,248,.25);
+
+  /* Surfaces */
+  --color-bg: #121211;
+  --color-surface: #1c1c1b;
+  --color-text-on-primary: #11112a;
+
+  /* Borders / fills */
+  --color-border: #343432;
+  --color-border-subtle: #282826;
+  --color-border-input: #4a4a47;
+  --color-bg-subtle: #222220;
+
+  /* Text */
+  --color-text: #f2f2f0;
+  --color-text-secondary: #d6d6d1;
+  --color-text-muted: #a3a29c;
+  --color-text-faint: #7d7c76;
+
+  /* Semantic */
+  --color-success-bg: #133122;
+  --color-success-border: #1f6b3e;
+  --color-success-text: #86efac;
+  --color-success-strong-bg: #0f3a2b;
+  --color-success-strong-text: #34d399;
+  --color-danger: #f87171;
+  --color-danger-bg: #3b1717;
+  --color-danger-border: #7f2d2d;
+  --color-warning-bg: #3a2b0d;
+  --color-warning-border: #6e5214;
+  --color-warning-text: #fcd34d;
+  --color-info-bg: #172554;
+  --color-info-text: #93c5fd;
+
+  /* Shadows — light-mode shadows vanish on a dark page */
+  --shadow-card: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-card-strong: 0 1px 4px rgba(0,0,0,.5);
+
+  --color-backdrop: rgba(0,0,0,.65);
+
+  --chart-grid: #2e2e2c;
+  --chart-grid-zero: #4a4a47;
+  --chart-ink-muted: #8f8e88;
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+  --chart-series-3: #199e70;
+  --chart-series-4: #c98500;
+  --chart-series-5: #d55181;
+  --chart-series-6: #008300;
+  --chart-series-7: #9085e9;
+  --chart-series-8: #e66767;
+}
+
+/* ---- end of copied token blocks ---- */
+
+/* Landing-only tokens: same in both modes (a phone bezel is dark either
+   way; black shadows read on both surfaces). */
+:root {
+  --site-bezel: #18181b;
+  --site-frame-shadow: 0 24px 60px -24px rgba(0,0,0,.35);
+  --site-phone-shadow: 0 24px 50px -16px rgba(0,0,0,.45);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+img { display: block; max-width: 100%; height: auto; }
+a { color: var(--color-primary); }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 700px) { .wrap { padding: 0 32px; } }
+
+/* ---- Header ---- */
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 20px; padding-bottom: 20px;
+}
+.wordmark { font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: var(--color-text); text-decoration: none; }
+.wordmark span { color: var(--color-primary); }
+.header-link { font-size: 14px; font-weight: 600; text-decoration: none; }
+.header-link:hover { text-decoration: underline; }
+
+/* ---- Hero ---- */
+.hero {
+  display: grid; gap: 32px; align-items: center;
+  padding-top: 24px; padding-bottom: 40px;
+}
+@media (min-width: 900px) {
+  .hero { grid-template-columns: 1fr 360px; gap: 64px; padding-top: 48px; padding-bottom: 56px; }
+}
+.hero h1 {
+  font-size: clamp(32px, 5vw, 52px); line-height: 1.08; letter-spacing: -.025em;
+  margin: 0 0 18px; font-weight: 800;
+}
+.hero h1 em { font-style: normal; color: var(--color-primary); }
+.hero-lede { font-size: 18px; color: var(--color-text-secondary); margin: 0 0 20px; max-width: 34em; }
+.hero-points { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.hero-points li {
+  font-size: 13px; font-weight: 600; color: var(--color-text-secondary);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill); padding: 4px 12px;
+}
+
+/* Join card — the app's .player-card, OTP boxes and buttons */
+.join-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: 28px 24px 24px;
+  box-shadow: var(--shadow-card-strong);
+  border: 1px solid var(--color-border-subtle);
+}
+.join-card h2 { font-size: 17px; margin: 0 0 16px; }
+.otp-label { font-size: 12px; color: var(--color-text-muted); font-weight: 500; display: block; margin: 0 0 6px; }
+.otp-boxes { display: flex; gap: 8px; margin-bottom: 16px; }
+.otp-box {
+  width: 52px; height: 56px; font-size: 22px; font-weight: 700; text-align: center;
+  font-family: inherit;
+  border: 2px solid var(--color-border-input); border-radius: var(--radius-lg);
+  outline: none; background: var(--color-surface); color: var(--color-text);
+  caret-color: var(--color-primary); padding: 0;
+}
+.otp-box:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-focus-ring); }
+.btn-primary, .btn-ghost {
+  display: block; width: 100%; padding: 12px; font: inherit; font-size: 15px; font-weight: 600;
+  border-radius: var(--radius-md); cursor: pointer; text-align: center;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-text-on-primary); border: none; }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-primary:disabled { background: var(--color-primary-disabled); cursor: not-allowed; }
+.btn-ghost { background: transparent; color: var(--color-primary); border: 1.5px solid var(--color-primary); }
+.btn-ghost:hover { background: var(--color-primary-light); }
+.or-divider {
+  display: flex; align-items: center; gap: 10px; margin: 18px 0;
+  color: var(--color-text-faint); font-size: 13px;
+}
+.or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
+.join-card form { margin: 0; }
+.join-note { font-size: 12px; color: var(--color-text-muted); margin: 14px 0 0; text-align: center; }
+
+/* ---- Showcase: host board with a phone overlapping it ---- */
+.showcase { position: relative; padding-bottom: 8px; margin: 0 0 72px; }
+.frame {
+  display: block;
+  border-radius: var(--radius-xl); overflow: hidden;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--site-frame-shadow);
+  background: var(--color-surface);
+}
+.showcase .frame-wide { width: 88%; }
+.showcase .frame-phone {
+  position: absolute; right: 0; bottom: -40px; width: 24%;
+  border-radius: 22px; border: 6px solid var(--site-bezel); box-shadow: var(--site-phone-shadow);
+}
+@media (max-width: 640px) {
+  .showcase { margin-bottom: 48px; }
+  .showcase .frame-wide { width: 100%; }
+  .showcase .frame-phone { position: static; width: 62%; margin: -48px auto 0; border-width: 5px; }
+}
+.caption { font-size: 13px; color: var(--color-text-muted); margin: 10px 0 0; }
+
+/* ---- Sections ---- */
+.section { padding-top: 40px; padding-bottom: 40px; }
+@media (min-width: 900px) { .section { padding-top: 56px; padding-bottom: 56px; } }
+.section-label {
+  font-size: 12px; color: var(--color-text-faint); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px;
+}
+.section h2 { font-size: clamp(24px, 3.2vw, 34px); letter-spacing: -.02em; line-height: 1.15; margin: 0 0 28px; }
+
+.card {
+  background: var(--color-surface); border-radius: var(--radius-lg);
+  padding: 22px; box-shadow: var(--shadow-card); border: 1px solid var(--color-border-subtle);
+}
+.card h3 { font-size: 17px; margin: 0 0 6px; }
+.card p { margin: 0; color: var(--color-text-secondary); font-size: 15px; }
+.card p + p { margin-top: 10px; }
+
+.steps { display: grid; gap: 16px; }
+@media (min-width: 800px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+.step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 50%; margin-bottom: 14px;
+  background: var(--color-primary-light); color: var(--color-primary); font-weight: 800; font-size: 14px;
+}
+
+.ways { display: grid; gap: 20px; }
+@media (min-width: 900px) { .ways { grid-template-columns: 1fr 1fr; } }
+.way .frame { margin-bottom: 18px; box-shadow: none; }
+
+.needs { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 10px; }
+@media (min-width: 700px) { .needs { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .needs { grid-template-columns: repeat(4, 1fr); } }
+.needs li {
+  font-size: 15px; color: var(--color-text-secondary);
+  background: var(--color-bg-subtle); border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md); padding: 12px 14px;
+}
+.needs strong { display: block; color: var(--color-text); }
+
+/* ---- FAQ: native disclosure, same chevron idiom as the app's "Format details" ---- */
+.faq { max-width: 760px; }
+.faq details { border-bottom: 1px solid var(--color-border); }
+.faq summary {
+  list-style: none; cursor: pointer; padding: 16px 0;
+  font-weight: 600; display: flex; justify-content: space-between; gap: 16px;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "›"; color: var(--color-primary); transition: transform .15s; }
+.faq details[open] summary::after { transform: rotate(90deg); }
+.faq details p { margin: 0 0 16px; color: var(--color-text-secondary); }
+
+/* ---- Closing call to action + footer ---- */
+.cta { text-align: center; }
+.cta p { color: var(--color-text-secondary); margin: -16px 0 24px; }
+.cta .btn-primary { display: inline-block; width: auto; padding: 12px 28px; text-decoration: none; }
+.site-footer {
+  border-top: 1px solid var(--color-border); margin-top: 24px;
+  padding-top: 24px; padding-bottom: 40px; font-size: 13px; color: var(--color-text-muted);
+}

@@ -14,16 +14,19 @@
 
     <div class="otp-label">Room code</div>
     <div class="otp-boxes" id="code-boxes">
-      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
-      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
-      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
-      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false">
+      {% for i in range(4) %}
+      <input class="otp-box" maxlength="1" type="text" inputmode="text" autocomplete="off" spellcheck="false" value="{{ prefill_code[i] if prefill_code else '' }}">
+      {% endfor %}
     </div>
 
     <div class="field-label">Your name</div>
     <input id="name-input" type="text" placeholder="Your name" maxlength="30" autocomplete="off" spellcheck="false">
 
+    {% if room_not_found %}
+    <p class="error-msg" id="join-error">No room found with that code. Ask your host for the latest code.</p>
+    {% else %}
     <p class="error-msg hidden" id="join-error"></p>
+    {% endif %}
 
     <button id="join-btn" class="btn-primary" disabled>Join room</button>
 

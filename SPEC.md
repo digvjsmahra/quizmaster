@@ -10,7 +10,7 @@ This is the source of truth for current system behavior. `CLAUDE.md` covers how 
 
 One QM runs a single live quiz for ~10 players, entirely from the app — no PowerPoint, no tab-switching. Quiz content (questions, answers, media) is uploaded per room before the quiz starts and lives only in the app, presented via a read-only presentation view the QM screen-shares. Player phones do three things in sequence: join, buzz, show queue position. The QM has the only rich interface.
 
-Players join via a **shared permalink** (`/play/<code>`) or by entering a 4-character room code on the landing page, then enter a name. The QM works from `/host/<join_code>/<host_token>` and, for the audience-facing screen-share, `/present/<join_code>/<host_token>`.
+Players join via a **shared permalink** (`/play/<code>`) or by entering a 4-character room code on the landing page, then enter a name. First-time visitors meet the product on a separate **public landing page** — a static site (§11) that explains what it is and hands off to the app by URL. The QM works from `/host/<join_code>/<host_token>` and, for the audience-facing screen-share, `/present/<join_code>/<host_token>`.
 
 The buzzer is **open-queue, FIFO**: buzzes accumulate in server-arrival order until the QM freezes or resets. The queue is **advisory** — the QM uses it to decide who to call on, but all scoring happens on the scorecard grid, never from the queue.
 
@@ -20,7 +20,8 @@ Scoring is **host-driven, split-value**: for each question the QM enters per-pla
 
 ### In scope
 - Landing page (`/`): players enter a 4-character room code + name to join, or a host creates a new room. Multiple rooms run simultaneously, each with its own in-memory state and per-room host token.
-- Join by code or shared permalink (`/play/<code>`, code pre-filled). Code input is OTP-style (auto-advance, auto-uppercase, paste support). Invalid codes show a human-legible inline error, never a 404.
+- Join by code or shared permalink (`/play/<code>`, code pre-filled). Code input is OTP-style (auto-advance, auto-uppercase, paste support). Invalid codes show a human-legible inline error, never a 404 page — including a `/play/<code>` for a room that doesn't exist (a stale permalink, or a mistyped code from the public landing page): it renders the join page with the code kept and the "No room found" error already showing (HTTP status still 404).
+- **Public landing page** (`site/`, a separate static site): what the app is, how it works, the two ways to play (one shared screen, or screen-shared over a video call), a short FAQ. A code box hands off to the app's `/play/<CODE>` (the app validates it and asks for the name); "Host a quiz" posts to the app's `/rooms`. It owns no game state and never talks to the app beyond those two navigations.
 - Host control center (`/host/<join_code>/<host_token>`) — obscurity, not auth. Shows the join link/code, joined players, and (once uploaded) the scorecard board.
 - Presentation view (`/present/<join_code>/<host_token>`) — read-only, socket-driven, meant for screen-share; not linked from any player-reachable page.
 - Summary view (`/summary/<join_code>/<host_token>`) — read-only, socket-driven: final standings plus buzzer stats derived from the event log. Meant for the end of the quiz, but carries no "quiz ended" state and is live throughout.
@@ -411,7 +412,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **Volatility.** A restart wipes all state, including uploaded quiz content. Acceptable — a quiz is one session; the QM re-uploads. Join codes and host tokens reset on restart; nothing is configured to survive it.
 - **No third-party runtime dependency.** Every JS and CSS asset a page needs is served from our own origin, so a page either loads fully or not at all — it can never render complete-looking but inert because an external host was blocked. If a script does fail to load, each page's inline guard shows a visible error instead of leaving dead controls.
 - **Pinned runtime.** `.python-version` pins the interpreter and `requirements.txt` is an exact freeze of every runtime package, transitives included, resolved against that same Python. The host's default Python is deliberately not relied on — it moves, and a package set resolved against a different version is not the one that ships. Rebuilding must reproduce the same stack — `eventlet` and `gunicorn` are version-coupled (later Gunicorn dropped the eventlet worker), and `python-socketio` must keep speaking the protocol the vendored client is frozen against.
-- **Deployment.** Single small always-on host (VM or PaaS dyno), HTTPS, WebSocket upgrades permitted. No redeploy needed to change quiz content — the QM uploads per room at runtime.
+- **Deployment.** The app: a single small always-on host (VM or PaaS dyno), HTTPS, WebSocket upgrades permitted. No redeploy needed to change quiz content — the QM uploads per room at runtime. The public landing page: static files on GitHub Pages, deployed by `.github/workflows/pages.yml` — deliberately a second host, so a first-time visitor never waits on the app's free-tier cold start. Same no-third-party rule as the app: it loads only its own files, and carries a verbatim copy of the app's colour token blocks (a test fails if they drift).
 
 ## 12. Locked decisions (do not revisit without a spec change)
 
@@ -436,6 +437,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **Buzz averages divide by the player's own buzz count**, never by the number of questions.
 - **The buzz table is keyed to buzz identity, never the roster.** Scoring and buzzing are separate identity tracks (§5) and this table belongs to the buzzing one. Keying it to the roster silently produced an empty table for the common flow where the QM starts the quiz first, players join by code afterwards, and the QM then adds matching scorecard rows by hand — every human has two `Player` records there, and the roster holds the one that cannot buzz.
 - **A re-scored question amends its original point on the chart**, shifting later points; it never appends a new one. The event log stays append-only (§5) and the chart reads the latest submit per question, plotted at that question's first-submit position.
+- **The landing page is static and separate from the app.** It hands off by URL only (`/play/<CODE>`, `POST /rooms`) — no API, no CORS, no shared state; the app keeps its own `/` join/host page for anyone who goes there directly.
 - **Theme is per-browser, never room state.** The server never sends or stores it; a QM-chosen look for the room is a separate future concern (presets, issue #9).
 - **No charting library.** The chart is hand-rolled SVG — same no-third-party-runtime rule as the vendored Socket.IO client.
 - **Socket.IO client is self-hosted, never CDN-loaded.** A DNS-level block of `cdn.socket.io` on one player's network silently killed their page mid-game (2026-08-23): `io` was undefined, the entry script threw before attaching any listener, and every button looked fine but did nothing.

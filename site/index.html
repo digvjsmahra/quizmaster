@@ -9,15 +9,38 @@
   <meta property="og:description" content="One quizmaster, everyone else buzzes from their phone — in the same room or over a video call.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="img/host-light.png">
-  <!-- Same dark/light switch as the app (static/js/theme.js), minus the
-       per-browser override: this page only follows the OS. Inline so it
-       runs before first paint. -->
+  <!-- Same dark/light switch as the app's static/js/theme.js: the OS
+       setting, unless the visitor picked Light or Dark in the header
+       (saved in this browser). Inline so it runs before first paint. -->
   <script>
     (function () {
+      var KEY = 'qb_theme';
       var m = window.matchMedia('(prefers-color-scheme: dark)');
-      function apply() { document.documentElement.dataset.theme = m.matches ? 'dark' : 'light'; }
+      function getOverride() {
+        try { var v = localStorage.getItem(KEY); return v === 'light' || v === 'dark' ? v : null; }
+        catch (e) { return null; }
+      }
+      // Screenshots come in light/dark pairs via <picture>; their dark
+      // <source> follows the picked theme, not just the OS.
+      function syncPictures(override) {
+        var media = override === 'dark' ? 'all' : override === 'light' ? 'not all' : '(prefers-color-scheme: dark)';
+        document.querySelectorAll('source[data-dark]').forEach(function (s) { s.media = media; });
+      }
+      function apply() {
+        var o = getOverride();
+        document.documentElement.dataset.theme = o || (m.matches ? 'dark' : 'light');
+        syncPictures(o);
+      }
       apply();
+      document.addEventListener('DOMContentLoaded', apply);
       m.addEventListener('change', apply);
+      window.qbTheme = {
+        get: getOverride,
+        set: function (v) {
+          try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {}
+          apply();
+        },
+      };
     })();
   </script>
   <link rel="stylesheet" href="styles.css">
@@ -26,7 +49,14 @@
 
 <header class="wrap site-header">
   <a class="wordmark" href="./">Quiz<span>Master</span></a>
-  <a class="header-link" href="#how">How it works</a>
+  <div class="header-actions">
+    <a class="header-link" href="#how">How it works</a>
+    <select id="theme-select" class="theme-select" aria-label="Theme">
+      <option value="">System theme</option>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </div>
 </header>
 
 <main>
@@ -65,11 +95,11 @@
   <div class="wrap">
     <figure class="showcase">
       <picture class="frame frame-wide">
-        <source srcset="img/host-dark.png" media="(prefers-color-scheme: dark)">
-        <img src="img/host-light.png" width="1800" height="843" alt="The quizmaster's control center: a 5-by-5 board of categories and point values, with scored tiles in green and red, a buzz queue and running totals">
+        <source srcset="img/host-dark.png" media="(prefers-color-scheme: dark)" data-dark>
+        <img src="img/host-light.png" width="2140" height="1058" alt="The quizmaster's control center: a 5-by-5 board of categories and point values, with scored tiles in green and red, a buzz queue and running totals">
       </picture>
       <picture class="frame frame-phone">
-        <source srcset="img/phone-dark.png" media="(prefers-color-scheme: dark)">
+        <source srcset="img/phone-dark.png" media="(prefers-color-scheme: dark)" data-dark>
         <img src="img/phone-light.png" width="732" height="1182" alt="A player's phone: a big red BUZZ button above the order players buzzed in">
       </picture>
     </figure>
@@ -102,21 +132,27 @@
     <p class="section-label">Two ways to play</p>
     <h2>In the same room, or miles apart</h2>
     <div class="ways">
-      <div class="card way">
+      <div class="way">
         <picture class="frame">
-          <source srcset="img/present-dark.png" media="(prefers-color-scheme: dark)">
-          <img src="img/present-light.png" width="1800" height="1012" alt="The presentation view: a question in large type, with running totals and the buzz queue beside it" loading="lazy">
+          <source srcset="img/present-dark.png" media="(prefers-color-scheme: dark)" data-dark>
+          <img src="img/present-light.png" width="1920" height="1080" alt="The presentation view: a question in large type, with running totals and the buzz queue beside it" loading="lazy">
         </picture>
-        <h3>Around one screen</h3>
-        <p>Put the presentation view on a TV or projector. Everyone watches the same board and buzzes from the phone in their hand.</p>
-      </div>
-      <div class="card way">
-        <div class="frame">
-          <img src="img/virtual-quiz-night.jpg" width="1600" height="1039" alt="A real QuizMaster game mid-board, screen-shared to friends on a Google Meet call" loading="lazy">
+        <div class="way-text">
+          <h3>Around one screen</h3>
+          <p>Put the presentation view on a TV or projector. Everyone watches the same board and buzzes from the phone in their hand.</p>
         </div>
-        <h3>Over a video call</h3>
-        <p>Screen-share the presentation view on Zoom or Google Meet. Players join from wherever they are and buzz from their own phones.</p>
-        <p class="caption">A real quiz night over Google Meet</p>
+      </div>
+      <div class="way way-flip">
+        <figure>
+          <div class="frame">
+            <img src="img/virtual-quiz-night.jpg" width="2000" height="1299" alt="A real QuizMaster game mid-board, screen-shared to friends on a Google Meet call" loading="lazy">
+          </div>
+          <figcaption class="caption">A real quiz night over Google Meet</figcaption>
+        </figure>
+        <div class="way-text">
+          <h3>Over a video call</h3>
+          <p>Screen-share the presentation view on Zoom or Google Meet. Players join from wherever they are and buzz from their own phones.</p>
+        </div>
       </div>
     </div>
 

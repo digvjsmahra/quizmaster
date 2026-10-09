@@ -188,7 +188,7 @@ body {
 img { display: block; max-width: 100%; height: auto; }
 a { color: var(--color-primary); }
 
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
 @media (min-width: 700px) { .wrap { padding: 0 32px; } }
 
 /* ---- Header ---- */
@@ -198,8 +198,16 @@ a { color: var(--color-primary); }
 }
 .wordmark { font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: var(--color-text); text-decoration: none; }
 .wordmark span { color: var(--color-primary); }
-.header-link { font-size: 14px; font-weight: 600; text-decoration: none; }
+.header-link { font-size: 14px; font-weight: 500; text-decoration: none; }
 .header-link:hover { text-decoration: underline; }
+.header-actions { display: flex; align-items: center; gap: 16px; }
+/* The app's control-center theme picker (.theme-select in static/css/styles.css) */
+.theme-select {
+  padding: 6px 8px; font: inherit; font-size: 13px;
+  color: var(--color-text-secondary); background: var(--color-surface);
+  border: 1.5px solid var(--color-border-input); border-radius: var(--radius-sm);
+  cursor: pointer;
+}
 
 /* ---- Hero ---- */
 .hero {
@@ -211,13 +219,13 @@ a { color: var(--color-primary); }
 }
 .hero h1 {
   font-size: clamp(32px, 5vw, 52px); line-height: 1.08; letter-spacing: -.025em;
-  margin: 0 0 18px; font-weight: 800;
+  margin: 0 0 18px; font-weight: 700;
 }
-.hero h1 em { font-style: normal; color: var(--color-primary); }
+.hero h1 em { font-style: normal; color: var(--color-primary); white-space: nowrap; }
 .hero-lede { font-size: 18px; color: var(--color-text-secondary); margin: 0 0 20px; max-width: 34em; }
 .hero-points { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .hero-points li {
-  font-size: 13px; font-weight: 600; color: var(--color-text-secondary);
+  font-size: 13px; font-weight: 500; color: var(--color-text-secondary);
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: var(--radius-pill); padding: 4px 12px;
 }
@@ -230,7 +238,7 @@ a { color: var(--color-primary); }
   box-shadow: var(--shadow-card-strong);
   border: 1px solid var(--color-border-subtle);
 }
-.join-card h2 { font-size: 17px; margin: 0 0 16px; }
+.join-card h2 { font-size: 17px; font-weight: 600; margin: 0 0 16px; }
 .otp-label { font-size: 12px; color: var(--color-text-muted); font-weight: 500; display: block; margin: 0 0 6px; }
 .otp-boxes { display: flex; gap: 8px; margin-bottom: 16px; }
 .otp-box {
@@ -277,22 +285,22 @@ a { color: var(--color-primary); }
   .showcase .frame-wide { width: 100%; }
   .showcase .frame-phone { position: static; width: 62%; margin: -48px auto 0; border-width: 5px; }
 }
-.caption { font-size: 13px; color: var(--color-text-muted); margin: 10px 0 0; }
+.caption, .card .caption { font-size: 13px; color: var(--color-text-muted); margin: 10px 0 0; }
 
 /* ---- Sections ---- */
 .section { padding-top: 40px; padding-bottom: 40px; }
 @media (min-width: 900px) { .section { padding-top: 56px; padding-bottom: 56px; } }
 .section-label {
-  font-size: 12px; color: var(--color-text-faint); font-weight: 600;
+  font-size: 12px; color: var(--color-text-faint); font-weight: 500;
   text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px;
 }
-.section h2 { font-size: clamp(24px, 3.2vw, 34px); letter-spacing: -.02em; line-height: 1.15; margin: 0 0 28px; }
+.section h2 { font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 28px; }
 
 .card {
   background: var(--color-surface); border-radius: var(--radius-lg);
   padding: 22px; box-shadow: var(--shadow-card); border: 1px solid var(--color-border-subtle);
 }
-.card h3 { font-size: 17px; margin: 0 0 6px; }
+.card h3 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
 .card p { margin: 0; color: var(--color-text-secondary); font-size: 15px; }
 .card p + p { margin-top: 10px; }
 
@@ -301,29 +309,39 @@ a { color: var(--color-primary); }
 .step-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 30px; border-radius: 50%; margin-bottom: 14px;
-  background: var(--color-primary-light); color: var(--color-primary); font-weight: 800; font-size: 14px;
+  background: var(--color-primary-light); color: var(--color-primary); font-weight: 600; font-size: 14px;
 }
 
-.ways { display: grid; gap: 20px; }
-@media (min-width: 900px) { .ways { grid-template-columns: 1fr 1fr; } }
-.way .frame { margin-bottom: 18px; box-shadow: none; }
+/* Two ways to play: alternating image + text rows, so each image gets
+   most of the page width and its content stays readable. */
+.ways { display: grid; gap: 40px; }
+.way { display: grid; gap: 18px; align-items: center; }
+.way figure { margin: 0; }
+.way-text h3 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 8px; }
+.way-text p { margin: 0; font-size: 17px; color: var(--color-text-secondary); max-width: 30em; }
+@media (min-width: 900px) {
+  .ways { gap: 64px; }
+  .way { grid-template-columns: 3fr 2fr; gap: 48px; }
+  .way-flip { grid-template-columns: 2fr 3fr; }
+  .way-flip > figure { order: 2; }
+}
 
 .needs { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 10px; }
 @media (min-width: 700px) { .needs { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1000px) { .needs { grid-template-columns: repeat(4, 1fr); } }
 .needs li {
-  font-size: 15px; color: var(--color-text-secondary);
+  font-size: 15px; color: var(--color-text-muted);
   background: var(--color-bg-subtle); border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md); padding: 12px 14px;
 }
-.needs strong { display: block; color: var(--color-text); }
+.needs strong { display: block; font-weight: 500; color: var(--color-text); }
 
 /* ---- FAQ: native disclosure, same chevron idiom as the app's "Format details" ---- */
 .faq { max-width: 760px; }
 .faq details { border-bottom: 1px solid var(--color-border); }
 .faq summary {
   list-style: none; cursor: pointer; padding: 16px 0;
-  font-weight: 600; display: flex; justify-content: space-between; gap: 16px;
+  font-weight: 500; display: flex; justify-content: space-between; gap: 16px;
 }
 .faq summary::-webkit-details-marker { display: none; }
 .faq summary::after { content: "›"; color: var(--color-primary); transition: transform .15s; }

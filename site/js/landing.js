@@ -5,6 +5,12 @@
   // here hands off to the app by URL; the page owns no game state.
   const APP_URL = 'https://quizmaster.digvijaymahra.com';
 
+  // Theme picker: System theme (the default) / Light / Dark. The switching
+  // itself is the inline script in index.html's <head>.
+  const themeSelect = document.getElementById('theme-select');
+  themeSelect.value = window.qbTheme.get() || '';
+  themeSelect.addEventListener('change', () => window.qbTheme.set(themeSelect.value || null));
+
   // Host: a plain cross-origin form POST to the app's /rooms, which
   // redirects to a fresh control center — the same request the app's own
   // "Host a new game" button makes.

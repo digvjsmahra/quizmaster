@@ -24,11 +24,11 @@ body:
   - type: dropdown
     id: size
     attributes:
-      label: Size
-      description: Rough effort estimate, used to sequence solo/intermittent work.
+      label: Size (optional)
+      description: "Rough effort estimate, used to sequence the work. Not sure? Leave it blank — the maintainer will set it."
       options:
         - "size:S — ~1 session"
         - "size:M — ~2-3 sessions"
         - "size:L — multi-session, own spec delta"
     validations:
-      required: true
+      required: false

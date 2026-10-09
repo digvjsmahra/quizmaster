@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QM control center</title>
+  <script src="/static/js/theme.js?v={{ asset_version }}"></script>
   <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_version }}">
 </head>
 <body>
@@ -18,6 +19,11 @@
     <div class="host-header-actions">
       <a href="/present/{{ join_code }}/{{ host_token }}" target="_blank" rel="noopener" class="present-link">🖥 Open presentation view →</a>
       <a href="/summary/{{ join_code }}/{{ host_token }}" target="_blank" rel="noopener" class="present-link">📊 Open summary →</a>
+      <select id="theme-select" class="theme-select" aria-label="Theme">
+        <option value="">System theme</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
       <span id="reconnect-badge" class="phase-badge offline hidden">⚠ Reconnecting…</span>
       <span id="phase-badge" class="phase-badge lobby">⏱ Lobby</span>
     </div>

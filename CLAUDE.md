@@ -46,6 +46,8 @@ templates/
   summary.html    # read-only summary view (SPEC.md §8) — standings + buzzer stats, no interaction
 static/
   js/socket.io.min.js  # vendored Socket.IO 4.7.5 client (see "Vendored Socket.IO client" below)
+  js/theme.js     # loaded sync in every <head>: stamps <html data-theme> from the qb_theme
+                  #   override or the OS setting; window.qbTheme for the host's theme picker
   js/create.js    # OTP input logic, code validation, redirect
   js/player.js    # rejoin_token persisted to localStorage; connect handler prefers silent rejoin over name entry (SPEC.md §10)
   js/media.js     # shared between host.js/present.js: mediaImagesHtml() — the one identical sliver of question rendering
@@ -53,7 +55,8 @@ static/
   js/present.js   # pure rendering — state:presentation + state:queue, no emits beyond present:join
   js/summary.js   # pure rendering — state:summary only, no emits beyond summary:join;
                   #   includes the hand-rolled SVG chart (no charting library — see SPEC.md §8)
-  css/styles.css  # :root token block (colors/radii/shadows) + all page styles
+  css/styles.css  # light :root + dark [data-theme="dark"] token blocks (colors/radii/shadows/
+                  #   chart/buzzer) + all page styles
 requirements.txt
 ```
 
@@ -103,6 +106,7 @@ pytest
 - No reconnection identity matching *between devices*. Roster entries are always durable. On the *same* device, a buzz identity now persists across reconnects via a rejoin token (SPEC.md §10) — only a token-less device (first join, a different device, cleared storage) gets a fresh, disposable buzz identity.
 - Player UI is one page — buzzer view contains the queue list and sections inline; no separate route or view for queue position.
 - Responsive layout for phones; no design polish.
+- **No raw colour values outside the two token blocks** at the top of `styles.css` (light `:root`, dark `:root[data-theme="dark"]`) — component CSS and JS reference `var(--…)` only, so every colour has a dark value. A new token needs both. SVG marks set colour via `style="…var()"`, never a presentation attribute (those don't resolve `var()`).
 - **UI copy is sentence case** — capitalise the first word and proper nouns only, for every kind of copy: headings, card labels, buttons, badges, captions, empty states, errors — including error and validation messages the server sends for the UI to display. Not Title Case ("Join room", not "Join Room") and not all-lowercase ("Freeze", not "freeze"). Two exceptions: the player's "BUZZ" button, a display element rather than a label, and the landing page's lowercase "or" divider between joining and hosting, a separator rather than copy. A leading icon or symbol doesn't change this ("⏱ Lobby", "✓ Close question"). An identifier keeps its own case even as the first word — a bundle column or filename stays as the QM typed it ("Row 3: board is required", "quiz.xlsx has no header row"). Card labels are written in sentence case and uppercased by CSS (`.card-label`), so don't type them in caps.
 - **Trailing period only when the copy has more than one sentence.** "No buzzes yet" — no period; "No room found with that code. Ask your host for the latest code." — periods. A list keeps one style throughout: if any item needs periods, every item gets them.
 - Fail loudly on a malformed upload: every row's errors surface together in one pass, not just the first.

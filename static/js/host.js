@@ -595,6 +595,14 @@
     });
   });
 
+  // Theme override for this browser (theme.js) — also repaints this
+  // browser's presentation/summary windows, so the screen-share never
+  // needs a toggle of its own.
+  el('theme-select').value = window.qbTheme.get() || '';
+  el('theme-select').addEventListener('change', e => {
+    window.qbTheme.set(e.target.value || null);
+  });
+
   // Start quiz. Always clickable (never a silently-disabled dead end,
   // same lesson as the upload button below) — clicking with no content
   // uploaded yet shows a message immediately instead of doing nothing.

@@ -8,6 +8,8 @@
 /* Design tokens                                                       */
 /* ------------------------------------------------------------------ */
 :root {
+  color-scheme: light;
+
   /* Brand */
   --color-primary: #6366f1;
   --color-primary-hover: #4f46e5;
@@ -57,6 +59,113 @@
   /* Shadows */
   --shadow-card: 0 1px 3px rgba(0,0,0,.06);
   --shadow-card-strong: 0 1px 4px rgba(0,0,0,.08);
+
+  /* Overlay behind the board modal */
+  --color-backdrop: rgba(17,17,17,.55);
+
+  /* Summary chart. Series hues are the validated 8-slot categorical order
+     (see summary.js); chrome stays recessive behind them. */
+  --chart-grid: #e1e0d9;
+  --chart-grid-zero: #c3c2b7;
+  --chart-ink-muted: #898781;
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-series-3: #1baf7a;
+  --chart-series-4: #eda100;
+  --chart-series-5: #e87ba4;
+  --chart-series-6: #008300;
+  --chart-series-7: #4a3aa7;
+  --chart-series-8: #e34948;
+
+  /* BUZZ button — a physical arcade button, not themed chrome: the dark
+     block below deliberately leaves these alone. */
+  --buzzer-face: radial-gradient(circle at 38% 32%, #ff6b6b 0%, #dc2626 45%, #7f1d1d 100%);
+  --buzzer-face-hover: radial-gradient(circle at 38% 32%, #ff8080 0%, #ef4444 45%, #991b1b 100%);
+  --buzzer-face-disabled: radial-gradient(circle at 38% 32%, #d1d5db 0%, #9ca3af 45%, #6b7280 100%);
+  --buzzer-edge: #450a0a;
+  --buzzer-edge-disabled: #374151;
+  --buzzer-text: #fff;
+  --buzzer-text-disabled: #e5e7eb;
+  --buzzer-shadow:
+    0 8px 0 var(--buzzer-edge),
+    0 12px 24px rgba(0,0,0,.45),
+    inset 0 -4px 8px rgba(0,0,0,.3),
+    inset 0 4px 12px rgba(255,255,255,.18);
+  --buzzer-shadow-pressed:
+    0 2px 0 var(--buzzer-edge),
+    0 4px 10px rgba(0,0,0,.35),
+    inset 0 -2px 4px rgba(0,0,0,.3),
+    inset 0 2px 8px rgba(255,255,255,.12);
+  --buzzer-shadow-disabled:
+    0 8px 0 var(--buzzer-edge-disabled),
+    0 12px 24px rgba(0,0,0,.3),
+    inset 0 -4px 8px rgba(0,0,0,.2);
+}
+
+/* Dark values — stamped by theme.js (OS setting, or the control center's
+   per-browser override). Chosen as a set, not inverted from light: tinted
+   semantic fills become dark tints with light ink so each pair keeps its
+   contrast. The chart series are the same eight hues stepped for the dark
+   surface and re-validated against it, never auto-flipped. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Brand — lifted a step to read on dark; ink on it flips to dark */
+  --color-primary: #818cf8;
+  --color-primary-hover: #a5b4fc;
+  --color-primary-disabled: #545a9e;
+  --color-primary-light: #25264a;
+  --color-primary-focus-ring: rgba(129,140,248,.25);
+
+  /* Surfaces */
+  --color-bg: #121211;
+  --color-surface: #1c1c1b;
+  --color-text-on-primary: #11112a;
+
+  /* Borders / fills */
+  --color-border: #343432;
+  --color-border-subtle: #282826;
+  --color-border-input: #4a4a47;
+  --color-bg-subtle: #222220;
+
+  /* Text */
+  --color-text: #f2f2f0;
+  --color-text-secondary: #d6d6d1;
+  --color-text-muted: #a3a29c;
+  --color-text-faint: #7d7c76;
+
+  /* Semantic */
+  --color-success-bg: #133122;
+  --color-success-border: #1f6b3e;
+  --color-success-text: #86efac;
+  --color-success-strong-bg: #0f3a2b;
+  --color-success-strong-text: #34d399;
+  --color-danger: #f87171;
+  --color-danger-bg: #3b1717;
+  --color-danger-border: #7f2d2d;
+  --color-warning-bg: #3a2b0d;
+  --color-warning-border: #6e5214;
+  --color-warning-text: #fcd34d;
+  --color-info-bg: #172554;
+  --color-info-text: #93c5fd;
+
+  /* Shadows — light-mode shadows vanish on a dark page */
+  --shadow-card: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-card-strong: 0 1px 4px rgba(0,0,0,.5);
+
+  --color-backdrop: rgba(0,0,0,.65);
+
+  --chart-grid: #2e2e2c;
+  --chart-grid-zero: #4a4a47;
+  --chart-ink-muted: #8f8e88;
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+  --chart-series-3: #199e70;
+  --chart-series-4: #c98500;
+  --chart-series-5: #d55181;
+  --chart-series-6: #008300;
+  --chart-series-7: #9085e9;
+  --chart-series-8: #e66767;
 }
 
 /* ------------------------------------------------------------------ */
@@ -69,6 +178,14 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Form controls take the page's tokens, not the browser's own dark-mode
+   control colours (color-scheme: dark otherwise greys them out). Class
+   rules below still override this. */
+input, select, textarea {
+  background: var(--color-surface);
   color: var(--color-text);
 }
 
@@ -242,15 +359,11 @@ html.qb-resuming #view-join { display: none; }
   width: 200px;
   height: 200px;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #ff6b6b 0%, #dc2626 45%, #7f1d1d 100%);
-  color: #fff;
+  background: var(--buzzer-face);
+  color: var(--buzzer-text);
   border: none;
-  border-bottom: 8px solid #450a0a;
-  box-shadow:
-    0 8px 0 #450a0a,
-    0 12px 24px rgba(0,0,0,.45),
-    inset 0 -4px 8px rgba(0,0,0,.3),
-    inset 0 4px 12px rgba(255,255,255,.18);
+  border-bottom: 8px solid var(--buzzer-edge);
+  box-shadow: var(--buzzer-shadow);
   font-size: 26px;
   font-weight: 800;
   letter-spacing: .06em;
@@ -259,26 +372,19 @@ html.qb-resuming #view-join { display: none; }
   margin: 16px auto;
 }
 .buzz-btn:hover:not(:disabled) {
-  background: radial-gradient(circle at 38% 32%, #ff8080 0%, #ef4444 45%, #991b1b 100%);
+  background: var(--buzzer-face-hover);
 }
 .buzz-btn:active:not(:disabled) {
   transform: translateY(6px);
   border-bottom-width: 2px;
-  box-shadow:
-    0 2px 0 #450a0a,
-    0 4px 10px rgba(0,0,0,.35),
-    inset 0 -2px 4px rgba(0,0,0,.3),
-    inset 0 2px 8px rgba(255,255,255,.12);
+  box-shadow: var(--buzzer-shadow-pressed);
 }
 .buzz-btn:disabled {
-  background: radial-gradient(circle at 38% 32%, #d1d5db 0%, #9ca3af 45%, #6b7280 100%);
-  border-bottom-color: #374151;
-  box-shadow:
-    0 8px 0 #374151,
-    0 12px 24px rgba(0,0,0,.3),
-    inset 0 -4px 8px rgba(0,0,0,.2);
+  background: var(--buzzer-face-disabled);
+  border-bottom-color: var(--buzzer-edge-disabled);
+  box-shadow: var(--buzzer-shadow-disabled);
   cursor: not-allowed;
-  color: #e5e7eb;
+  color: var(--buzzer-text-disabled);
 }
 
 .frozen-label {
@@ -368,6 +474,17 @@ html.qb-resuming #view-join { display: none; }
   white-space: nowrap;
 }
 .present-link:hover { background: var(--color-primary-light); }
+
+.theme-select {
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
 
 .phase-badge {
   font-size: 12px;
@@ -735,7 +852,7 @@ button.present-link:disabled { opacity: .6; cursor: default; }
      (~510-530px) plus a few scoring rows; a large roster still falls
      back to .board-modal's own internal scroll, by design. */
   min-height: 640px;
-  background: rgba(17, 17, 17, .55);
+  background: var(--color-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1319,12 +1436,12 @@ button.present-link:disabled { opacity: .6; cursor: default; }
 .chart-wrap { position: relative; }
 .chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
 
-.chart-grid { stroke: #e1e0d9; stroke-width: 1; }
-.chart-grid-zero { stroke: #c3c2b7; }
-.chart-tick { fill: #898781; font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
+.chart-grid-zero { stroke: var(--chart-grid-zero); }
+.chart-tick { fill: var(--chart-ink-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .chart-tick-y { text-anchor: end; dominant-baseline: middle; }
 .chart-tick-x { text-anchor: middle; }
-.chart-axis-title { fill: #898781; font-size: 11px; text-anchor: middle; }
+.chart-axis-title { fill: var(--chart-ink-muted); font-size: 11px; text-anchor: middle; }
 
 .chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 /* A 2px surface ring keeps overlapping points readable where lines cross. */

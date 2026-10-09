@@ -89,12 +89,14 @@
   // white card, so identity never rests on colour: every line is directly
   // labelled, the legend is always present, and the same numbers are one
   // click away as a table.
+  //
+  // The hues live in styles.css (--chart-series-1..8), with their own dark
+  // steps; marks reference them via style="…var()", never a presentation
+  // attribute (those don't resolve var()), so a theme change repaints the
+  // chart without a re-render.
   // ----------------------------------------------------------------
 
-  const SERIES_COLORS = [
-    '#2a78d6', '#eb6834', '#1baf7a', '#eda100',
-    '#e87ba4', '#008300', '#4a3aa7', '#e34948',
-  ];
+  const SERIES_COUNT = 8;
 
   const CHART = {
     w: 820, h: 360,
@@ -103,8 +105,8 @@
 
   function seriesStyle(i) {
     return {
-      color: SERIES_COLORS[i % SERIES_COLORS.length],
-      dash: i >= SERIES_COLORS.length ? '7 4' : null,
+      color: `var(--chart-series-${i % SERIES_COUNT + 1})`,
+      dash: i >= SERIES_COUNT ? '7 4' : null,
     };
   }
 
@@ -177,10 +179,10 @@
     series.forEach((s, i) => {
       const st = seriesStyle(i);
       const d = s.points.map((v, x) => `${x === 0 ? 'M' : 'L'}${xAt(x).toFixed(1)},${yAt(v).toFixed(1)}`).join(' ');
-      parts.push(`<path class="chart-line" d="${d}" stroke="${st.color}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}/>`);
+      parts.push(`<path class="chart-line" d="${d}" style="stroke:${st.color}"${st.dash ? ` stroke-dasharray="${st.dash}"` : ''}/>`);
       if (showDots) {
         s.points.forEach((v, x) => {
-          parts.push(`<circle class="chart-dot" cx="${xAt(x).toFixed(1)}" cy="${yAt(v).toFixed(1)}" r="4" fill="${st.color}"/>`);
+          parts.push(`<circle class="chart-dot" cx="${xAt(x).toFixed(1)}" cy="${yAt(v).toFixed(1)}" r="4" style="fill:${st.color}"/>`);
         });
       }
     });
@@ -198,7 +200,7 @@
     ends.forEach(e => {
       const st = seriesStyle(e.i);
       const x = CHART.left + plotW + 10;
-      parts.push(`<rect class="chart-chip" x="${x}" y="${e.y - 4}" width="8" height="8" rx="2" fill="${st.color}"/>`);
+      parts.push(`<rect class="chart-chip" x="${x}" y="${e.y - 4}" width="8" height="8" rx="2" style="fill:${st.color}"/>`);
       parts.push(`<text class="chart-end-label" x="${x + 13}" y="${e.y}">${esc(e.name)} <tspan class="chart-end-value">${fmt(e.value)}</tspan></text>`);
     });
 

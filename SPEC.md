@@ -33,6 +33,7 @@ Scoring is **host-driven, split-value**: for each question the QM enters per-pla
 - Host can add a player to the roster after Start, and remove a lobby entry (pre-Start) or a roster member (post-Start, discarding their scores).
 - **Persistent player identity**: a rejoin token lets a device silently resume its buzz identity across reconnects.
 - In-memory state only; mobile-responsive player UI.
+- **Light and dark appearance** on every page. A page follows the device's OS setting; the control center's header has a theme picker (System theme / Light / Dark) that overrides it for that browser — including that browser's presentation and summary windows, which follow the change live, so the screen-share never shows a toggle of its own. Per-browser (`localStorage` `qb_theme`), never room state. The player's BUZZ button looks the same in both.
 - Public deployment as a single always-on host.
 
 ### Out of scope
@@ -285,7 +286,9 @@ is linked from a player-reachable page.
   (§11): every asset a page needs is served from our own origin. It ships a hover crosshair with
   a per-question tooltip, an always-present legend, direct end-of-line labels, and a
   "Show as table" view of the same numbers — three of the eight categorical hues fall below 3:1
-  against the card surface, so identity never rests on colour alone.
+  against the card surface, so identity never rests on colour alone. In dark mode the series use
+  the same eight hues stepped for the dark surface, validated against it as a set (never the
+  light hues auto-flipped).
 - Shows **buzzer stats** — per player: buzz count against the number of closed questions,
   average and median time-to-buzz, and average queue position. Every average divides by that
   player's *own* buzzes, never by the question count, so a player who buzzed three times and
@@ -433,6 +436,7 @@ No cross-device identity — a token lives in one browser's `localStorage`; join
 - **Buzz averages divide by the player's own buzz count**, never by the number of questions.
 - **The buzz table is keyed to buzz identity, never the roster.** Scoring and buzzing are separate identity tracks (§5) and this table belongs to the buzzing one. Keying it to the roster silently produced an empty table for the common flow where the QM starts the quiz first, players join by code afterwards, and the QM then adds matching scorecard rows by hand — every human has two `Player` records there, and the roster holds the one that cannot buzz.
 - **A re-scored question amends its original point on the chart**, shifting later points; it never appends a new one. The event log stays append-only (§5) and the chart reads the latest submit per question, plotted at that question's first-submit position.
+- **Theme is per-browser, never room state.** The server never sends or stores it; a QM-chosen look for the room is a separate future concern (presets, issue #9).
 - **No charting library.** The chart is hand-rolled SVG — same no-third-party-runtime rule as the vendored Socket.IO client.
 - **Socket.IO client is self-hosted, never CDN-loaded.** A DNS-level block of `cdn.socket.io` on one player's network silently killed their page mid-game (2026-08-23): `io` was undefined, the entry script threw before attaching any listener, and every button looked fine but did nothing.
 

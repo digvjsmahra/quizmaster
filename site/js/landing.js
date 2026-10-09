@@ -3,7 +3,7 @@
 
   // The game app's address — the ONLY place this page names it. Everything
   // here hands off to the app by URL; the page owns no game state.
-  const APP_URL = 'https://quizmaster.digvijaymahra.com';
+  const APP_URL = 'https://play.quizmaster.digvijaymahra.com';
 
   // Theme toggle — the same sun/moon button as the app's (static/js/theme.js
   // mountToggle). The switching itself is the inline script in <head>.

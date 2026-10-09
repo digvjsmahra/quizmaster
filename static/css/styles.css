@@ -219,6 +219,10 @@ html.qb-resuming #view-join { display: none; }
 }
 
 .player-card h1 { font-size: 20px; margin: 0 0 24px; }
+/* Same wordmark as the public landing page (site/): "Quiz" in ink,
+   "Master" in the primary colour. */
+.wordmark { font-weight: 800; letter-spacing: -.01em; }
+.wordmark span { color: var(--color-primary); }
 
 .player-card input[type="text"]:not(.otp-box) {
   width: 100%;

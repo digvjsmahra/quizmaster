@@ -5,11 +5,23 @@
   // here hands off to the app by URL; the page owns no game state.
   const APP_URL = 'https://quizmaster.digvijaymahra.com';
 
-  // Theme picker: System theme (the default) / Light / Dark. The switching
-  // itself is the inline script in index.html's <head>.
-  const themeSelect = document.getElementById('theme-select');
-  themeSelect.value = window.qbTheme.get() || '';
-  themeSelect.addEventListener('change', () => window.qbTheme.set(themeSelect.value || null));
+  // Theme toggle — the same sun/moon button as the app's (static/js/theme.js
+  // mountToggle). The switching itself is the inline script in <head>.
+  const THEME_ICONS = {
+    light: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+    dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  };
+  const themeBtn = document.getElementById('theme-toggle');
+  function renderThemeToggle() {
+    const current = document.documentElement.dataset.theme;
+    const other = current === 'dark' ? 'light' : 'dark';
+    themeBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${THEME_ICONS[current]}</svg>`;
+    themeBtn.setAttribute('aria-label', `Switch to ${other} theme`);
+    themeBtn.title = `Switch to ${other} theme`;
+  }
+  themeBtn.addEventListener('click', () => window.qbTheme.toggle());
+  document.addEventListener('qbthemechange', renderThemeToggle);
+  renderThemeToggle();
 
   // Host: a plain cross-origin form POST to the app's /rooms, which
   // redirects to a fresh control center — the same request the app's own

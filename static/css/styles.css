@@ -479,15 +479,17 @@ html.qb-resuming #view-join { display: none; }
 }
 .present-link:hover { background: var(--color-primary-light); }
 
-.theme-select {
-  padding: 6px 8px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border-input);
-  border-radius: var(--radius-sm);
+/* Theme toggle — one icon button, sun (light) or moon (dark) */
+.theme-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
+  color: var(--color-text-secondary); background: var(--color-surface);
+  border: 1.5px solid var(--color-border-input); border-radius: var(--radius-sm);
   cursor: pointer;
+}
+.theme-btn:hover { color: var(--color-text); background: var(--color-bg-subtle); }
+.theme-btn:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px var(--color-primary-focus-ring); border-color: var(--color-primary);
 }
 
 .phase-badge {

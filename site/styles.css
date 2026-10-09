@@ -201,12 +201,18 @@ a { color: var(--color-primary); }
 .header-link { font-size: 14px; font-weight: 500; text-decoration: none; }
 .header-link:hover { text-decoration: underline; }
 .header-actions { display: flex; align-items: center; gap: 16px; }
-/* The app's control-center theme picker (.theme-select in static/css/styles.css) */
-.theme-select {
-  padding: 6px 8px; font: inherit; font-size: 13px;
+
+/* Theme toggle — same as the app's — one icon button, sun (light) or moon (dark) */
+.theme-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
   color: var(--color-text-secondary); background: var(--color-surface);
   border: 1.5px solid var(--color-border-input); border-radius: var(--radius-sm);
   cursor: pointer;
+}
+.theme-btn:hover { color: var(--color-text); background: var(--color-bg-subtle); }
+.theme-btn:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px var(--color-primary-focus-ring); border-color: var(--color-primary);
 }
 
 /* ---- Hero ---- */

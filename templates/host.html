@@ -19,11 +19,7 @@
     <div class="host-header-actions">
       <a href="/present/{{ join_code }}/{{ host_token }}" target="_blank" rel="noopener" class="present-link">🖥 Open presentation view →</a>
       <a href="/summary/{{ join_code }}/{{ host_token }}" target="_blank" rel="noopener" class="present-link">📊 Open summary →</a>
-      <select id="theme-select" class="theme-select" aria-label="Theme">
-        <option value="">System theme</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
+      <button type="button" class="theme-btn" id="theme-toggle"></button>
       <span id="reconnect-badge" class="phase-badge offline hidden">⚠ Reconnecting…</span>
       <span id="phase-badge" class="phase-badge lobby">⏱ Lobby</span>
     </div>

@@ -47,7 +47,7 @@ templates/
 static/
   js/socket.io.min.js  # vendored Socket.IO 4.7.5 client (see "Vendored Socket.IO client" below)
   js/theme.js     # loaded sync in every <head>: stamps <html data-theme> from the qb_theme
-                  #   override or the OS setting; window.qbTheme for the host's theme picker
+                  #   override or the OS setting; window.qbTheme (incl. mountToggle, the header sun/moon toggle)
   js/create.js    # OTP input logic, code validation, redirect
   js/player.js    # rejoin_token persisted to localStorage; connect handler prefers silent rejoin over name entry (SPEC.md §10)
   js/media.js     # shared between host.js/present.js: mediaImagesHtml() — the one identical sliver of question rendering

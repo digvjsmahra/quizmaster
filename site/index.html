@@ -10,7 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="img/host-light.png">
   <!-- Same dark/light switch as the app's static/js/theme.js: the OS
-       setting, unless the visitor picked Light or Dark in the header
+       setting, unless the visitor flipped the header toggle away from it
        (saved in this browser). Inline so it runs before first paint. -->
   <script>
     (function () {
@@ -20,24 +20,27 @@
         try { var v = localStorage.getItem(KEY); return v === 'light' || v === 'dark' ? v : null; }
         catch (e) { return null; }
       }
+      function systemTheme() { return m.matches ? 'dark' : 'light'; }
       // Screenshots come in light/dark pairs via <picture>; their dark
-      // <source> follows the picked theme, not just the OS.
-      function syncPictures(override) {
-        var media = override === 'dark' ? 'all' : override === 'light' ? 'not all' : '(prefers-color-scheme: dark)';
-        document.querySelectorAll('source[data-dark]').forEach(function (s) { s.media = media; });
+      // <source> follows the toggle, not just the OS.
+      function syncPictures(theme) {
+        document.querySelectorAll('source[data-dark]').forEach(function (s) { s.media = theme === 'dark' ? 'all' : 'not all'; });
       }
       function apply() {
-        var o = getOverride();
-        document.documentElement.dataset.theme = o || (m.matches ? 'dark' : 'light');
-        syncPictures(o);
+        var theme = getOverride() || systemTheme();
+        document.documentElement.dataset.theme = theme;
+        syncPictures(theme);
+        document.dispatchEvent(new Event('qbthemechange'));
       }
       apply();
       document.addEventListener('DOMContentLoaded', apply);
       m.addEventListener('change', apply);
       window.qbTheme = {
-        get: getOverride,
-        set: function (v) {
-          try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {}
+        // Flip light <-> dark; landing back on the OS's own theme clears the
+        // override, so the page follows the OS again.
+        toggle: function () {
+          var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          try { if (next === systemTheme()) localStorage.removeItem(KEY); else localStorage.setItem(KEY, next); } catch (e) {}
           apply();
         },
       };
@@ -51,11 +54,7 @@
   <a class="wordmark" href="./">Quiz<span>Master</span></a>
   <div class="header-actions">
     <a class="header-link" href="#how">How it works</a>
-    <select id="theme-select" class="theme-select" aria-label="Theme">
-      <option value="">System theme</option>
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-    </select>
+    <button type="button" class="theme-btn" id="theme-toggle"></button>
   </div>
 </header>
 

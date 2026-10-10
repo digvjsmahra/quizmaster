@@ -59,16 +59,20 @@
     updateBoardAreaVisibility();
   }
 
-  // One layout for both phases: .lobby-only cards (upload, Start, share,
+  // One layout for both phases: .lobby-only cards (upload, share,
   // players) give way to .live-only ones (queue, totals, add-player) in
-  // the same columns. The lobby sidebar is sticky, so the joined count
-  // stays in view down at the Start button.
+  // the same columns; the lobby's step rail and start bar go too. The
+  // lobby sidebar is sticky, so the joined count stays in view while the
+  // QM scrolls the board.
   function applyPhaseVisibility() {
     const live = state.phase === 'live';
     el('view-main').classList.remove('hidden');
     document.querySelectorAll('.lobby-only').forEach(n => n.classList.toggle('hidden', live));
     document.querySelectorAll('.live-only').forEach(n => n.classList.toggle('hidden', !live));
     el('sidebar').classList.toggle('lobby', !live);
+    // The lobby is a narrower page than the live board (styles.css
+    // .live-body.lobby); the step rail and start bar are .lobby-only.
+    el('view-main').classList.toggle('lobby', !live);
   }
 
   // The board is visible whenever one has been uploaded, independent of
@@ -91,8 +95,41 @@
     // either way (see its click handler) — only muted.
     el('upload-card').classList.toggle('no-board', !hasBoard);
     el('upload-btn').classList.toggle('is-primary', !hasBoard);
+    // Mid-upload the button says "Uploading…"; uploadBundle() puts the
+    // right label back when it finishes.
+    if (!el('upload-btn').disabled) el('upload-btn').textContent = uploadBtnLabel();
     el('start-btn').classList.toggle('is-muted', !hasBoard);
     updateStartHint();
+    updateStepRail(hasBoard);
+    el('start-bar-info').textContent = hasBoard ? quizCountsText() : '';
+  }
+
+  // A second upload replaces the loaded quiz, so the button says so.
+  function uploadBtnLabel() {
+    return state.boards && state.boards.length > 0 ? 'Replace quiz' : '📁 Upload .zip';
+  }
+
+  // Lobby step rail. Checking the board is optional, so step 2 is never
+  // "done": once a board is loaded it is the current step and Start is
+  // simply ready.
+  function updateStepRail(hasBoard) {
+    const states = hasBoard ? ['done', 'current', 'ready'] : ['current', 'upcoming', 'upcoming'];
+    el('step-rail').querySelectorAll('.step').forEach((step, i) => {
+      step.className = `step is-${states[i]}`;
+      if (states[i] === 'current') step.setAttribute('aria-current', 'step');
+      else step.removeAttribute('aria-current');
+      step.querySelector('.step-num').textContent = states[i] === 'done' ? '✓' : i + 1;
+    });
+  }
+
+  // "3 boards · 60 questions" for the start bar, from the scorecard grid.
+  function quizCountsText() {
+    const grid = (state.scoresData && state.scoresData.grid) || {};
+    const boards = Object.keys(grid).length;
+    const questions = Object.values(grid).reduce(
+      (n, cats) => n + Object.values(cats).reduce((m, cells) => m + Object.keys(cells).length, 0), 0);
+    const plural = (k, word) => `${k} ${word}${k === 1 ? '' : 's'}`;
+    return `${plural(boards, 'board')} · ${plural(questions, 'question')}`;
   }
 
   // Set by a successful upload in this tab, consumed by the next
@@ -632,8 +669,6 @@
   // Upload quiz bundle — a single button. Clicking it opens the native
   // file picker (no separate "choose" vs "upload" steps to get wrong);
   // picking a .zip there uploads it immediately.
-  const uploadBtnLabel = el('upload-btn').textContent;
-
   el('upload-btn').addEventListener('click', () => {
     el('bundle-input').click();
   });
@@ -764,7 +799,7 @@
       renderErrors([{ row: null, message: 'Unable to reach the server. Please try again.' }]);
     } finally {
       btn.disabled = false;
-      btn.textContent = uploadBtnLabel;
+      btn.textContent = uploadBtnLabel();
       fileInput.value = ''; // allow re-selecting the same file to retry
     }
   }

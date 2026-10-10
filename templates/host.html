@@ -34,9 +34,20 @@
   <!-- right. .lobby-only/.live-only swap the cards on Start, so the -->
   <!-- sidebar keeps its place across the transition.                -->
   <!-- ============================================================ -->
+
+  <!-- Lobby step rail: status only (not navigation). Sharing is not a
+       step — players never gate Start. States set by host.js
+       updateStepRail(). -->
+  <ol class="step-rail lobby-only hidden" id="step-rail" aria-label="Steps to start a quiz">
+    <li class="step is-current" aria-current="step"><span class="step-num">1</span><span class="step-label">Upload quiz</span></li>
+    <li class="step is-upcoming"><span class="step-num">2</span><span class="step-label">Check the board</span></li>
+    <li class="step is-upcoming"><span class="step-num">3</span><span class="step-text"><span class="step-label">Start</span><span class="step-caption">Start once everyone's in</span></span></li>
+  </ol>
+
   <div id="view-main" class="live-body hidden">
 
-    <!-- Content: upload → preview → Start, top to bottom -->
+    <!-- Content: upload → preview, top to bottom. Start is in the
+         sticky bar below (#start-bar). -->
     <div class="board-area">
 
       <div class="card lobby-only upload-card no-board" id="upload-card">
@@ -130,16 +141,6 @@
 
       </div>
 
-      <!-- Start sits under the preview, so the board is checked on the
-           way to it. The hint carries the live joined count (host.js).
-           Muted until a board is loaded — Upload is the filled button
-           until then (host.js updateBoardAreaVisibility). -->
-      <div class="lobby-only">
-        <button id="start-btn" class="btn-start is-muted">▷ Start quiz</button>
-        <div class="start-hint" id="start-hint"></div>
-        <p class="error-msg hidden" id="start-error"></p>
-      </div>
-
     </div>
 
     <!-- Sidebar: who's in the room (lobby) → queue/totals (live) -->
@@ -208,6 +209,20 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- Start: pinned to the bottom of the window for the whole lobby, so
+       it is in view in every state (SPEC.md §10). Left: what's loaded.
+       Middle: the hint with the live joined count (host.js). Muted until
+       a board is loaded — Upload is the filled button until then
+       (host.js updateBoardAreaVisibility). -->
+  <div class="start-bar lobby-only hidden" id="start-bar">
+    <div class="start-bar-info" id="start-bar-info"></div>
+    <div class="start-bar-caption">
+      <div class="start-hint" id="start-hint"></div>
+      <p class="error-msg hidden" id="start-error"></p>
+    </div>
+    <button id="start-btn" class="btn-start is-muted">▷ Start quiz</button>
   </div>
 
 </div>

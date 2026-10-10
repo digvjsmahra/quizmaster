@@ -509,7 +509,9 @@ html.qb-resuming #view-join { display: none; }
    sidebar/lobby control at once rather than instrumenting each handler,
    so no action can race the host:join handshake that re-establishes this
    connection's identity server-side (see host.js's disconnect listener). */
-.host-wrap.reconnecting #view-main { pointer-events: none; opacity: .5; }
+.host-wrap.reconnecting #view-main,
+.host-wrap.reconnecting #step-rail,
+.host-wrap.reconnecting #start-bar { pointer-events: none; opacity: .5; }
 
 /* ------------------------------------------------------------------ */
 /* Lobby cards — laid out by .live-body, same columns as live           */
@@ -751,6 +753,46 @@ button.present-link:disabled { opacity: .6; cursor: default; }
 .btn-start.is-muted:hover { background: var(--color-border-subtle); }
 .start-hint { text-align: center; font-size: 12px; color: var(--color-text-faint); margin-top: 6px; }
 
+/* Start bar — pinned to the bottom of the window for the whole lobby, so
+   Start is in view in every state. Lines up with the lobby's cards. */
+.start-bar {
+  position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: min(calc(100% - 32px), 1168px); box-sizing: border-box; z-index: 20;
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border); border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-card-strong);
+}
+.start-bar-info { font-size: 13px; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; }
+.start-bar-caption { flex: 1; min-width: 0; }
+.start-bar .start-hint, .start-bar .error-msg { margin: 0; text-align: right; }
+.start-bar .btn-start { width: auto; flex-shrink: 0; padding: 12px 32px; white-space: nowrap; }
+
+/* Step rail — the lobby's three steps, above both columns */
+.step-rail {
+  list-style: none; margin: 16px auto 0; padding: 0 16px; max-width: 1200px; box-sizing: border-box;
+  display: flex; align-items: center;
+}
+.step { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.step:not(:last-child) { flex: 1; }
+.step:not(:last-child)::after { content: ""; flex: 1; height: 1.5px; margin: 0 12px; background: var(--color-border); }
+.step-num {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  background: var(--color-border-subtle); color: var(--color-text-faint);
+}
+.step-text { display: flex; flex-direction: column; }
+.step-label { font-size: 13px; font-weight: 500; color: var(--color-text-faint); white-space: nowrap; }
+.step-caption { font-size: 11px; color: var(--color-text-faint); white-space: nowrap; }
+.step.is-current .step-num { background: var(--color-primary); color: var(--color-text-on-primary); }
+.step.is-current .step-label { font-weight: 600; color: var(--color-text); }
+.step.is-done .step-num { background: var(--color-success-bg); color: var(--color-success-text); }
+.step.is-done .step-label, .step.is-ready .step-label { color: var(--color-text-secondary); }
+.step.is-ready .step-num { background: var(--color-primary-light); color: var(--color-primary); }
+
 /* ------------------------------------------------------------------ */
 /* Main layout — both phases (lobby and live)                           */
 /* ------------------------------------------------------------------ */
@@ -763,6 +805,10 @@ button.present-link:disabled { opacity: .6; cursor: default; }
   padding: 16px;
   align-items: flex-start;
 }
+
+/* The lobby is mostly a form, so it is a narrower page than the live
+   board; the padding keeps the fixed start bar off the last board row. */
+.live-body.lobby { --start-bar-h: 72px; max-width: 1200px; padding-bottom: calc(var(--start-bar-h) + 24px); }
 
 .board-area { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 /* Positioning context for .board-modal-overlay — the board only, so a
@@ -911,6 +957,9 @@ button.present-link:disabled { opacity: .6; cursor: default; }
   overflow-y: auto;
   position: relative;
 }
+/* Lobby peek: host.js centres the modal in the window, so shorten it by
+   twice the start bar's height to keep its buttons clear of the bar. */
+.live-body.lobby .board-modal { max-height: min(100%, calc(100vh - 48px - 2 * var(--start-bar-h))); }
 
 .btn-modal-close {
   position: absolute;
@@ -1032,8 +1081,8 @@ button.present-link:disabled { opacity: .6; cursor: default; }
 /* ------------------------------------------------------------------ */
 .sidebar { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
 /* Lobby: wide enough for the 4 room-code boxes (4×52 + 3×8 + card
-   padding), and sticky so the joined count is still in view when the QM
-   reaches Start under the board. */
+   padding), and sticky so the joined count stays in view while the QM
+   scrolls the board. */
 .sidebar.lobby { width: 280px; position: sticky; top: 16px; }
 
 /* Queue */
@@ -1305,6 +1354,12 @@ button.present-link:disabled { opacity: .6; cursor: default; }
   /* Live view — stack vertically, sidebar above board */
   .live-body { flex-direction: column; align-items: stretch; padding: 10px; gap: 10px; }
   .sidebar, .sidebar.lobby { width: 100%; order: -1; position: static; }
+  /* Lobby — upload first, then who's in, then the board: the column
+     wrapper steps aside so the sidebar can sit between its two cards. */
+  .live-body.lobby .board-area { display: contents; }
+  .live-body.lobby .upload-card { order: 1; }
+  .live-body.lobby .sidebar { order: 2; }
+  .live-body.lobby .board-block { order: 3; }
 
   /* Add player — wrap button below input if it doesn't fit */
   .add-player-form { flex-wrap: wrap; }
@@ -1321,13 +1376,27 @@ button.present-link:disabled { opacity: .6; cursor: default; }
 /* Cap stacked layout at 720px centered                                */
 /* ------------------------------------------------------------------ */
 @media (min-width: 641px) and (max-width: 1024px) {
-  .live-body { max-width: 720px; margin: 0 auto; }
+  .live-body, .live-body.lobby { max-width: 720px; margin: 0 auto; }
+  .step-rail { max-width: 720px; padding: 0 10px; }
+  .start-bar { width: min(calc(100% - 20px), 700px); }
 }
 
 /* ------------------------------------------------------------------ */
 /* Responsive — mobile only (≤ 640px)                                  */
 /* ------------------------------------------------------------------ */
 @media (max-width: 640px) {
+  /* Step rail — one line: every number, the label of the current step only */
+  .step-rail { margin-top: 10px; padding: 0 10px; }
+  .step:not(.is-current) .step-label, .step-caption { display: none; }
+  .step:not(:last-child)::after { margin: 0 8px; }
+  /* Start bar — edge to edge, button on top, hint under it */
+  .live-body.lobby { --start-bar-h: 112px; }
+  .start-bar { width: 100%; flex-wrap: wrap; gap: 6px; border-left: 0; border-right: 0; border-radius: 0; padding-top: 10px; }
+  .start-bar-info { display: none; }
+  .start-bar .btn-start { order: -1; width: 100%; padding: 14px; }
+  .start-bar-caption { flex-basis: 100%; }
+  .start-bar .start-hint, .start-bar .error-msg { text-align: center; }
+
   /* Board cells — smaller, still scrollable */
   .cell { min-width: 64px; min-height: 40px; font-size: 11px; padding: 8px 4px; }
   .cell-unplayed { font-size: 13px; }

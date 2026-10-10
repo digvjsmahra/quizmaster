@@ -464,6 +464,9 @@ html.qb-resuming #view-join { display: none; }
   border-bottom: 1px solid var(--color-border);
 }
 .host-header h1 { font-size: 17px; font-weight: 700; margin: 0; }
+/* "QuizMaster | Host view" — the wordmark, then which of the three pages
+   this is (host view, presentation view, summary). */
+.host-view-label { margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--color-border); font-weight: 500; color: var(--color-text-muted); }
 .host-header .subtitle { font-size: 12px; color: var(--color-text-faint); margin: 2px 0 0; }
 
 .host-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }

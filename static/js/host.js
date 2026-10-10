@@ -18,6 +18,7 @@
     liveQuestion: null,  // server-confirmed reveal state (B1's state:live_question), or null
     modalDismissable: false, // true while the pre-Start peek modal is open (backdrop/✕ close it); false for the live reveal modal (Cancel is the only exit)
     scrollToBoardPending: false, // see scrollToBoard()
+    lobbyCount: 0,               // joined players, for the Start hint
     hadBoard: null,              // last board presence seen by updateBoardAreaVisibility()
   };
 
@@ -85,6 +86,12 @@
     }
     // "Upload a quiz bundle above before starting" is stale once one is.
     if (hasBoard) el('start-error').classList.add('hidden');
+    // One filled button per state, marking the next step: Upload until a
+    // board is loaded, Start after. Start stays visible and clickable
+    // either way (see its click handler) — only muted.
+    el('upload-btn').classList.toggle('is-primary', !hasBoard);
+    el('start-btn').classList.toggle('is-muted', !hasBoard);
+    updateStartHint();
   }
 
   // Set by a successful upload in this tab, consumed by the next
@@ -116,11 +123,17 @@
       });
     });
     el('lobby-count').textContent = players.length;
-    el('start-hint').textContent = startHintText(players.length);
+    state.lobbyCount = players.length;
+    updateStartHint();
   }
 
   // Start snapshots the roster, so say how many it will add and what
   // happens to anyone later — the QM's cue to wait for stragglers.
+  // Until a board is loaded the hint names that step instead.
+  function updateStartHint() {
+    const hasBoard = state.boards && state.boards.length > 0;
+    el('start-hint').textContent = hasBoard ? startHintText(state.lobbyCount) : 'Upload a quiz to start';
+  }
   function startHintText(n) {
     if (n === 0) return 'No players yet — anyone who joins after you start must be added by hand';
     return `Adds ${n} player${n === 1 ? '' : 's'} to the scorecard — anyone who joins later must be added by hand`;

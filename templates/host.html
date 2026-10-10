@@ -47,7 +47,7 @@
              disclosure for the few who need them. -->
         <input type="file" id="bundle-input" accept=".zip" class="hidden">
         <div class="upload-actions">
-          <button type="button" id="upload-btn" class="present-link">📁 Upload .zip</button>
+          <button type="button" id="upload-btn" class="present-link is-primary">📁 Upload .zip</button>
           <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link">⬇ Download sample bundle</a>
         </div>
         <p class="upload-hint">A <code>.zip</code> with one <code>.xlsx</code> sheet and an optional <code>media/</code> folder</p>
@@ -119,9 +119,11 @@
       </div>
 
       <!-- Start sits under the preview, so the board is checked on the
-           way to it. The hint carries the live joined count (host.js). -->
+           way to it. The hint carries the live joined count (host.js).
+           Muted until a board is loaded — Upload is the filled button
+           until then (host.js updateBoardAreaVisibility). -->
       <div class="lobby-only">
-        <button id="start-btn" class="btn-start">▷ Start quiz</button>
+        <button id="start-btn" class="btn-start is-muted">▷ Start quiz</button>
         <div class="start-hint" id="start-hint"></div>
         <p class="error-msg hidden" id="start-error"></p>
       </div>

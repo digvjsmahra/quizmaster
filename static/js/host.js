@@ -19,7 +19,7 @@
     modalDismissable: false, // true while the pre-Start peek modal is open (backdrop/✕ close it); false for the live reveal modal (Cancel is the only exit)
     scrollToBoardPending: false, // see scrollToBoard()
     lobbyCount: 0,               // joined players, for the Start hint
-    hadBoard: null,              // last board presence seen by updateBoardAreaVisibility()
+    uploadFailed: false,         // last upload was rejected and no board is loaded
   };
 
   // ----------------------------------------------------------------
@@ -81,13 +81,6 @@
     const hasBoard = state.boards && state.boards.length > 0;
     el('board-block').classList.toggle('hidden', !hasBoard);
     el('board-preview-hint').classList.toggle('hidden', !(hasBoard && state.phase !== 'live'));
-    // Format details: open while there's no board, closed once one loads.
-    // Only on that transition, so a host who opens it by hand afterwards
-    // isn't snapped shut by the next state:scores.
-    if (hasBoard !== state.hadBoard) {
-      el('bundle-format').open = !hasBoard;
-      state.hadBoard = hasBoard;
-    }
     // "Upload a quiz bundle above before starting" is stale once one is.
     if (hasBoard) el('start-error').classList.add('hidden');
     // One filled button per state, marking the next step: Upload until a
@@ -95,18 +88,24 @@
     // either way (see its click handler) — only muted.
     el('upload-card').classList.toggle('no-board', !hasBoard);
     el('upload-btn').classList.toggle('is-primary', !hasBoard);
-    // Mid-upload the button says "Uploading…"; uploadBundle() puts the
+    // Mid-upload the button says "Checking your quiz…"; uploadBundle() puts the
     // right label back when it finishes.
     if (!el('upload-btn').disabled) el('upload-btn').textContent = uploadBtnLabel();
     el('start-btn').classList.toggle('is-muted', !hasBoard);
     updateStartHint();
     updateStepRail(hasBoard);
-    el('start-bar-info').textContent = hasBoard ? quizCountsText() : '';
+    // Card heading follows step 1 of the rail.
+    el('upload-heading').textContent = hasBoard ? 'Quiz' : 'Upload your quiz';
+    el('upload-step-num').textContent = hasBoard ? '✓' : '1';
+    el('upload-step-num').className = `step-num ${hasBoard ? 'is-done' : 'is-current'}`;
+    // Share/players stay quiet until there is a quiz to play.
+    el('sidebar').classList.toggle('is-quiet', !hasBoard);
   }
 
   // A second upload replaces the loaded quiz, so the button says so.
   function uploadBtnLabel() {
-    return state.boards && state.boards.length > 0 ? 'Replace quiz' : '📁 Upload .zip';
+    if (state.boards && state.boards.length > 0) return 'Replace quiz';
+    return state.uploadFailed ? 'Choose another .zip' : '📁 Choose quiz .zip';
   }
 
   // Lobby step rail. Checking the board is optional, so step 2 is never
@@ -120,16 +119,6 @@
       else step.removeAttribute('aria-current');
       step.querySelector('.step-num').textContent = states[i] === 'done' ? '✓' : i + 1;
     });
-  }
-
-  // "3 boards · 60 questions" for the start bar, from the scorecard grid.
-  function quizCountsText() {
-    const grid = (state.scoresData && state.scoresData.grid) || {};
-    const boards = Object.keys(grid).length;
-    const questions = Object.values(grid).reduce(
-      (n, cats) => n + Object.values(cats).reduce((m, cells) => m + Object.keys(cells).length, 0), 0);
-    const plural = (k, word) => `${k} ${word}${k === 1 ? '' : 's'}`;
-    return `${plural(boards, 'board')} · ${plural(questions, 'question')}`;
   }
 
   // Set by a successful upload in this tab, consumed by the next
@@ -161,6 +150,7 @@
       });
     });
     el('lobby-count').textContent = players.length;
+    el('lobby-empty').classList.toggle('hidden', players.length > 0);
     state.lobbyCount = players.length;
     updateStartHint();
   }
@@ -751,10 +741,13 @@
     box.classList.remove('hidden');
   }
 
-  function renderErrors(errors) {
+  // A rejected file never disturbs a loaded quiz (the server keeps it),
+  // so the heading says which of the two situations this is.
+  function renderErrors(errors, filename) {
     const box = el('upload-errors');
-    el('upload-errors-title').textContent =
-      `${errors.length} problem${errors.length === 1 ? '' : 's'} found`;
+    el('upload-errors-title').textContent = state.boards.length > 0
+      ? `${filename} couldn't be loaded — your current quiz is still loaded`
+      : `We couldn't load ${filename}`;
     renderAlertList(el('upload-errors-list'), errors, e => (e.row ? `Row ${e.row}: ` : '') + e.message);
     box.classList.remove('hidden');
   }
@@ -764,8 +757,9 @@
     const btn = el('upload-btn');
     const successEl = el('upload-success');
 
+    state.uploadFailed = false;
     btn.disabled = true;
-    btn.textContent = 'Uploading…';
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Checking your quiz…';
     el('upload-errors').classList.add('hidden');
     el('upload-warnings').classList.add('hidden');
     successEl.classList.add('hidden');
@@ -790,13 +784,15 @@
         if (state.boards.length > 0) scrollToBoard();
         else state.scrollToBoardPending = true;
       } else {
-        renderErrors(body.errors);
+        state.uploadFailed = true;
+        renderErrors(body.errors, file.name);
         renderWarnings(body.warnings);
         // A failed (re-)upload must not disturb an already-loaded board —
         // nothing here touches state.boards/renderBoard().
       }
     } catch {
-      renderErrors([{ row: null, message: 'Unable to reach the server. Please try again.' }]);
+      state.uploadFailed = true;
+      renderErrors([{ row: null, message: 'Unable to reach the server. Please try again.' }], file.name);
     } finally {
       btn.disabled = false;
       btn.textContent = uploadBtnLabel();

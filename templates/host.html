@@ -35,59 +35,75 @@
   <!-- sidebar keeps its place across the transition.                -->
   <!-- ============================================================ -->
 
-  <!-- Lobby step rail: status only (not navigation). Sharing is not a
+  <!-- Lobby strip: the three steps, ending in the Start button itself,
+       pinned to the top of the window so Start is in view in every state
+       (SPEC.md §10). The rail is status, not navigation; sharing is not a
        step — players never gate Start. States set by host.js
-       updateStepRail(). -->
-  <ol class="step-rail lobby-only hidden" id="step-rail" aria-label="Steps to start a quiz">
-    <li class="step is-current" aria-current="step"><span class="step-num">1</span><span class="step-label">Upload quiz</span></li>
-    <li class="step is-upcoming"><span class="step-num">2</span><span class="step-label">Check the board</span></li>
-    <li class="step is-upcoming"><span class="step-num">3</span><span class="step-text"><span class="step-label">Start</span><span class="step-caption">Start once everyone's in</span></span></li>
-  </ol>
+       updateStepRail(); the line under it is the Start hint with the live
+       joined count. Start is muted until a board is loaded — Upload is
+       the filled button until then (host.js updateBoardAreaVisibility). -->
+  <div class="lobby-strip lobby-only hidden" id="lobby-strip">
+    <ol class="step-rail" id="step-rail" aria-label="Steps to start a quiz">
+      <li class="step is-current" aria-current="step"><span class="step-num">1</span><span class="step-label">Upload quiz</span></li>
+      <li class="step is-upcoming"><span class="step-num">2</span><span class="step-label">Check the board</span></li>
+      <li class="step is-upcoming"><span class="step-num">3</span><button id="start-btn" class="btn-start is-muted">▷ Start quiz</button></li>
+    </ol>
+    <div class="start-hint" id="start-hint"></div>
+    <p class="error-msg hidden" id="start-error"></p>
+  </div>
 
   <div id="view-main" class="live-body hidden">
 
-    <!-- Content: upload → preview, top to bottom. Start is in the
-         sticky bar below (#start-bar). -->
+    <!-- Content: upload → preview, top to bottom. Start ends the step
+         rail above (#lobby-strip). -->
     <div class="board-area">
 
       <div class="card lobby-only upload-card no-board" id="upload-card">
-        <div class="card-label">Quiz content</div>
+        <h2 class="card-heading"><span class="step-num is-current" id="upload-step-num">1</span><span id="upload-heading">Upload your quiz</span></h2>
 
         <!-- Two shapes, one markup (.no-board, toggled by host.js
-             updateBoardAreaVisibility). While the room has no board this
-             is a large drop area — the one thing the page needs, sitting
-             where the board will appear. Once a board is loaded it
-             collapses to the compact import row: upload and sample side
-             by side, one line of what the file must be. A file dropped
-             anywhere on the card uploads in either shape. -->
+             updateBoardAreaVisibility). With no board: a dashed zone
+             holding the one filled button, then the sample bundle under
+             "First time?". Once a board is loaded it collapses to the
+             compact import row: replace and sample side by side. A file
+             dropped anywhere on the card uploads in either shape. -->
         <input type="file" id="bundle-input" accept=".zip" class="hidden">
-        <div class="upload-zone">
-          <p class="upload-zone-title">Drop your quiz .zip here</p>
-          <p class="upload-zone-or">or</p>
-          <div class="upload-actions">
-            <button type="button" id="upload-btn" class="present-link is-primary">📁 Upload .zip</button>
-            <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link upload-sample-btn">⬇ Download sample bundle</a>
-          </div>
-          <p class="upload-hint">A <code>.zip</code> with one <code>.xlsx</code> sheet and an optional <code>media/</code> folder</p>
-          <p class="upload-zone-sample">New to QuizMaster? <a href="/static/sample/starter-quiz-bundle.zip" download>Download the sample bundle</a> to see the format.</p>
-        </div>
 
-        <!-- Feedback sits right under the upload controls, above the long
-             format details, so a rejected file's errors are in view. -->
+        <!-- Feedback sits above the button, so a rejected file's errors
+             are the first thing in view. -->
         <div class="upload-alert upload-alert-error hidden" id="upload-errors">
           <p class="upload-alert-title" id="upload-errors-title"></p>
           <ul class="upload-alert-list" id="upload-errors-list"></ul>
+          <p class="upload-alert-sample">Compare with the <a href="/static/sample/starter-quiz-bundle.zip" download>sample bundle</a> to see the expected format</p>
         </div>
         <div class="upload-alert upload-alert-warning hidden" id="upload-warnings">
           <p class="upload-alert-title" id="upload-warnings-title"></p>
           <ul class="upload-alert-list" id="upload-warnings-list"></ul>
         </div>
+
+        <div class="upload-zone">
+          <div class="upload-actions">
+            <button type="button" id="upload-btn" class="present-link is-primary">📁 Choose quiz .zip</button>
+            <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link upload-sample-btn">⬇ Download sample bundle</a>
+          </div>
+          <!-- Shown to fine pointers only (CSS) — a phone can't drag a file -->
+          <p class="upload-drag-hint"><span class="when-idle">or drag it here</span><span class="when-over">Drop to upload</span></p>
+          <p class="upload-hint">A <code>.zip</code> with one <code>.xlsx</code> sheet and an optional <code>media/</code> folder</p>
+        </div>
         <p class="status-msg status-msg-success hidden" id="upload-success"></p>
 
-        <!-- Open while the room has no board — a first upload needs the
-             details; closed once one loads (host.js updateBoardAreaVisibility). -->
-        <details class="bundle-format" id="bundle-format" open>
-          <summary><span>Format details</span></summary>
+        <div class="upload-first-time">
+          <p class="upload-first-time-label">First time?</p>
+          <div class="upload-first-time-row">
+            <p>Download the sample bundle, edit the sheet, zip it back up and upload it here</p>
+            <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link">⬇ Download sample bundle</a>
+          </div>
+        </div>
+
+        <!-- Collapsed in every state: the one-line description and the
+             sample cover most first uploads. -->
+        <details class="bundle-format" id="bundle-format">
+          <summary><span>What goes in the zip</span></summary>
           <ul class="file-tree" aria-hidden="true">
             <li>📦 <code>starter-quiz-bundle.zip</code>
               <ul>
@@ -113,10 +129,19 @@
 
       </div>
 
+      <!-- Holds the board's place until one is uploaded (hidden by CSS
+           once the upload card loses .no-board). -->
+      <div class="card lobby-only board-placeholder">
+        <h2 class="card-heading"><span class="step-num">2</span>Check the board</h2>
+        <p>Your board will appear here after you upload.</p>
+      </div>
+
       <!-- Board: shown once a board is uploaded, regardless of phase
            (pre-Start preview). The modal is positioned against this
            block, so it covers the board only — not the upload card. -->
       <div class="board-block hidden" id="board-block">
+
+        <h2 class="card-heading board-heading lobby-only"><span class="step-num is-current">2</span>Check the board</h2>
 
         <!-- Board navigation -->
         <div class="board-nav">
@@ -165,6 +190,7 @@
           <div class="card-label" style="margin:0">Players joined</div>
           <span class="players-count" id="lobby-count">0</span>
         </div>
+        <p class="players-empty" id="lobby-empty">No one yet. Share the link or code so everyone's in before you start.</p>
         <div class="players-grid" id="lobby-players"></div>
       </div>
 
@@ -209,20 +235,6 @@
       </div>
 
     </div>
-  </div>
-
-  <!-- Start: pinned to the bottom of the window for the whole lobby, so
-       it is in view in every state (SPEC.md §10). Left: what's loaded.
-       Middle: the hint with the live joined count (host.js). Muted until
-       a board is loaded — Upload is the filled button until then
-       (host.js updateBoardAreaVisibility). -->
-  <div class="start-bar lobby-only hidden" id="start-bar">
-    <div class="start-bar-info" id="start-bar-info"></div>
-    <div class="start-bar-caption">
-      <div class="start-hint" id="start-hint"></div>
-      <p class="error-msg hidden" id="start-error"></p>
-    </div>
-    <button id="start-btn" class="btn-start is-muted">▷ Start quiz</button>
   </div>
 
 </div>

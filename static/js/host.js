@@ -99,6 +99,10 @@
     el('upload-step-num').textContent = hasBoard ? '✓' : '1';
     el('upload-step-num').className = `step-num ${hasBoard ? 'is-done' : 'is-current'}`;
     el('start-step-num').className = `step-num${hasBoard ? ' is-ready' : ''}`;
+    // Summary row: the name comes from the server, so it survives a reload.
+    el('quiz-name').textContent = (state.scoresData && state.scoresData.bundle_name) || 'Quiz loaded';
+    el('quiz-counts').textContent = hasBoard ? quizCountsText() : '';
+    el('drop-label').textContent = hasBoard ? 'Drop to replace quiz' : 'Drop to upload';
     // Share/players stay quiet until there is a quiz to play.
     el('sidebar').classList.toggle('is-quiet', !hasBoard);
   }
@@ -120,6 +124,16 @@
       else step.removeAttribute('aria-current');
       step.querySelector('.step-num').textContent = states[i] === 'done' ? '✓' : i + 1;
     });
+  }
+
+  // "3 boards · 60 questions" for the summary row, from the scorecard grid.
+  function quizCountsText() {
+    const grid = (state.scoresData && state.scoresData.grid) || {};
+    const boards = Object.keys(grid).length;
+    const questions = Object.values(grid).reduce(
+      (n, cats) => n + Object.values(cats).reduce((m, cells) => m + Object.keys(cells).length, 0), 0);
+    const plural = (k, word) => `${k} ${word}${k === 1 ? '' : 's'}`;
+    return `${plural(boards, 'board')} · ${plural(questions, 'question')}`;
   }
 
   // Set by a successful upload in this tab, consumed by the next
@@ -702,13 +716,14 @@
     listEl.innerHTML = items.map(item => `<li>${esc(formatFn(item))}</li>`).join('');
   }
 
-  // Warnings are optional reading (the QM can start the quiz regardless),
-  // so only the first few show by default with a "+N more" reveal — unlike
-  // errors, which must all be visible since they block the upload.
-  const WARNING_PREVIEW_COUNT = 5;
+  // The loader's one warning today (bundle_loader.py parse_bundle). Matched
+  // here only to group them; anything else is listed as written, so a new
+  // warning type is never lost.
+  const UNUSED_MEDIA_WARNING = /^Media file (['"])(.+)\1 is not referenced by any question in the quiz$/;
 
-  // Shown on both success and failure — this is what fixes warnings being
-  // dropped on a failed upload: one code path, not a per-branch special case.
+  // Warnings never block Start, so they collapse to one line. Shown on
+  // both success and failure — one code path, so a failed upload doesn't
+  // drop them.
   function renderWarnings(warnings) {
     const box = el('upload-warnings');
     if (!warnings || !warnings.length) {
@@ -716,29 +731,22 @@
       return;
     }
     el('upload-warnings-title').textContent =
-      `${warnings.length} warning${warnings.length === 1 ? '' : 's'} — you can still start your quiz, but review these first`;
+      `⚠ ${warnings.length} warning${warnings.length === 1 ? '' : 's'} — you can still start`;
 
-    const listEl = el('upload-warnings-list');
-    const visible = warnings.slice(0, WARNING_PREVIEW_COUNT);
-    const rest = warnings.slice(WARNING_PREVIEW_COUNT);
-    renderAlertList(listEl, visible, w => w);
-    if (rest.length) {
-      const moreLi = document.createElement('li');
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'upload-more-btn';
-      btn.textContent = `+ ${rest.length} more`;
-      btn.addEventListener('click', () => {
-        rest.forEach(w => {
-          const li = document.createElement('li');
-          li.textContent = w; // not innerHTML — no escaping needed
-          listEl.insertBefore(li, moreLi);
-        });
-        moreLi.remove();
-      });
-      moreLi.appendChild(btn);
-      listEl.appendChild(moreLi);
+    const unused = [], other = [];
+    warnings.forEach(w => {
+      const m = UNUSED_MEDIA_WARNING.exec(w);
+      if (m) unused.push(m[2]); else other.push(w);
+    });
+    const list = items => `<ul class="upload-alert-list">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
+    let html = '';
+    if (unused.length) {
+      const n = unused.length;
+      html += `<p class="upload-alert-title">${n} media file${n === 1 ? " isn't" : "s aren't"} used by any question</p>${list(unused)}`;
     }
+    if (other.length) html += list(other);
+    el('upload-warnings-body').innerHTML = html;
+    box.open = false;
     box.classList.remove('hidden');
   }
 
@@ -746,8 +754,9 @@
   // so the heading says which of the two situations this is.
   function renderErrors(errors, filename) {
     const box = el('upload-errors');
+    const current = state.scoresData && state.scoresData.bundle_name;
     el('upload-errors-title').textContent = state.boards.length > 0
-      ? `${filename} couldn't be loaded — your current quiz is still loaded`
+      ? `${filename} couldn't be loaded — your current quiz ${current ? current + ' ' : ''}is still loaded`
       : `We couldn't load ${filename}`;
     renderAlertList(el('upload-errors-list'), errors, e => (e.row ? `Row ${e.row}: ` : '') + e.message);
     box.classList.remove('hidden');
@@ -758,6 +767,7 @@
     const btn = el('upload-btn');
     const successEl = el('upload-success');
 
+    const replacing = state.boards.length > 0;
     state.uploadFailed = false;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Checking your quiz…';
@@ -776,8 +786,12 @@
       const body = await res.json();
 
       if (res.ok) {
-        successEl.textContent = `✓ ${file.name} loaded`;
-        successEl.classList.remove('hidden');
+        // A first upload needs no message — the summary row is the
+        // confirmation. A replace looks the same before and after, so say so.
+        if (replacing) {
+          successEl.textContent = `Replaced with ${file.name}`;
+          successEl.classList.remove('hidden');
+        }
         renderWarnings(body.warnings);
         // Board itself renders via the server's state:scores broadcast —
         // this handler only owns the upload card's own feedback, plus

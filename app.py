@@ -103,6 +103,9 @@ def upload_bundle(join_code, host_token):
         }, 422
 
     room["game"].load_questions(result.boards)
+    # Base name only — some browsers send a full path — and bounded, since
+    # it is echoed back to the control center.
+    room["game"].bundle_name = os.path.basename((uploaded.filename or "").replace("\\", "/"))[:120] or None
     room["game"].media_dir = None
     if result.media_names:
         media_dir = tempfile.mkdtemp(prefix=f"room_{join_code}_")

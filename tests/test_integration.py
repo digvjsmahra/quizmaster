@@ -716,6 +716,49 @@ def test_upload_malformed_bundle_returns_422_no_mutation(room):
     assert game.questions is original_questions
 
 
+def _upload(join_code, host_token, bundle_bytes, filename):
+    return app.test_client().post(
+        f"/host/{join_code}/{host_token}/upload",
+        data={"bundle": (io.BytesIO(bundle_bytes), filename)},
+        content_type="multipart/form-data",
+    )
+
+
+_GOOD_ROW = {"board": "1", "category": "History", "value": 10, "question": "Q1", "answer": "A1"}
+
+
+def test_upload_sends_bundle_name_to_host(room):
+    join_code, _, host_token = room
+    host_client = socketio.test_client(app)
+    host_client.emit("host:join", {"room_id": join_code})
+    host_client.get_received()  # clear state:full
+
+    assert _upload(join_code, host_token, _make_bundle_bytes([_GOOD_ROW]), "quiz-night.zip").status_code == 200
+
+    scores = next(e for e in host_client.get_received() if e["name"] == "state:scores")
+    assert scores["args"][0]["bundle_name"] == "quiz-night.zip"
+    host_client.disconnect()
+
+
+def test_rejected_reupload_keeps_bundle_name_and_questions(room):
+    join_code, game, host_token = room
+    assert _upload(join_code, host_token, _make_bundle_bytes([_GOOD_ROW]), "first.zip").status_code == 200
+    loaded = game.questions
+
+    bad = _make_bundle_bytes([{**_GOOD_ROW, "board": ""}])
+    assert _upload(join_code, host_token, bad, "second.zip").status_code == 422
+
+    assert game.bundle_name == "first.zip"
+    assert game.questions is loaded
+
+
+@pytest.mark.parametrize("sent", ["C:\\Users\\qm\\Desktop\\quiz-night.zip", "/home/qm/quiz-night.zip"])
+def test_upload_bundle_name_drops_any_path(room, sent):
+    join_code, game, host_token = room
+    assert _upload(join_code, host_token, _make_bundle_bytes([_GOOD_ROW]), sent).status_code == 200
+    assert game.bundle_name == "quiz-night.zip"
+
+
 def test_upload_wrong_host_token_returns_404(room):
     join_code, _, _ = room
     bundle_bytes = _make_bundle_bytes([

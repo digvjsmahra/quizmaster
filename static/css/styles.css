@@ -562,12 +562,13 @@ html.qb-resuming #view-join { display: none; }
   border-radius: var(--radius-pill);
 }
 
-.players-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 16px;
+/* Joined players as chips, newest last; each keeps its remove button */
+.players-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.player-item {
+  display: flex; align-items: center; gap: 4px; max-width: 100%;
+  padding: 3px 4px 3px 10px; border-radius: var(--radius-pill);
+  background: var(--color-border-subtle); font-size: 13px; font-weight: 500; color: var(--color-text-secondary);
 }
-.player-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--color-text-secondary); justify-content: space-between; }
 .player-item-name { display: flex; align-items: center; gap: 6px; }
 .player-item-name::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-muted); flex-shrink: 0; }
 /* Disconnected lobby entry (host.js renderLobbyPlayers): faint name, and
@@ -634,7 +635,21 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
 .upload-card.no-board .upload-actions .present-link.is-primary {
   padding: 10px 24px; font-size: 15px; border-radius: var(--radius-md);
 }
-.upload-card.no-board .upload-sample-btn { display: none; }
+/* Quiz loaded: a summary row — what's loaded on the left, Replace quiz
+   on the right. */
+.quiz-summary { display: none; }
+.upload-card:not(.no-board) .upload-zone { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; }
+.upload-card:not(.no-board) .quiz-summary { display: block; flex: 1; min-width: 0; }
+.upload-card:not(.no-board) .upload-actions { margin: 0; }
+.upload-card:not(.no-board) .upload-hint { display: none; }
+.quiz-summary p { margin: 0; }
+.quiz-summary-name { font-size: 15px; font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
+.quiz-summary-counts { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+.upload-card:not(.no-board).is-dragover .upload-drag-hint { display: block; flex-basis: 100%; }
+#upload-success { font-size: 13px; margin: 0 0 10px; }
+.bundle-format-sample { margin: 0 0 12px; }
+.bundle-format-sample .present-link { display: inline-flex; align-items: center; line-height: 1.4; }
+.upload-card.no-board .bundle-format-sample { display: none; }
 .upload-card.no-board .upload-hint { margin: 4px 0 0; }
 /* "or drag it here" — fine pointers only; a phone can't drag a file */
 .upload-drag-hint { display: none; margin: 0; font-size: 12px; color: var(--color-text-faint); }
@@ -761,17 +776,17 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
   scrollbar-gutter: stable;
 }
 .upload-alert-list li { line-height: 1.6; color: var(--color-text-secondary); }
-.upload-more-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  margin-top: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-  color: var(--color-warning-text);
+/* Warnings: one collapsed amber line (never a blocker), grouped inside */
+.upload-warnings { margin: 0 0 10px; }
+.upload-warnings > summary {
+  display: inline-flex; align-items: center; gap: 4px; list-style: none; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--color-warning-text);
 }
+.upload-warnings > summary::-webkit-details-marker { display: none; }
+.upload-warnings > summary::after { content: "›"; display: inline-block; transition: transform .15s; }
+.upload-warnings[open] > summary::after { transform: rotate(90deg); }
+.upload-warnings > summary:hover > span { text-decoration: underline; }
+.upload-warnings .upload-alert-list + .upload-alert-list { margin-top: 8px; }
 
 .btn-start {
   width: 100%;

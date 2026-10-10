@@ -847,6 +847,13 @@ def test_cell_state_passed():
 # Totals
 # ------------------------------------------------------------------
 
+def test_bundle_name_defaults_to_none_and_is_in_scores_payload():
+    g = Game()
+    assert g.get_scores_payload()["bundle_name"] is None
+    g.bundle_name = "quiz-night.zip"
+    assert g.get_scores_payload()["bundle_name"] == "quiz-night.zip"
+
+
 def test_board_totals_correct():
     g, pid1, pid2 = _started_game()
     _score(g, "1:History:10", {pid1: 10.0})

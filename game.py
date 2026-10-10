@@ -72,6 +72,10 @@ class Game:
         self.live_question: dict | None = None
         self.current_board_index: int = 0
         self.media_dir: str | None = None
+        # Display name of the uploaded bundle (set by app.py's upload route);
+        # host-only, so the control center can name the loaded quiz after a
+        # reload or in a second tab.
+        self.bundle_name: str | None = None
         self.event_log: list[LogEvent] = []
 
     def load_questions(self, questions: dict[str, list[BundleQuestion]]) -> None:
@@ -470,6 +474,7 @@ class Game:
             "closed": list(self.closed_questions),
             "roster": roster_players,
             "boards": self._boards,
+            "bundle_name": self.bundle_name,
         }
 
     def get_standings(self) -> list[dict]:

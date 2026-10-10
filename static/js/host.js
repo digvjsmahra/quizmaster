@@ -89,6 +89,7 @@
     // One filled button per state, marking the next step: Upload until a
     // board is loaded, Start after. Start stays visible and clickable
     // either way (see its click handler) — only muted.
+    el('upload-card').classList.toggle('no-board', !hasBoard);
     el('upload-btn').classList.toggle('is-primary', !hasBoard);
     el('start-btn').classList.toggle('is-muted', !hasBoard);
     updateStartHint();
@@ -638,8 +639,33 @@
   });
 
   el('bundle-input').addEventListener('change', () => {
-    if (el('bundle-input').files.length) uploadBundle();
+    if (el('bundle-input').files.length) uploadBundle(el('bundle-input').files[0]);
   });
+
+  // Drag-and-drop: a file dropped anywhere on the upload card uploads the
+  // same way as picking one. The server validates it, so a non-zip gets
+  // the usual error list rather than a silent refusal here.
+  const uploadCard = el('upload-card');
+  const draggingFiles = e => Array.from(e.dataTransfer.types || []).includes('Files');
+  uploadCard.addEventListener('dragover', e => {
+    if (!draggingFiles(e)) return;
+    e.preventDefault();
+    uploadCard.classList.add('is-dragover');
+  });
+  uploadCard.addEventListener('dragleave', e => {
+    if (!uploadCard.contains(e.relatedTarget)) uploadCard.classList.remove('is-dragover');
+  });
+  uploadCard.addEventListener('drop', e => {
+    if (!draggingFiles(e)) return;
+    e.preventDefault();
+    uploadCard.classList.remove('is-dragover');
+    if (e.dataTransfer.files.length && !el('upload-btn').disabled) uploadBundle(e.dataTransfer.files[0]);
+  });
+  // A file dropped anywhere else would make the browser navigate to it,
+  // taking the QM out of the control center mid-game.
+  ['dragover', 'drop'].forEach(type => window.addEventListener(type, e => {
+    if (draggingFiles(e)) e.preventDefault();
+  }));
 
   // Renders `items` (through formatFn, XSS-escaped) as <li>s inside listEl.
   // No truncation — .upload-alert-list's CSS scroll-caps the box instead of
@@ -698,9 +724,8 @@
     box.classList.remove('hidden');
   }
 
-  async function uploadBundle() {
+  async function uploadBundle(file) {
     const fileInput = el('bundle-input');
-    const file = fileInput.files[0];
     const btn = el('upload-btn');
     const successEl = el('upload-success');
 

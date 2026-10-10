@@ -39,18 +39,39 @@
     <!-- Content: upload → preview → Start, top to bottom -->
     <div class="board-area">
 
-      <div class="card lobby-only">
+      <div class="card lobby-only upload-card no-board" id="upload-card">
         <div class="card-label">Quiz content</div>
 
-        <!-- Common import pattern: the action and a sample first, one line
-             of what the file must be, full format details behind a closed
-             disclosure for the few who need them. -->
+        <!-- Two shapes, one markup (.no-board, toggled by host.js
+             updateBoardAreaVisibility). While the room has no board this
+             is a large drop area — the one thing the page needs, sitting
+             where the board will appear. Once a board is loaded it
+             collapses to the compact import row: upload and sample side
+             by side, one line of what the file must be. A file dropped
+             anywhere on the card uploads in either shape. -->
         <input type="file" id="bundle-input" accept=".zip" class="hidden">
-        <div class="upload-actions">
-          <button type="button" id="upload-btn" class="present-link is-primary">📁 Upload .zip</button>
-          <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link">⬇ Download sample bundle</a>
+        <div class="upload-zone">
+          <p class="upload-zone-title">Drop your quiz .zip here</p>
+          <p class="upload-zone-or">or</p>
+          <div class="upload-actions">
+            <button type="button" id="upload-btn" class="present-link is-primary">📁 Upload .zip</button>
+            <a href="/static/sample/starter-quiz-bundle.zip" download class="present-link upload-sample-btn">⬇ Download sample bundle</a>
+          </div>
+          <p class="upload-hint">A <code>.zip</code> with one <code>.xlsx</code> sheet and an optional <code>media/</code> folder</p>
+          <p class="upload-zone-sample">New to QuizMaster? <a href="/static/sample/starter-quiz-bundle.zip" download>Download the sample bundle</a> to see the format.</p>
         </div>
-        <p class="upload-hint">A <code>.zip</code> with one <code>.xlsx</code> sheet and an optional <code>media/</code> folder</p>
+
+        <!-- Feedback sits right under the upload controls, above the long
+             format details, so a rejected file's errors are in view. -->
+        <div class="upload-alert upload-alert-error hidden" id="upload-errors">
+          <p class="upload-alert-title" id="upload-errors-title"></p>
+          <ul class="upload-alert-list" id="upload-errors-list"></ul>
+        </div>
+        <div class="upload-alert upload-alert-warning hidden" id="upload-warnings">
+          <p class="upload-alert-title" id="upload-warnings-title"></p>
+          <ul class="upload-alert-list" id="upload-warnings-list"></ul>
+        </div>
+        <p class="status-msg status-msg-success hidden" id="upload-success"></p>
 
         <!-- Open while the room has no board — a first upload needs the
              details; closed once one loads (host.js updateBoardAreaVisibility). -->
@@ -79,15 +100,6 @@
           </ul>
         </details>
 
-        <div class="upload-alert upload-alert-error hidden" id="upload-errors">
-          <p class="upload-alert-title" id="upload-errors-title"></p>
-          <ul class="upload-alert-list" id="upload-errors-list"></ul>
-        </div>
-        <div class="upload-alert upload-alert-warning hidden" id="upload-warnings">
-          <p class="upload-alert-title" id="upload-warnings-title"></p>
-          <ul class="upload-alert-list" id="upload-warnings-list"></ul>
-        </div>
-        <p class="status-msg status-msg-success hidden" id="upload-success"></p>
       </div>
 
       <!-- Board: shown once a board is uploaded, regardless of phase

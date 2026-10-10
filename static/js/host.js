@@ -59,9 +59,9 @@
     updateBoardAreaVisibility();
   }
 
-  // One layout for both phases: .lobby-only cards (upload, share,
+  // One layout for both phases: .lobby-only cards (upload, Start, share,
   // players) give way to .live-only ones (queue, totals, add-player) in
-  // the same columns; the lobby's step rail and start bar go too. The
+  // the same columns; the lobby's step rail goes too. The
   // lobby sidebar is sticky, so the joined count stays in view while the
   // QM scrolls the board.
   function applyPhaseVisibility() {
@@ -94,10 +94,11 @@
     el('start-btn').classList.toggle('is-muted', !hasBoard);
     updateStartHint();
     updateStepRail(hasBoard);
-    // Card heading follows step 1 of the rail.
-    el('upload-heading').textContent = hasBoard ? 'Quiz' : 'Upload your quiz';
+    // Card badges follow the rail: step 1 current then done, step 3
+    // ready once there is something to start.
     el('upload-step-num').textContent = hasBoard ? '✓' : '1';
     el('upload-step-num').className = `step-num ${hasBoard ? 'is-done' : 'is-current'}`;
+    el('start-step-num').className = `step-num${hasBoard ? ' is-ready' : ''}`;
     // Share/players stay quiet until there is a quiz to play.
     el('sidebar').classList.toggle('is-quiet', !hasBoard);
   }

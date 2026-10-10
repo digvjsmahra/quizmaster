@@ -35,31 +35,26 @@
   <!-- sidebar keeps its place across the transition.                -->
   <!-- ============================================================ -->
 
-  <!-- Lobby strip: the three steps, ending in the Start button itself,
-       pinned to the top of the window so Start is in view in every state
-       (SPEC.md §10). The rail is status, not navigation; sharing is not a
-       step — players never gate Start. States set by host.js
-       updateStepRail(); the line under it is the Start hint with the live
-       joined count. Start is muted until a board is loaded — Upload is
-       the filled button until then (host.js updateBoardAreaVisibility). -->
+  <!-- Lobby step rail: a visual guide only — no actions, not pinned.
+       Its labels match the three step cards below, where each step's
+       action lives. Players are not a step: they never gate Start.
+       States set by host.js updateStepRail(). -->
   <div class="lobby-strip lobby-only hidden" id="lobby-strip">
     <ol class="step-rail" id="step-rail" aria-label="Steps to start a quiz">
       <li class="step is-current" aria-current="step"><span class="step-num">1</span><span class="step-label">Upload quiz</span></li>
-      <li class="step is-upcoming"><span class="step-num">2</span><span class="step-label">Check the board</span></li>
-      <li class="step is-upcoming"><span class="step-num">3</span><button id="start-btn" class="btn-start is-muted">▷ Start quiz</button></li>
+      <li class="step is-upcoming"><span class="step-num">2</span><span class="step-label">Preview</span></li>
+      <li class="step is-upcoming"><span class="step-num">3</span><span class="step-label">Start quiz</span></li>
     </ol>
-    <div class="start-hint" id="start-hint"></div>
-    <p class="error-msg hidden" id="start-error"></p>
   </div>
 
   <div id="view-main" class="live-body hidden">
 
-    <!-- Content: upload → preview, top to bottom. Start ends the step
-         rail above (#lobby-strip). -->
+    <!-- Content: three step cards, top to bottom — upload, preview,
+         start — each holding its own action. -->
     <div class="board-area">
 
       <div class="card lobby-only upload-card no-board" id="upload-card">
-        <h2 class="card-heading"><span class="step-num is-current" id="upload-step-num">1</span><span id="upload-heading">Upload your quiz</span></h2>
+        <h2 class="card-heading"><span class="step-num is-current" id="upload-step-num">1</span>Upload quiz</h2>
 
         <!-- Two shapes, one markup (.no-board, toggled by host.js
              updateBoardAreaVisibility). With no board: a dashed zone
@@ -132,7 +127,7 @@
       <!-- Holds the board's place until one is uploaded (hidden by CSS
            once the upload card loses .no-board). -->
       <div class="card lobby-only board-placeholder">
-        <h2 class="card-heading"><span class="step-num">2</span>Check the board</h2>
+        <h2 class="card-heading"><span class="step-num">2</span>Preview</h2>
         <p>Your board will appear here after you upload.</p>
       </div>
 
@@ -141,7 +136,7 @@
            block, so it covers the board only — not the upload card. -->
       <div class="board-block hidden" id="board-block">
 
-        <h2 class="card-heading board-heading lobby-only"><span class="step-num is-current">2</span>Check the board</h2>
+        <h2 class="card-heading board-heading lobby-only"><span class="step-num is-current">2</span>Preview</h2>
 
         <!-- Board navigation -->
         <div class="board-nav">
@@ -164,6 +159,17 @@
           <div class="board-modal" id="board-modal"></div>
         </div>
 
+      </div>
+
+      <!-- Step 3: Start, under the preview so the board is on the way to
+           it. The hint carries the live joined count (host.js). Muted
+           until a board is loaded — Upload is the filled button until
+           then (host.js updateBoardAreaVisibility). -->
+      <div class="card lobby-only start-card" id="start-card">
+        <h2 class="card-heading"><span class="step-num" id="start-step-num">3</span>Start quiz</h2>
+        <button id="start-btn" class="btn-start is-muted">▷ Start quiz</button>
+        <div class="start-hint" id="start-hint"></div>
+        <p class="error-msg hidden" id="start-error"></p>
       </div>
 
     </div>

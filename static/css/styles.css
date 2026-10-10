@@ -626,7 +626,7 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
    loaded (.no-board comes off — host.js). */
 .upload-card.no-board .upload-zone {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 24px 16px; margin-bottom: 16px; text-align: center;
+  padding: 18px 16px; margin-bottom: 14px; text-align: center;
   border: 1.5px dashed var(--color-border-input); border-radius: var(--radius-md);
   background: var(--color-bg-subtle);
 }
@@ -675,6 +675,10 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
 .board-placeholder .card-heading { margin-bottom: 6px; color: var(--color-text-muted); }
 .board-placeholder p { margin: 0; font-size: 13px; color: var(--color-text-faint); }
 .upload-card:not(.no-board) ~ .board-placeholder { display: none; }
+/* Step 3 is a placeholder too until there is a quiz to start */
+.upload-card.no-board ~ .start-card { background: none; box-shadow: none; border: 1.5px dashed var(--color-border); }
+.upload-card.no-board ~ .start-card .card-heading { color: var(--color-text-muted); }
+.start-card .btn-start { padding: 14px; }
 .board-heading { margin: 4px 0 0 4px; }
 
 .bundle-format { max-width: 65ch; }
@@ -789,16 +793,10 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
 .btn-start.is-muted:hover { background: var(--color-border-subtle); }
 .start-hint { text-align: center; font-size: 12px; color: var(--color-text-faint); margin-top: 6px; }
 
-/* Lobby strip — the three steps, ending in the Start button, pinned to
-   the top of the window so Start is in view in every state. */
-.lobby-strip {
-  position: sticky; top: 0; z-index: 20;
-  max-width: 1200px; margin: 0 auto; padding: 12px 16px 8px; box-sizing: border-box;
-  background: var(--color-bg);
-}
+/* Lobby step rail — a visual guide above both columns: no actions, not
+   pinned. The step cards below hold the actions. */
+.lobby-strip { max-width: 1200px; margin: 0 auto; padding: 16px 16px 0; box-sizing: border-box; }
 .step-rail { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; }
-.lobby-strip .btn-start { width: auto; padding: 9px 22px; font-size: 14px; white-space: nowrap; }
-.lobby-strip .start-hint, .lobby-strip .error-msg { margin: 4px 0 0; text-align: right; }
 .step { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .step:not(:last-child) { flex: 1; }
 .step:not(:last-child)::after { content: ""; flex: 1; min-width: 12px; height: 1.5px; margin: 0 12px; background: var(--color-border); }
@@ -813,7 +811,7 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
 .step.is-current .step-label { font-weight: 600; color: var(--color-text); }
 .step.is-done .step-num, .step-num.is-done { background: var(--color-success-bg); color: var(--color-success-text); }
 .step.is-done .step-label, .step.is-ready .step-label { color: var(--color-text-secondary); }
-.step.is-ready .step-num { background: var(--color-primary-light); color: var(--color-primary); }
+.step.is-ready .step-num, .step-num.is-ready { background: var(--color-primary-light); color: var(--color-primary); }
 
 /* ------------------------------------------------------------------ */
 /* Main layout — both phases (lobby and live)                           */
@@ -829,10 +827,8 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
 }
 
 /* The lobby is mostly a form, so it is a narrower page than the live
-   board. --lobby-strip-h is the sticky strip above it: what scrolls or
-   sticks below has to clear that much. */
-.live-body.lobby { --lobby-strip-h: 84px; max-width: 1200px; padding-top: 8px; }
-.live-body.lobby .board-block { scroll-margin-top: calc(var(--lobby-strip-h) + 8px); }
+   board. */
+.live-body.lobby { max-width: 1200px; }
 
 .board-area { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 /* Positioning context for .board-modal-overlay — the board only, so a
@@ -981,9 +977,6 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
   overflow-y: auto;
   position: relative;
 }
-/* Lobby peek: host.js centres the modal in the window, so shorten it by
-   twice the sticky strip's height to keep its top clear of the strip. */
-.live-body.lobby .board-modal { max-height: min(100%, calc(100vh - 48px - 2 * var(--lobby-strip-h))); }
 
 .btn-modal-close {
   position: absolute;
@@ -1107,7 +1100,7 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
 /* Lobby: wide enough for the 4 room-code boxes (4×52 + 3×8 + card
    padding), and sticky so the joined count stays in view while the QM
    scrolls the board. */
-.sidebar.lobby { width: 280px; position: sticky; top: calc(var(--lobby-strip-h) + 8px); }
+.sidebar.lobby { width: 280px; position: sticky; top: 16px; }
 /* No quiz yet: share/players step back so the upload card leads. The
    link and code stay fully usable. */
 .sidebar.is-quiet .card { background: none; box-shadow: none; border: 1px solid var(--color-border); }
@@ -1392,6 +1385,7 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
   .live-body.lobby .upload-card { order: 1; }
   .live-body.lobby .sidebar { order: 2; }
   .live-body.lobby .board-block, .live-body.lobby .board-placeholder { order: 3; }
+  .live-body.lobby .start-card { order: 4; }
 
   /* Add player — wrap button below input if it doesn't fit */
   .add-player-form { flex-wrap: wrap; }
@@ -1409,19 +1403,17 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
 /* ------------------------------------------------------------------ */
 @media (min-width: 641px) and (max-width: 1024px) {
   .live-body, .live-body.lobby { max-width: 720px; margin: 0 auto; }
-  .lobby-strip { max-width: 720px; padding: 10px 10px 6px; }
+  .lobby-strip { max-width: 720px; padding: 10px 10px 0; }
 }
 
 /* ------------------------------------------------------------------ */
 /* Responsive — mobile only (≤ 640px)                                  */
 /* ------------------------------------------------------------------ */
 @media (max-width: 640px) {
-  /* Lobby strip — one line: every number, the current step's label, Start */
-  .lobby-strip { padding: 10px 10px 6px; }
-  .live-body.lobby { --lobby-strip-h: 96px; }
+  /* Step rail — one line: every number, the current step's label only */
+  .lobby-strip { padding: 10px 10px 0; }
   .step:not(.is-current) .step-label { display: none; }
   .step:not(:last-child)::after { margin: 0 8px; }
-  .lobby-strip .btn-start { padding: 9px 14px; }
 
   /* Board cells — smaller, still scrollable */
   .cell { min-width: 64px; min-height: 40px; font-size: 11px; padding: 8px 4px; }

@@ -290,7 +290,9 @@ a { color: var(--color-primary); }
 @media (max-width: 640px) {
   .showcase { margin-bottom: 48px; }
   .showcase .frame-wide { width: 100%; }
-  .showcase .frame-phone { position: relative; width: 62%; margin: 24px auto 0; border-width: 5px; }
+  /* right/bottom reset: the desktop offsets would still shift a
+     relatively positioned frame (bottom: -40px pushed it 40px lower). */
+  .showcase .frame-phone { position: relative; right: auto; bottom: auto; width: 62%; margin: 24px auto 0; border-width: 5px; }
 }
 .caption, .card .caption { font-size: 13px; color: var(--color-text-muted); margin: 10px 0 0; }
 

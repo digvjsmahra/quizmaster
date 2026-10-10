@@ -229,7 +229,7 @@ a { color: var(--color-primary); }
   margin: 0 0 18px; font-weight: 700;
 }
 .hero h1 em { font-style: normal; color: var(--color-primary); }
-.hero-lede { font-size: 18px; color: var(--color-text-secondary); margin: 0 0 20px; max-width: 34em; }
+.hero-lede { font-size: 18px; color: var(--color-text-secondary); margin: 0 0 20px; max-width: 34em; text-wrap: pretty; }
 .hero-points { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .hero-points li {
   font-size: 13px; font-weight: 500; color: var(--color-text-secondary);

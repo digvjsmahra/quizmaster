@@ -25,7 +25,8 @@
 
   // Host: a plain cross-origin form POST to the app's /rooms, which
   // redirects to a fresh control center — the same request the app's own
-  // "Host a new game" button makes.
+  // "Host a new game" button makes. If the app is asleep, Render's wake-up
+  // page replays it as a GET, which /rooms accepts too.
   const hostForm = document.getElementById('host-form');
   hostForm.action = APP_URL + '/rooms';
   document.getElementById('cta-host').addEventListener('click', e => {

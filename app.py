@@ -47,7 +47,11 @@ def index():
     return render_template("create.html")
 
 
-@app.route("/rooms", methods=["POST"])
+# GET as well as POST: when the free Render instance is asleep, Render
+# answers the landing page's POST with its own wake-up page, which then
+# reloads this URL as a GET — a POST-only route turned that into a 405
+# (SPEC.md §12).
+@app.route("/rooms", methods=["GET", "POST"])
 def create_room():
     host_token = secrets.token_urlsafe(16)
     game = Game()

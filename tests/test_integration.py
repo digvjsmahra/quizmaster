@@ -155,6 +155,15 @@ def test_validate_room_case_insensitive(room):
     assert res.status_code == 200
 
 
+@pytest.mark.parametrize("method", ["post", "get"])
+def test_create_room_redirects_to_its_control_center(room, method):
+    # GET too: Render's wake-up page replays the landing page's POST as a GET
+    res = getattr(app.test_client(), method)("/rooms")
+    assert res.status_code == 302
+    _, _, join_code, host_token = res.headers["Location"].rsplit("/", 3)
+    assert rooms[join_code]["host_token"] == host_token
+
+
 def test_play_unknown_code_shows_join_page_with_inline_error(room):
     # A stale permalink or a mistyped code from the public landing page
     # lands on the join page with the code kept — never a bare 404 page.

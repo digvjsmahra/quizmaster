@@ -228,7 +228,7 @@ a { color: var(--color-primary); }
   font-size: clamp(32px, 5vw, 52px); line-height: 1.08; letter-spacing: -.025em;
   margin: 0 0 18px; font-weight: 700;
 }
-.hero h1 em { font-style: normal; color: var(--color-primary); white-space: nowrap; }
+.hero h1 em { font-style: normal; color: var(--color-primary); }
 .hero-lede { font-size: 18px; color: var(--color-text-secondary); margin: 0 0 20px; max-width: 34em; }
 .hero-points { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .hero-points li {
@@ -290,7 +290,7 @@ a { color: var(--color-primary); }
 @media (max-width: 640px) {
   .showcase { margin-bottom: 48px; }
   .showcase .frame-wide { width: 100%; }
-  .showcase .frame-phone { position: relative; width: 62%; margin: -48px auto 0; border-width: 5px; }
+  .showcase .frame-phone { position: relative; width: 62%; margin: 24px auto 0; border-width: 5px; }
 }
 .caption, .card .caption { font-size: 13px; color: var(--color-text-muted); margin: 10px 0 0; }
 

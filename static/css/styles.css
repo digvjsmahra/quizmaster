@@ -821,7 +821,7 @@ button.present-link { background: none; font-family: inherit; cursor: pointer; }
   font-size: 12px; font-weight: 600;
   background: var(--color-border-subtle); color: var(--color-text-faint);
 }
-.step-label { font-size: 13px; font-weight: 500; color: var(--color-text-faint); white-space: nowrap; }
+.step-label { font-size: 14px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
 .step.is-current .step-num, .step-num.is-current { background: var(--color-primary); color: var(--color-text-on-primary); }
 .step.is-current .step-label { font-weight: 600; color: var(--color-text); }
 .step.is-done .step-num, .step-num.is-done { background: var(--color-success-bg); color: var(--color-success-text); }

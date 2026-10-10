@@ -111,13 +111,37 @@
     <h2>Stop building slides. Stop juggling score sheets.</h2>
     <div class="features">
       <div class="feature">
-        <picture class="frame">
-          <source srcset="img/lobby-dark.png" media="(prefers-color-scheme: dark)" data-dark>
-          <img src="img/lobby-light.png" width="1548" height="1606" alt="The control center right after an upload: the quiz file loaded, a 5-by-5 board ready to play, four players joined and a Start quiz button" loading="lazy">
-        </picture>
+        <figure>
+          <div class="frame sheet">
+            <table aria-label="A quiz spreadsheet: one row per question, with columns board, category, value, question and answer">
+              <colgroup><col class="sheet-n"><col class="sheet-a"><col class="sheet-b"><col class="sheet-c"><col><col class="sheet-e"></colgroup>
+              <thead>
+                <tr class="sheet-letters" aria-hidden="true"><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr>
+                <tr class="sheet-head"><th scope="row" aria-hidden="true">1</th><th scope="col">board</th><th scope="col">category</th><th scope="col">value</th><th scope="col">question</th><th scope="col">answer</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row" aria-hidden="true">2</th><td>Board 1</td><td>Capitals</td><td class="num">10</td><td>What is the capital of Japan?</td><td>Tokyo</td></tr>
+                <tr><th scope="row" aria-hidden="true">3</th><td>Board 1</td><td>Capitals</td><td class="num">20</td><td>What is the capital of Canada?</td><td>Ottawa</td></tr>
+                <tr><th scope="row" aria-hidden="true">4</th><td>Board 1</td><td>Movies</td><td class="num">10</td><td>Who directed Jaws?</td><td>Steven Spielberg</td></tr>
+                <tr><th scope="row" aria-hidden="true">5</th><td>Board 1</td><td>Movies</td><td class="num">20</td><td>Which film features the ship Nostromo?</td><td>Alien</td></tr>
+                <tr><th scope="row" aria-hidden="true">6</th><td>Board 1</td><td>Science</td><td class="num">10</td><td>Which planet is known as the Red Planet?</td><td>Mars</td></tr>
+                <tr><th scope="row" aria-hidden="true">7</th><td>Board 1</td><td>Food</td><td class="num">10</td><td>What is the main ingredient of guacamole?</td><td>Avocado</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <figcaption class="caption">One row per question. Pictures are optional, in two more columns.</figcaption>
+        </figure>
         <div class="feature-text">
           <h3>Your spreadsheet is all the prep you need</h3>
           <p>No PowerPoint, no Google Slides, no formatting. Write your questions in a spreadsheet, upload it, and QuizMaster builds the board, question screens and answer reveals for you.</p>
+        </div>
+      </div>
+      <div class="feature feature-flip">
+        <picture class="frame">
+          <source srcset="img/scoring-dark.png" media="(prefers-color-scheme: dark)" data-dark>
+          <img src="img/scoring-light.png" width="2140" height="1212" alt="Scoring a question in the control center: the question and answer open over the board, a score box for each player, and the buzz queue and running totals alongside" loading="lazy">
+        </picture>
+        <div class="feature-text">
           <h3>Focus on the quiz, not switching tabs</h3>
           <p>No flipping between slides and Google Sheets. Score answers as you go, right on the quiz board, while QuizMaster tracks every player's running total.</p>
         </div>

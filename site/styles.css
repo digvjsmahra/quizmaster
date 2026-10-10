@@ -333,6 +333,38 @@ a { color: var(--color-primary); }
   .feature-flip { grid-template-columns: 2fr 3fr; }
   .feature-flip > :first-child { order: 2; }
 }
+/* A quiz spreadsheet drawn as a table rather than a screenshot, so it
+   follows the theme and stays readable on a phone. Cells clip long text
+   the way a real sheet does. */
+.sheet table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.sheet th, .sheet td {
+  border: 1px solid var(--color-border); padding: 6px 8px; text-align: left;
+  white-space: nowrap; overflow: hidden; font-weight: 400; color: var(--color-text);
+}
+.sheet tr > :first-child { border-left: 0; }
+.sheet tr > :last-child { border-right: 0; }
+.sheet thead tr:first-child > * { border-top: 0; }
+.sheet tbody tr:last-child > * { border-bottom: 0; }
+.sheet .sheet-letters th, .sheet th[scope="row"] {
+  background: var(--color-bg-subtle); color: var(--color-text-muted); text-align: center; font-size: 11px;
+}
+.sheet .sheet-head th[scope="col"] { font-weight: 600; }
+.sheet .num { text-align: right; }
+.sheet-n { width: 30px; }
+.sheet-a { width: 15%; }
+.sheet-b { width: 16%; }
+.sheet-c { width: 11%; }
+.sheet-e { width: 21%; }
+@media (max-width: 640px) {
+  .sheet table { font-size: 11px; }
+  .sheet th, .sheet td { padding: 5px 5px; }
+  .sheet-n { width: 22px; }
+  .sheet-a { width: 17%; }
+  .sheet-b { width: 18%; }
+  .sheet-c { width: 12%; }
+  .sheet-e { width: 19%; }
+}
+
 .section-lede { font-size: 18px; color: var(--color-text-secondary); margin: -12px 0 32px; max-width: 36em; }
 
 .needs { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 10px; }
